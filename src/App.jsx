@@ -54,15 +54,73 @@ const photoAlbums = [
 
 // ==========================================
 // 2. THE SINGLE SOURCE OF TRUTH (DATA)
-// You will update these arrays manually before pushing to GitHub.
 // ==========================================
 
-const tournamentRoster = [
+// --- LIVE ROSTER (auto-syncs from your Google Form responses) -------------
+// 1. In the Google Sheet that collects your form responses, add a NEW tab
+//    with ONLY these public-safe columns (do NOT publish emails/phones):
+//        Name | Class | Events | Status
+//    Set Status to "Verified" once you've confirmed someone's $40 payment;
+//    anything else (or blank) shows as "Pending".
+// 2. File -> Share -> Publish to web -> choose that tab -> CSV -> Publish.
+// 3. Paste the generated link between the quotes below.
+//    Leave it "" to fall back to the static list underneath.
+const ROSTER_CSV_URL = "";
+
+// Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
+// so the dashboard NEVER renders an empty roster.
+const fallbackRoster = [
   { name: "Ashwin Yedavalli", classYear: "19", events: "Singles & Doubles", status: "Verified" },
   { name: "Aanan Kashyap", classYear: "19", events: "Doubles", status: "Verified" },
   { name: "Venil Tummarakota", classYear: "Alumni", events: "Singles & Doubles", status: "Verified" },
   { name: "Tyler Miller", classYear: "Alumni", events: "Doubles", status: "Pending" }
 ];
+
+// Minimal RFC-4180-ish CSV parser (handles quoted fields, commas, newlines).
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (c !== "\r") field += c;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// Map CSV rows -> roster objects via flexible, case-insensitive header matching,
+// so it works even if your column names aren't exactly "Name/Class/Events/Status".
+function mapRoster(rows) {
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => h.trim().toLowerCase());
+  const col = (...names) => headers.findIndex(h => names.some(n => h.includes(n)));
+  const iName = col("name");
+  const iClass = col("class", "year", "grad");
+  const iEvents = col("event");
+  const iStatus = col("status", "paid", "verif", "confirm");
+  if (iName < 0) return [];
+  return rows.slice(1)
+    .filter(r => (r[iName] || "").trim())
+    .map(r => {
+      const s = (iStatus >= 0 ? r[iStatus] : "").trim().toLowerCase();
+      const verified = /verif|paid|confirm|complete/.test(s) ||
+        ["y", "yes", "true", "1", "done", "✓"].includes(s);
+      return {
+        name: r[iName].trim(),
+        classYear: iClass >= 0 ? (r[iClass] || "").trim() : "",
+        events: iEvents >= 0 ? (r[iEvents] || "").trim() : "",
+        status: verified ? "Verified" : "Pending",
+      };
+    });
+}
 
 const topSeeds = [
   // Singles
@@ -84,6 +142,8 @@ export default function App() {
   const [bracketEvent, setBracketEvent] = useState('doubles');
   const [seedingEvent, setSeedingEvent] = useState('Singles');
   const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
+  const [roster, setRoster] = useState(fallbackRoster);
+  const [rosterLive, setRosterLive] = useState(false);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -92,11 +152,27 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Auto-sync the roster from the published Google Sheet; fails over silently
+  // to fallbackRoster so the dashboard never breaks.
+  useEffect(() => {
+    if (!ROSTER_CSV_URL) return;
+    let cancelled = false;
+    fetch(ROSTER_CSV_URL)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(text => {
+        const players = mapRoster(parseCSV(text));
+        if (!cancelled && players.length) { setRoster(players); setRosterLive(true); }
+      })
+      .catch(() => { /* keep fallbackRoster */ });
+    return () => { cancelled = true; };
+  }, []);
+
   // Financial tracking math
   const scholarshipGoal = 1500;
   const registrationFee = 40;
   const baseDonations = 380; // Add your direct offline donations here
-  const calculatedFunding = baseDonations + (tournamentRoster.length * registrationFee);
+  const confirmedCount = roster.filter(p => p.status === 'Verified').length;
+  const calculatedFunding = baseDonations + (confirmedCount * registrationFee);
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
 
   return (
@@ -217,7 +293,7 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8 relative">
               <div className="relative z-10">
                 <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">3 Steps to Play</h3>
-                <p className="text-xs text-zinc-400 mb-6">Complete both steps to secure your draw placement. The live ledger below updates every 24 hours.</p>
+                <p className="text-xs text-zinc-400 mb-6">Complete all three steps to secure your draw placement. The ledger below updates automatically as players are confirmed.</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Step 1 */}
@@ -274,9 +350,16 @@ export default function App() {
               
               <div className="lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                 <div className="flex justify-between items-center pb-4 border-b border-zinc-800 mb-4">
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Ledger</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Ledger</h3>
+                    {rosterLive && (
+                      <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-mono font-bold bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-3 py-1 rounded-md text-[#fbbf24]">
-                    {tournamentRoster.length} Players Confirmed
+                    {confirmedCount} Confirmed · {roster.length} Registered
                   </span>
                 </div>
 
@@ -291,7 +374,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/50 text-sm">
-                      {tournamentRoster.map((player, i) => (
+                      {roster.map((player, i) => (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2 font-bold text-zinc-200">{player.name}</td>
                           <td className="py-4 text-zinc-400 text-xs">{player.classYear}</td>
