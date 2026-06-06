@@ -134,6 +134,93 @@ const topSeeds = [
 ];
 
 // ==========================================
+// DRAW BUILDERS (drafts — every slot is TBD until registration closes)
+// ==========================================
+
+// Standard single-elimination seeding order for a bracket of size n.
+function seedOrder(n) {
+  let seeds = [1, 2];
+  while (seeds.length < n) {
+    const total = seeds.length * 2 + 1;
+    const next = [];
+    for (const s of seeds) next.push(s, total - s);
+    seeds = next;
+  }
+  return seeds;
+}
+
+// Build the rounds of a single-elimination draw of n entrants.
+// Round 1 optionally shows seed lines (1..n); later rounds are TBD advancers.
+function singleElim(n, seeded = true) {
+  const order = seedOrder(n);
+  const r1 = [];
+  for (let i = 0; i < n; i += 2) {
+    r1.push({
+      a: seeded ? { seed: order[i] } : {},
+      b: seeded ? { seed: order[i + 1] } : {},
+    });
+  }
+  const rounds = [r1];
+  let m = n / 2;
+  while (m > 1) {
+    m /= 2;
+    rounds.push(Array.from({ length: m }, () => ({ a: {}, b: {} })));
+  }
+  return rounds;
+}
+
+// Losers bracket of a 32-player double elimination (match counts per round).
+function losersBracket32() {
+  return [8, 8, 4, 4, 2, 2, 1, 1].map(c =>
+    Array.from({ length: c }, () => ({ a: {}, b: {} }))
+  );
+}
+
+const roundLabel = (matches) =>
+  ({ 1: 'Final', 2: 'Semifinals', 4: 'Quarterfinals', 8: 'Round of 16', 16: 'Round of 32' }[matches] || `Round of ${matches * 2}`);
+
+function Slot({ slot }) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+      <span className={`text-[11px] truncate ${slot && slot.name ? 'text-zinc-200' : 'text-zinc-600'}`}>
+        {slot && slot.name ? slot.name : 'TBD'}
+      </span>
+      {slot && slot.seed != null && (
+        <span className="shrink-0 text-[9px] font-mono font-bold text-[#fbbf24]/90 bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-1.5">
+          {slot.seed}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function MatchCard({ match }) {
+  return (
+    <div className="w-40 md:w-44 shrink-0 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
+      <Slot slot={match.a} />
+      <Slot slot={match.b} />
+    </div>
+  );
+}
+
+function Bracket({ rounds, names }) {
+  return (
+    <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-2">
+      {rounds.map((matches, ri) => (
+        <div key={ri} className="flex flex-col shrink-0">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-2 pl-1 whitespace-nowrap">
+            {names ? names[ri] : roundLabel(matches.length)}
+          </div>
+          <div className="flex flex-col justify-around flex-1 gap-1.5">
+            {matches.map((m, mi) => <MatchCard key={mi} match={m} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ==========================================
 // 3. MAIN APPLICATION
 // ==========================================
 
@@ -477,15 +564,96 @@ export default function App() {
         {activeTab === 'draws' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Brackets</h2>
-              <p className="text-sm text-zinc-400 mt-2">Draws will be published directly from Google Sheets the week of the tournament.</p>
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
+              <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
+                Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed.
+              </p>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
+                <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
+                <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
+              </div>
             </div>
 
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-8 flex flex-col items-center justify-center text-center min-h-[300px]">
-              <Award className="w-16 h-16 text-zinc-800 mb-4" />
-              <h3 className="text-lg font-bold text-zinc-300">Brackets Pending</h3>
-              <p className="text-xs text-zinc-500 mt-2">Check back after July 6th once registration officially closes.</p>
-            </div>
+            {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
+            {bracketEvent === 'doubles' && (
+              <div className="space-y-5">
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Award className="w-5 h-5 text-[#fbbf24]" />
+                    <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · 16 Teams</h3>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+                    Every team is guaranteed multiple matches. A loss slides you to the next direction instead of sending you home.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
+                    {[
+                      ['East', 'Championship — all 16 teams', 'text-[#fbbf24]'],
+                      ['West', 'Round-of-16 East losers (8)', 'text-zinc-200'],
+                      ['North', 'Quarterfinal East losers (4)', 'text-zinc-200'],
+                      ['South', 'First-round West losers (4)', 'text-zinc-200'],
+                    ].map(([dir, desc, color]) => (
+                      <div key={dir} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
+                        <div className={`font-black uppercase tracking-wider ${color}`}>{dir}</div>
+                        <div className="text-zinc-500 mt-1 leading-snug">{desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {[
+                  ['East — Championship Draw', singleElim(16, true)],
+                  ['West Draw', singleElim(8, false)],
+                  ['North Draw', singleElim(4, false)],
+                  ['South Draw', singleElim(4, false)],
+                ].map(([title, rounds]) => (
+                  <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
+                    <Bracket rounds={rounds} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* SUNDAY SINGLES — Double Elimination (32 players) */}
+            {bracketEvent === 'singles' && (
+              <div className="space-y-5">
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Trophy className="w-5 h-5 text-[#fbbf24]" />
+                    <h3 className="text-base font-black text-white uppercase tracking-wider">Double Elimination · 32 Players</h3>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+                    Two losses and you're out. First-round losers drop into the losers bracket and can battle all the way back to the Grand Final.
+                  </p>
+                </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
+                  <Bracket rounds={singleElim(32, true)} />
+                </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Losers Bracket</h4>
+                  <Bracket
+                    rounds={losersBracket32()}
+                    names={['Losers R1', 'Losers R2', 'Losers R3', 'Losers R4', 'Losers R5', 'Losers R6', 'Losers R7', 'Losers Final']}
+                  />
+                </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final</h4>
+                  <div className="flex items-center gap-5 flex-wrap">
+                    <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
+                      <div className="px-3 py-2 text-xs text-zinc-200">Winners Bracket Champion</div>
+                      <div className="px-3 py-2 text-xs text-zinc-200">Losers Bracket Champion</div>
+                    </div>
+                    <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
+                      If the Losers Bracket Champion wins, a deciding "bracket reset" set is played — the Winners Champion hadn't lost yet.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
