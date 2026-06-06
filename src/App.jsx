@@ -32,6 +32,79 @@ function ARLogo({ className = "w-12 h-12" }) {
   );
 }
 
+// Brand mark: uses the uploaded /ar-logo.png on a cream badge (so a dark/maroon
+// monogram shows on the dark header). Falls back to the line-art AR if the file
+// isn't present yet, so the header never breaks.
+function BrandLogo({ className = "" }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return <span className="text-[#fbbf24] inline-flex"><ARLogo className={className} /></span>;
+  return (
+    <div className={`${className} rounded-full bg-[#f7f1e3] flex items-center justify-center overflow-hidden shadow-md`}>
+      <img src="/ar-logo.png" alt="Aces for Arian logo" className="w-[82%] h-[82%] object-contain"
+        draggable={false} onError={() => setOk(false)} />
+    </div>
+  );
+}
+
+// Past champions + downloadable result archives, per event (singles | doubles).
+function ResultsArchive({ event }) {
+  const isS = event === 'singles';
+  const champ = isS
+    ? { label: '2025 Singles Champion', name: 'Alex', format: '32-player double elimination', podium: [{ place: '2nd', name: 'Andrew' }, { place: '3rd', name: 'Shaan' }], pdf: '/archive/aces-for-arian-2025-singles.pdf' }
+    : { label: '2025 Doubles Champions', name: 'Greyson & Andy', format: '16-team compass draw', podium: [], pdf: '/archive/aces-for-arian-2025-doubles.pdf' };
+  const past = [
+    { year: '2024', url: '/archive/aces-for-arian-2024-results.pdf' },
+    { year: '2023', url: '/archive/aces-for-arian-2023-results.pdf' },
+  ];
+  return (
+    <>
+      <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">Archive</span>
+          <h4 className="text-sm font-black text-white uppercase tracking-wider">{champ.label}</h4>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="flex items-center gap-4">
+            <Trophy className="w-10 h-10 text-[#fbbf24] shrink-0" />
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-zinc-500">{isS ? 'Champion' : 'Champions'}</div>
+              <div className="text-2xl font-black text-white leading-none">{champ.name}</div>
+              <div className="text-[11px] text-zinc-500 mt-1">{champ.format}</div>
+            </div>
+          </div>
+          {champ.podium.length > 0 && (
+            <div className="flex gap-2">
+              {champ.podium.map(p => (
+                <div key={p.place} className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-500">{p.place}</div>
+                  <div className="text-sm font-bold text-zinc-200">{p.name}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <a href={champ.pdf} target="_blank" rel="noopener noreferrer"
+            className="sm:ml-auto inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
+            <span>Full bracket (PDF)</span><ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+
+      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Past Tournament Results</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {past.map(p => (
+            <a key={p.year} href={p.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between bg-[#111] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-xl px-4 py-3 transition-colors group">
+              <span className="text-sm font-bold text-white">{p.year} Results</span>
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors">PDF <ExternalLink className="h-3 w-3" /></span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // Name your 10 photos exactly these names and place them in the "public" folder!
 const heroImages = [
   "photo1.jpg",
@@ -361,18 +434,11 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 relative z-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
-            <div className="flex items-center gap-5">
-              <div className="text-[#fbbf24]">
-                <ARLogo className="w-12 h-12 md:w-14 md:h-14" />
-              </div>
-              <div>
-                <span className="text-[9px] md:text-[10px] tracking-widest font-black uppercase text-[#fbbf24]/80 block mb-0.5">
-                  Dunlap High School Tennis Alumni
-                </span>
-                <h1 className="text-xl md:text-2xl font-black tracking-wide uppercase text-white">
-                  Aces for Arian <span className="text-base md:text-lg font-light text-[#fefcbf]">2026</span>
-                </h1>
-              </div>
+            <div className="flex items-center gap-4">
+              <BrandLogo className="w-12 h-12 md:w-14 md:h-14 shrink-0" />
+              <h1 className="text-xl md:text-2xl font-black tracking-wide uppercase text-white">
+                Aces for Arian <span className="text-base md:text-lg font-light text-[#fefcbf]">2026</span>
+              </h1>
             </div>
 
             <div className="flex items-center gap-4 md:gap-5 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
@@ -452,6 +518,14 @@ export default function App() {
                 <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
                   Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and pro photos. Come play with the Dunlap tennis community; every dollar funds the Arian Rahbar Memorial Scholarship.
                 </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                  <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                    <span>Register — $40</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <span className="text-xs text-zinc-500">Sign-ups close July 6</span>
+                </div>
               </div>
 
               {/* Rotating Canvas */}
@@ -718,6 +792,8 @@ export default function App() {
                     <Bracket rounds={rounds} />
                   </div>
                 ))}
+
+                <ResultsArchive event="doubles" />
               </div>
             )}
 
@@ -760,38 +836,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2025 Singles — results archive */}
-                <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">Archive</span>
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider">2025 Singles Results</h4>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                    <div className="flex items-center gap-4">
-                      <Trophy className="w-10 h-10 text-[#fbbf24] shrink-0" />
-                      <div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-500">Champion</div>
-                        <div className="text-2xl font-black text-white leading-none">Alex</div>
-                        <div className="text-[11px] text-zinc-500 mt-1">32-player double elimination</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 sm:ml-auto">
-                      <div className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-500">3rd</div>
-                        <div className="text-sm font-bold text-zinc-200">Imadh</div>
-                      </div>
-                      <div className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-500">5th</div>
-                        <div className="text-sm font-bold text-zinc-200">Andy</div>
-                      </div>
-                    </div>
-                  </div>
-                  <a href="/archive/aces-for-arian-2025-singles.pdf" target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 mt-5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
-                    <span>View the full bracket &amp; all scores (PDF)</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
+                <ResultsArchive event="singles" />
               </div>
             )}
           </div>
