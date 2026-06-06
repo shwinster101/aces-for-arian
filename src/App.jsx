@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Trophy, 
   Award, 
@@ -393,6 +393,7 @@ export default function App() {
   const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
   const [roster, setRoster] = useState(fallbackRoster);
   const [rosterLive, setRosterLive] = useState(false);
+  const navRef = useRef(null);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -416,6 +417,11 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // Keep the active tab centered in the sticky nav strip (esp. on mobile).
+  useEffect(() => {
+    navRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [activeTab]);
+
   // Financial tracking math
   const scholarshipGoal = 1500;
   const registrationFee = 40;
@@ -431,7 +437,7 @@ export default function App() {
     <div className="min-h-dvh bg-[#0a0a0a] text-zinc-200 font-sans flex flex-col selection:bg-[#fbbf24] selection:text-[#5c1313]">
       
       {/* --- HEADER --- */}
-      <header className="border-b-2 border-[#fbbf24] bg-[#5c1313] relative overflow-hidden">
+      <header className="bg-[#5c1313] relative overflow-hidden">
         {/* Subtle Court Lines Pattern */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="w-full h-full border-2 border-[#fbbf24] absolute top-2 left-2 right-2 bottom-2"></div>
@@ -474,8 +480,12 @@ export default function App() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-black/30">
-          <nav className="flex space-x-6 md:space-x-8 py-3 overflow-x-auto no-scrollbar">
+      </header>
+
+      {/* Sticky tab nav — lifted out of the overflow-hidden header so position:sticky works */}
+      <div className="sticky top-0 z-40 bg-[#5c1313]/95 backdrop-blur-sm border-b-2 border-[#fbbf24] shadow-lg shadow-black/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <nav ref={navRef} className="flex space-x-6 md:space-x-8 py-3 overflow-x-auto no-scrollbar">
             {[
               { id: 'home', label: 'Home', icon: Home },
               { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp },
@@ -489,6 +499,7 @@ export default function App() {
               return (
                 <button
                   key={tab.id}
+                  data-active={active}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 pb-1 text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                     active ? 'text-[#fbbf24] border-b-2 border-[#fbbf24]' : 'text-zinc-400 hover:text-white'
@@ -500,8 +511,9 @@ export default function App() {
               );
             })}
           </nav>
+          <div className="pointer-events-none absolute right-0 inset-y-0 w-10 bg-gradient-to-l from-[#5c1313] to-transparent md:hidden"></div>
         </div>
-      </header>
+      </div>
 
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8">
