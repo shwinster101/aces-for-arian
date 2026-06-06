@@ -56,7 +56,6 @@ function ResultsArchive({ event }) {
     { label: '2024 Results', url: '/archive/aces-for-arian-2024-results.pdf' },
     { label: '2023 Results', url: '/archive/aces-for-arian-2023-results.pdf' },
     { label: '2022 Results', url: '/archive/aces-for-arian-2022-results.pdf' },
-    { label: '2021 · Eagle Classic', url: '/archive/eagle-classic-2021-results.pdf' },
   ];
   return (
     <>
@@ -105,7 +104,7 @@ function ResultsArchive({ event }) {
       </div>
 
       <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2020 · Eagle Classic — Final Standings</h4>
+        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2021 · Eagle Classic — Final Standings</h4>
         <p className="text-[11px] text-zinc-500 mb-4">From the Eagle Classic era — when Arian was still out on the court with the team.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           {[
@@ -120,6 +119,9 @@ function ResultsArchive({ event }) {
             </div>
           ))}
         </div>
+        <a href="/archive/eagle-classic-2021-results.pdf" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
+          <span>Full results (PDF)</span><ExternalLink className="h-3 w-3" />
+        </a>
       </div>
     </>
   );
