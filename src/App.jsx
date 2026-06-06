@@ -123,6 +123,33 @@ function ResultsArchive({ event }) {
           <span>Full results (PDF)</span><ExternalLink className="h-3 w-3" />
         </a>
       </div>
+
+      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2020 · Eagle Classic <span className="text-[#fbbf24]">— The Inaugural</span></h4>
+        <p className="text-[11px] text-zinc-500 mb-4">The very first Eagle Classic — and Arian &amp; Venil took the doubles title.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Doubles</div>
+            <div className="flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-[#fbbf24] shrink-0" />
+              <span className="text-zinc-100 font-bold">Arian &amp; Venil</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Men's Singles</div>
+            <div className="text-zinc-400 leading-relaxed">Maroon: Victor Spolidorio '17 def. Aanan Kashyap '20, 6-1</div>
+            <div className="text-zinc-400 leading-relaxed mt-1">Gold: Timmy Liu '24 def. Abhilash Pentela '26, 6-2</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Women's Singles</div>
+            <div className="text-zinc-400 leading-relaxed">Maroon: Taylor Disharoon '21 def. Shikha Agarwal '24</div>
+            <div className="text-zinc-400 leading-relaxed mt-1">Gold: Sophie Muir '24</div>
+          </div>
+        </div>
+        <a href="/archive/eagle-classic-2020-pools.pdf" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
+          <span>Original draws &amp; schedule (PDF)</span><ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
     </>
   );
 }
