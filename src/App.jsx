@@ -969,6 +969,55 @@ export default function App() {
                 <li>Schedule conflict? Tell a coordinator <strong className="text-zinc-200">ASAP</strong>.</li>
               </ul>
             </div>
+
+            {/* Day-of schedule (tentative, from the 2025 timeline) */}
+            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
+              <div className="flex items-center gap-3 mb-1">
+                <Clock className="w-5 h-5 text-[#fbbf24]" />
+                <h3 className="text-lg font-black text-white uppercase tracking-wider">Day-of Schedule</h3>
+              </div>
+              <p className="text-xs text-zinc-500 mb-6">Tentative — based on the 2025 timeline. Exact times are posted with the draw.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-widest text-[#fbbf24] mb-3">Saturday · Doubles</div>
+                  {[["9:00 AM", "Round 1"], ["~10:00 AM", "Round 2"], ["~11:00 AM", "Round 3"], ["—", "Lunch break"], ["~1:15 PM", "Round 4"], ["~3:00 PM", "Final round"]].map(([t, l]) => (
+                    <div key={l} className="flex items-baseline gap-3 py-1.5 border-b border-zinc-800/50 last:border-0">
+                      <span className="text-xs font-mono font-bold text-[#fbbf24] w-20 shrink-0">{t}</span>
+                      <span className="text-sm text-zinc-300">{l}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-widest text-[#fbbf24] mb-3">Sunday · Singles</div>
+                  {[["8:00 AM", "First matches"], ["Morning", "Main & back-draw rounds"], ["Afternoon", "Quarterfinals → Final"]].map(([t, l]) => (
+                    <div key={l} className="flex items-baseline gap-3 py-1.5 border-b border-zinc-800/50 last:border-0">
+                      <span className="text-xs font-mono font-bold text-[#fbbf24] w-20 shrink-0">{t}</span>
+                      <span className="text-sm text-zinc-300">{l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* FAQ */}
+            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
+              <div className="flex items-center gap-3 mb-5">
+                <BookOpen className="w-5 h-5 text-[#fbbf24]" />
+                <h3 className="text-lg font-black text-white uppercase tracking-wider">FAQ</h3>
+              </div>
+              <div className="space-y-5">
+                {[
+                  ["What if it rains?", "Matches are weather-permitting. If rain moves in, coordinators will pause and reschedule as needed — keep an eye on your phone for updates."],
+                  ["What should I bring?", "Your racquet, water, and court shoes. Balls, court snacks, and your tournament tee are provided."],
+                  ["Can I get a refund?", "Entry fees go straight to the scholarship, so they're non-refundable — but you can transfer your spot to another player; just tell a coordinator."],
+                ].map(([q, a]) => (
+                  <div key={q}>
+                    <div className="text-sm font-bold text-zinc-200">{q}</div>
+                    <div className="text-sm text-zinc-400 mt-1 leading-relaxed">{a}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1040,6 +1089,17 @@ export default function App() {
                   Arian tragically lost his life in December 2021, a pedestrian victim of senseless street racing in Los Angeles. We gather each summer to play in his memory — to his heart's content, as he would. Every dollar raised funds the <strong className="text-zinc-200">Arian Rahbar Memorial Scholarship</strong> for Dunlap seniors pursuing higher education.
                 </p>
               </div>
+            </div>
+
+            <div className="relative z-10 mt-8 pt-6 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <div className="text-sm font-black text-white uppercase tracking-wider">Support the Scholarship</div>
+                <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% of entry fees and donations fund the Arian Rahbar Memorial Scholarship for Dunlap seniors pursuing higher education.</div>
+              </div>
+              <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                <Heart className="w-4 h-4" />
+                <span>Donate to the Scholarship</span>
+              </a>
             </div>
           </div>
         )}
