@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   CheckCircle2,
   Image as ImageIcon,
-  Home
+  Home,
+  GraduationCap
 } from 'lucide-react';
 
 // ==========================================
@@ -131,10 +132,17 @@ const ALBUMS = [
     images: [
       "photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg",
       "photo6.jpg", "photo7.jpg", "photo8.jpg", "photo9.jpg", "photo10.jpg",
+      "photo11.jpg",
     ],
   },
   { year: "2024", url: "https://photos.app.goo.gl/HjjNMQh3cQTKL4GW7", images: [] },
   { year: "2023", url: "https://photos.app.goo.gl/JTonkVSzso5fnhAQ6", images: [] },
+];
+
+// Arian Rahbar Memorial Tennis Scholarship.
+const SCHOLARSHIP_APPLY_URL = ""; // optional application-form link; empty = "contact a coordinator"
+const SCHOLARSHIP_WINNERS = [
+  // Past recipients, newest first: { year: "2025", name: "Jane Doe" },
 ];
 
 // Flattened, captioned slides across every album.
@@ -558,7 +566,8 @@ export default function App() {
               { id: 'photos', label: 'Photos', icon: ImageIcon },
               { id: 'rules', label: 'Rules', icon: BookOpen },
               { id: 'merch', label: 'Merch', icon: ShoppingBag },
-              { id: 'legacy', label: 'Legacy', icon: Heart }
+              { id: 'legacy', label: 'Legacy', icon: Heart },
+              { id: 'scholarship', label: 'Scholarship', icon: GraduationCap }
             ].map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -1200,6 +1209,76 @@ export default function App() {
                 <Heart className="w-4 h-4" />
                 <span>Donate to the Scholarship</span>
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* ==========================================
+            TAB: SCHOLARSHIP
+            ========================================== */}
+        {activeTab === 'scholarship' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-2">
+                <GraduationCap className="w-6 h-6 text-[#fbbf24] shrink-0" />
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wider">Arian Rahbar Memorial Tennis Scholarship</h2>
+              </div>
+              <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl">
+                An award honoring Arian's legacy of academic excellence and radiating positivity on the court — granted to graduating Dunlap tennis seniors through a short essay and their record as scholar-athletes.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">The Essay <span className="text-zinc-500 font-bold normal-case">· 500 words or less</span></h3>
+                <blockquote className="border-l-2 border-[#fbbf24] pl-4 text-sm md:text-base text-zinc-300 italic leading-relaxed">
+                  “While at DHS, Arian embodied sportsmanship qualities such as positivity, discipline, competitiveness, and a continuous desire to learn on the court and in the classroom. Reflect on the importance of sportsmanship in both athletics and academics, drawing from personal experiences on the DHS tennis team. How do you plan to apply these values in your college life?”
+                </blockquote>
+              </div>
+              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">How It's Judged</h3>
+                <ul className="space-y-3 text-sm text-zinc-400">
+                  <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Scholar-athlete synthesis</strong> — excellence in the classroom and on court.</span></li>
+                  <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Varsity tenure</strong> — commitment to the program.</span></li>
+                  <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Exceptional sportsmanship</strong> — how you carry yourself, win or lose.</span></li>
+                </ul>
+                <p className="text-xs text-zinc-500 mt-4 leading-relaxed">Open to graduating Dunlap tennis seniors. Awarded on the essay plus your scholar-athlete credentials.</p>
+              </div>
+            </div>
+
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Apply</h3>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Seniors: submit your 500-word essay and credentials to be considered. Reach out for the application form and this year's deadline.</p>
+              </div>
+              {SCHOLARSHIP_APPLY_URL ? (
+                <a href={SCHOLARSHIP_APPLY_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+                  <span>Apply Now</span><ExternalLink className="h-4 w-4" />
+                </a>
+              ) : (
+                <a href="tel:3093618746" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+                  <Phone className="h-4 w-4" /><span>Contact a Coordinator</span>
+                </a>
+              )}
+            </div>
+
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Past Recipients</h3>
+              {SCHOLARSHIP_WINNERS.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {SCHOLARSHIP_WINNERS.map(w => (
+                    <div key={w.year + w.name} className="bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
+                        <div className="text-sm font-bold text-white">{w.name}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-500">Recipients are honored at the tournament each summer — past winners will be celebrated here.</p>
+              )}
             </div>
           </div>
         )}
