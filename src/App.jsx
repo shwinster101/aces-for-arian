@@ -166,6 +166,25 @@ const COURT_BOARD = {
   courts: Array.from({ length: 9 }, (_, i) => ({ court: i + 1, now: "", next: "" })),
 };
 
+// Publish a sheet with columns Court | Now | Next and paste its CSV link here to
+// drive the board live from your phone. Empty = use the static COURT_BOARD above.
+const COURT_BOARD_CSV_URL = "";
+
+// Parse the court-board CSV into 9 court rows (overlaid onto empty courts).
+function mapCourtBoard(rows) {
+  if (rows.length < 2) return null;
+  const headers = rows[0].map(h => h.trim().toLowerCase());
+  const col = (...names) => headers.findIndex(h => names.some(n => h.includes(n)));
+  const iCourt = col("court"), iNow = col("now", "current", "on"), iNext = col("next", "up");
+  if (iCourt < 0) return null;
+  const by = {};
+  rows.slice(1).forEach(r => {
+    const c = parseInt(String(r[iCourt] || "").replace(/\D/g, ""), 10);
+    if (c >= 1 && c <= 9) by[c] = { now: iNow >= 0 ? (r[iNow] || "").trim() : "", next: iNext >= 0 ? (r[iNext] || "").trim() : "" };
+  });
+  return Array.from({ length: 9 }, (_, i) => ({ court: i + 1, now: by[i + 1]?.now || "", next: by[i + 1]?.next || "" }));
+}
+
 // Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
 // so the dashboard NEVER renders an empty roster.
 const fallbackRoster = [
@@ -284,6 +303,17 @@ function losersBracket32() {
   );
 }
 
+// Stamp a match number onto each match. numberRounds: explicit per-round start
+// numbers (used to mirror the PrintYourBrackets 1–62 singles scheme).
+function numberRounds(rounds, starts) {
+  return rounds.map((matches, ri) => { let n = starts[ri]; return matches.map(m => ({ ...m, num: n++ })); });
+}
+// numberSeq: number sequentially across all rounds from `start`; returns { rounds, next }.
+function numberSeq(rounds, start) {
+  let n = start;
+  return { rounds: rounds.map(ms => ms.map(m => ({ ...m, num: n++ }))), next: n };
+}
+
 const roundLabel = (matches) =>
   ({ 1: 'Final', 2: 'Semifinals', 4: 'Quarterfinals', 8: 'Round of 16', 16: 'Round of 32' }[matches] || `Round of ${matches * 2}`);
 
@@ -304,9 +334,12 @@ function Slot({ slot }) {
 
 function MatchCard({ match }) {
   return (
-    <div className="w-40 md:w-44 shrink-0 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
-      <Slot slot={match.a} />
-      <Slot slot={match.b} />
+    <div className="flex items-center gap-1.5 shrink-0">
+      <span className="w-5 shrink-0 text-right text-[8px] font-mono font-bold text-zinc-500">{match.num != null ? match.num : ''}</span>
+      <div className="w-40 md:w-44 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
+        <Slot slot={match.a} />
+        <Slot slot={match.b} />
+      </div>
     </div>
   );
 }
@@ -401,6 +434,7 @@ export default function App() {
   const [seedingEvent, setSeedingEvent] = useState('Singles');
   const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
   const [roster, setRoster] = useState(fallbackRoster);
+  const [courtBoard, setCourtBoard] = useState(COURT_BOARD);
   const [rosterLive, setRosterLive] = useState(false);
   const navRef = useRef(null);
 
@@ -424,6 +458,23 @@ export default function App() {
       })
       .catch(() => { /* keep fallbackRoster */ });
     return () => { cancelled = true; };
+  }, []);
+
+  // Live court board from a published sheet; refreshes every 60s. Falls back to
+  // the static COURT_BOARD if no URL is set or a fetch fails.
+  useEffect(() => {
+    if (!COURT_BOARD_CSV_URL) return;
+    let cancelled = false;
+    const load = () => fetch(`${COURT_BOARD_CSV_URL}${COURT_BOARD_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(text => {
+        const courts = mapCourtBoard(parseCSV(text));
+        if (courts && !cancelled) setCourtBoard({ live: true, updated: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), courts });
+      })
+      .catch(() => { /* keep previous / static board */ });
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   // Keep the active tab centered in the sticky nav strip (esp. on mobile).
@@ -814,16 +865,16 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${COURT_BOARD.live ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${courtBoard.live ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}></span>
                   <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Court Board</h2>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-500">{COURT_BOARD.live ? `Updated ${COURT_BOARD.updated}` : 'Goes live tournament morning'}</span>
+                <span className="text-[10px] font-mono text-zinc-500">{courtBoard.live ? `Updated ${courtBoard.updated}` : 'Goes live tournament morning'}</span>
               </div>
               <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
                 Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {COURT_BOARD.courts.map(c => (
+                {courtBoard.courts.map(c => (
                   <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
                     <div className="flex items-center gap-2">
@@ -876,17 +927,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {[
-                  ['East — Championship Draw', singleElim(16, true, seededNames('Doubles'))],
-                  ['West Draw', singleElim(8, false)],
-                  ['North Draw', singleElim(4, false)],
-                  ['South Draw', singleElim(4, false)],
-                ].map(([title, rounds]) => (
-                  <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                    <Bracket rounds={rounds} />
-                  </div>
-                ))}
+                {(() => {
+                  let next = 1;
+                  return [
+                    ['East — Championship Draw', singleElim(16, true, seededNames('Doubles'))],
+                    ['West Draw', singleElim(8, false)],
+                    ['North Draw', singleElim(4, false)],
+                    ['South Draw', singleElim(4, false)],
+                  ].map(([title, rounds]) => {
+                    const numbered = numberSeq(rounds, next); next = numbered.next;
+                    return (
+                      <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
+                        <Bracket rounds={numbered.rounds} />
+                      </div>
+                    );
+                  });
+                })()}
 
                 <ResultsArchive event="doubles" />
               </div>
@@ -907,19 +964,19 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={singleElim(32, true, seededNames('Singles'))} />
+                  <Bracket rounds={numberRounds(singleElim(32, true, seededNames('Singles')), [1, 25, 41, 53, 59])} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Losers Bracket</h4>
                   <Bracket
-                    rounds={losersBracket32()}
+                    rounds={numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61])}
                     names={['Losers R1', 'Losers R2', 'Losers R3', 'Losers R4', 'Losers R5', 'Losers R6', 'Losers R7', 'Losers Final']}
                   />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final</h4>
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final <span className="text-[10px] font-mono font-normal text-zinc-500">· Match 62 (+ 63 if reset)</span></h4>
                   <div className="flex items-center gap-5 flex-wrap">
                     <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
                       <div className="px-3 py-2 text-xs text-zinc-200">Winners Bracket Champion</div>
