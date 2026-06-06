@@ -127,13 +127,22 @@ function ResultsArchive({ event }) {
       <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
         <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2020 · Eagle Classic <span className="text-[#fbbf24]">— The Inaugural</span></h4>
         <p className="text-[11px] text-zinc-500 mb-4">The very first Eagle Classic — and Arian &amp; Venil took the doubles title.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+        <div className="flex items-center gap-3 mb-4 bg-[#1c1408] border border-[#fbbf24]/20 rounded-xl p-4">
+          <Trophy className="w-6 h-6 text-[#fbbf24] shrink-0" />
           <div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Doubles</div>
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-[#fbbf24] shrink-0" />
-              <span className="text-zinc-100 font-bold">Arian &amp; Venil</span>
-            </div>
+            <div className="text-[9px] uppercase tracking-widest text-[#fbbf24]">Men's Doubles Champions · Maroon</div>
+            <div className="text-base font-black text-white leading-tight">Arian &amp; Venil</div>
+            <div className="text-xs text-zinc-400">def. Aanan &amp; Imadh · 6-4, 7-6(5)</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Men's Doubles — Gold</div>
+            <div className="text-zinc-400 leading-relaxed">Timmy &amp; Alex def. Andrew &amp; Karthik, 8-5</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Ladies Doubles</div>
+            <div className="text-zinc-400 leading-relaxed">Shikha &amp; Shreya — round-robin winners</div>
           </div>
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">Men's Singles</div>
