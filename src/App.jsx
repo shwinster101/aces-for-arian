@@ -158,6 +158,14 @@ const ROSTER_CSV_URL = "";
 // Where the header "Donate" button sends people (currently your Venmo).
 const DONATE_URL = "https://venmo.com/u/ashwiny";
 
+// Live court board for tournament day. Flip live=true and fill each court's
+// now/next with a match label (e.g. "#12 Alex/Sai vs Roy/Gus"). 9 courts.
+const COURT_BOARD = {
+  live: false,
+  updated: "",
+  courts: Array.from({ length: 9 }, (_, i) => ({ court: i + 1, now: "", next: "" })),
+};
+
 // Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
 // so the dashboard NEVER renders an empty roster.
 const fallbackRoster = [
@@ -525,6 +533,18 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
             
+            {/* 5th Annual commemoration banner */}
+            <div className="relative overflow-hidden rounded-3xl border border-[#fbbf24]/40 bg-gradient-to-r from-[#5c1313] via-[#3a0a0a] to-[#5c1313] px-6 py-5 text-center shadow-lg shadow-black/40">
+              <div className="absolute inset-0 opacity-10 pointer-events-none">
+                <div className="w-full h-full border-2 border-[#fbbf24] absolute top-1.5 left-1.5 right-1.5 bottom-1.5 rounded-2xl"></div>
+              </div>
+              <div className="relative z-10">
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#fbbf24]">Fifth Annual · 2022 – 2026</div>
+                <div className="text-xl md:text-2xl font-black text-white uppercase tracking-wide mt-1">Five Years of Aces for Arian</div>
+                <div className="text-xs text-zinc-300 mt-1.5 max-w-xl mx-auto">Five summers of community tennis in Arian's memory — thank you for being part of it.</div>
+              </div>
+            </div>
+
             {/* Hero Section */}
             <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden shadow-2xl shadow-black">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -789,6 +809,36 @@ export default function App() {
             ========================================== */}
         {activeTab === 'draws' && (
           <div className="space-y-6 animate-fade-in">
+
+            {/* Live court board — answers "when is my next match?" */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${COURT_BOARD.live ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}></span>
+                  <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Court Board</h2>
+                </div>
+                <span className="text-[10px] font-mono text-zinc-500">{COURT_BOARD.live ? `Updated ${COURT_BOARD.updated}` : 'Goes live tournament morning'}</span>
+              </div>
+              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
+                Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {COURT_BOARD.courts.map(c => (
+                  <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase tracking-wider text-emerald-400 w-11 shrink-0">On now</span>
+                      <span className="text-sm text-zinc-100 font-bold truncate">{c.now || '—'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800/60">
+                      <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-11 shrink-0">Next</span>
+                      <span className="text-sm text-zinc-400 truncate">{c.next || '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
@@ -1077,16 +1127,16 @@ export default function App() {
               </div>
 
               <div className="flex-1 space-y-5">
-                <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Scholar, Eagle, State Qualifier</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Remembering Arian</h2>
                 <div className="w-12 h-1 bg-[#fbbf24] rounded-full"></div>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  Arian Rahbar (DHS Class of 2019) put together a remarkable four-year career for the Dunlap Eagles — a member of the elite 100-Win Club, a 3-time IHSA State qualifier, and part of the 2017 1A Team State Championship squad. A 3-time Mid-Illini All-Conference selection, he is one of only 13 Dunlap men ever to qualify for State in both singles and doubles.
+                  Arian was one of those people who made everything more fun — especially the tennis court. Sure, he could play (a 100-win Dunlap Eagle and a State qualifier in both singles and doubles), but if you knew him, it's the energy and the grin you remember, not the trophies.
                 </p>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  His positivity radiated on and off the court. After graduating with a near-perfect GPA, Arian studied Computer Science at USC and had earned a summer internship at Facebook. He was also one of the very first champions of this tournament — doubles, with Venil — back when it was the Eagle Classic.
+                  He was also low-key brilliant — near-perfect grades, headed to USC for Computer Science with a Facebook internship lined up — and one of the original champions of this tournament back when it was still the Eagle Classic (doubles, with Venil).
                 </p>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  Arian tragically lost his life in December 2021, a pedestrian victim of senseless street racing in Los Angeles. We gather each summer to play in his memory — to his heart's content, as he would. Every dollar raised funds the <strong className="text-zinc-200">Arian Rahbar Memorial Scholarship</strong> for Dunlap seniors pursuing higher education.
+                  We lost Arian in December 2021. So every summer we get the community back on the courts to play the way he did — all heart, lots of laughs. Whatever we raise goes to the <strong className="text-zinc-200">Arian Rahbar Memorial Scholarship</strong> for Dunlap seniors chasing their next thing.
                 </p>
               </div>
             </div>
