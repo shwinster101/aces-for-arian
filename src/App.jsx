@@ -321,9 +321,22 @@ const topSeeds = [
   { name: "Imadh Khan", type: "Singles", rank: 7, notes: "Triad champ" },
   { name: "David Wu", type: "Singles", rank: 8, notes: "Does he still play?" },
   // Doubles
-  { name: "Greyson & Andy", type: "Doubles", rank: 1, result: "2025 Champions", notes: "Reigning doubles champions." },
-  { name: "A. Yedavalli / V. Tummarakota", type: "Doubles", rank: 2, utr: "7.1", notes: "Original champions." },
-  { name: "A. Kashyap / T. Miller", type: "Doubles", rank: 3, utr: "6.5", notes: "Varsity alumni standouts." }
+  { name: "Greyson & Andy", type: "Doubles", rank: 1, result: "2025 Champions", notes: "We talkin' bout practice" },
+  { name: "Doug & Graham", type: "Doubles", rank: 2, notes: "Da boys" },
+  { name: "Aanan & Shaan", type: "Doubles", rank: 3, notes: "Bro life" },
+  { name: "Atishay & Ashwin", type: "Doubles", rank: 4, notes: "DUPR don't lie" }
+];
+
+// Players in the mix for a seed but not locked in yet — the bubble.
+const BUBBLE = [
+  // Singles
+  { name: "Cheython Manika", type: "Singles", notes: "Inventor of the 360° forehand" },
+  { name: "Josh Han", type: "Singles", notes: "Wish this was FIFA" },
+  { name: "Victor Spolidorio", type: "Singles", notes: "Decent record and oh yeah, state champ" },
+  // Doubles
+  { name: "Alex & Noah", type: "Doubles", notes: "In da club (team)" },
+  { name: "Victor & Krishiv", type: "Doubles", notes: "Where'd they go" },
+  { name: "Shikha & Sophie", type: "Doubles", notes: "Lady Eagles represent" },
 ];
 
 // ==========================================
@@ -860,7 +873,7 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Projected Seeds</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                Baseline seeding starts from objective signals — prior Aces for Arian results plus public UTR and WTN ratings where players have them — then the committee and community refine it. Reigning champions get an automatic top seed.
+                Baseline seeding starts from objective signals — prior Aces for Arian results plus public UTR and WTN ratings where players have them — then the committee and community refine it. Reigning champions get an automatic top seed; anyone still in the mix sits on the bubble below.
               </p>
             </div>
 
@@ -900,6 +913,21 @@ export default function App() {
                 })}
               </div>
             </div>
+
+            {BUBBLE.filter(b => b.type === seedingEvent).length > 0 && (
+              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">On the Bubble</h3>
+                <p className="text-xs text-zinc-500 mt-1 mb-4">In the mix for a seed — not locked in yet. Add your rating and recent results to bump into the draw.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {BUBBLE.filter(b => b.type === seedingEvent).map((b, i) => (
+                    <div key={i} className="bg-[#111] border border-dashed border-zinc-700 rounded-xl p-4">
+                      <div className="text-sm font-bold text-zinc-200">{b.name}</div>
+                      <div className="text-xs text-zinc-500 italic mt-0.5">"{b.notes}"</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Crowdsource CTA */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
