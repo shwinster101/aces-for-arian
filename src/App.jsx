@@ -333,11 +333,16 @@ const BUBBLE = [
   { name: "Cheython Manika", type: "Singles", notes: "Inventor of the 360° forehand" },
   { name: "Josh Han", type: "Singles", notes: "Wish this was FIFA" },
   { name: "Victor Spolidorio", type: "Singles", notes: "Decent record and oh yeah, state champ" },
+  { name: "Coach Gornik", type: "Singles", notes: "Coach can play?" },
   // Doubles
   { name: "Alex & Noah", type: "Doubles", notes: "In da club (team)" },
   { name: "Victor & Krishiv", type: "Doubles", notes: "Where'd they go" },
   { name: "Shikha & Sophie", type: "Doubles", notes: "Lady Eagles represent" },
 ];
+
+// Seeding lifecycle: Bubble → Projected Seed → Final Seed.
+// Flip to true once the committee locks the field at the entry cutoff.
+const SEEDS_FINAL = false;
 
 // ==========================================
 // DRAW BUILDERS (drafts — every slot is TBD until registration closes)
@@ -873,7 +878,7 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Projected Seeds</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                Baseline seeding starts from objective signals — prior Aces for Arian results plus public UTR and WTN ratings where players have them — then the committee and community refine it. Reigning champions get an automatic top seed; anyone still in the mix sits on the bubble below.
+                Current projected seeds based on prior AFA results, UTR/WTN, recent results, and committee review. These players and teams are currently slotted into the bracket. Reigning champions get an automatic top seed.
               </p>
             </div>
 
@@ -883,6 +888,10 @@ export default function App() {
             </div>
 
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">{SEEDS_FINAL ? 'Final Seeds' : 'Projected Seeds'}</h3>
+                <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${SEEDS_FINAL ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20'}`}>{SEEDS_FINAL ? 'Locked into the draw' : 'Currently in the draw'}</span>
+              </div>
               <div className="grid grid-cols-1 gap-3">
                 {topSeeds.filter(item => item.type === seedingEvent).map((candidate, idx) => {
                   const isTop3 = candidate.rank <= 3;
@@ -917,7 +926,7 @@ export default function App() {
             {BUBBLE.filter(b => b.type === seedingEvent).length > 0 && (
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-wider">On the Bubble</h3>
-                <p className="text-xs text-zinc-500 mt-1 mb-4">In the mix for a seed — not locked in yet. Add your rating and recent results to bump into the draw.</p>
+                <p className="text-xs text-zinc-500 mt-1 mb-4">In contention for a seed. Bubble names aren't ranked and aren't currently placed in the draw.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {BUBBLE.filter(b => b.type === seedingEvent).map((b, i) => (
                     <div key={i} className="bg-[#111] border border-dashed border-zinc-700 rounded-xl p-4">
@@ -932,12 +941,12 @@ export default function App() {
             {/* Crowdsource CTA */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
-                <h4 className="text-sm font-black text-white uppercase tracking-wider">Help seed the draw</h4>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Drop your UTR / WTN and recent results on the registration form — and flag any seed that looks off. The committee finalizes from there.</p>
+                <h4 className="text-sm font-black text-white uppercase tracking-wider">Help us seed the draw</h4>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Submit your UTR, WTN, recent results, or tennis background so the committee can build the fairest bracket possible.</p>
               </div>
               <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
-                <span>Add my rating</span>
+                <span>Submit my info</span>
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
