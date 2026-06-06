@@ -67,6 +67,9 @@ const photoAlbums = [
 //    Leave it "" to fall back to the static list underneath.
 const ROSTER_CSV_URL = "";
 
+// Where the header "Donate" button sends people (currently your Venmo).
+const DONATE_URL = "https://venmo.com/u/ashwiny";
+
 // Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
 // so the dashboard NEVER renders an empty roster.
 const fallbackRoster = [
@@ -259,7 +262,10 @@ export default function App() {
   const registrationFee = 40;
   const baseDonations = 380; // Add your direct offline donations here
   const confirmedCount = roster.filter(p => p.status === 'Verified').length;
-  const calculatedFunding = baseDonations + (confirmedCount * registrationFee);
+  // Scholarship meter is pinned for now. Set fixedFunding to null to auto-calc
+  // from confirmed (paid) players: baseDonations + confirmedCount * registrationFee.
+  const fixedFunding = 500;
+  const calculatedFunding = fixedFunding ?? (baseDonations + confirmedCount * registrationFee);
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
 
   return (
@@ -291,7 +297,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-6 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
+            <div className="flex items-center gap-4 md:gap-5 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
               <div>
                 <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1">Scholarship Fund</span>
                 <div className="flex items-baseline gap-1.5">
@@ -299,9 +305,18 @@ export default function App() {
                   <span className="text-[10px] text-zinc-300">/ ${scholarshipGoal}</span>
                 </div>
               </div>
-              <div className="w-20 md:w-24 h-2 bg-black/50 rounded-full overflow-hidden">
+              <div className="w-16 md:w-24 h-2 bg-black/50 rounded-full overflow-hidden">
                 <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
               </div>
+              <a
+                href={DONATE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 flex items-center gap-1.5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+              >
+                <Heart className="w-3.5 h-3.5" />
+                <span>Donate</span>
+              </a>
             </div>
 
           </div>
@@ -401,7 +416,7 @@ export default function App() {
                     <div>
                       <div className="w-8 h-8 rounded-full bg-zinc-800 text-white flex items-center justify-center font-black mb-4">2</div>
                       <h4 className="text-base font-bold text-white mb-2">Submit $40 Entry Fee</h4>
-                      <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Send your entry fee via Venmo or Zelle. Ashwin will verify the payment and update the roster below.</p>
+                      <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Send your entry fee via Venmo, Zelle, or cash. Ashwin will verify the payment and update the roster below.</p>
                     </div>
                     <div className="bg-black rounded-xl p-4 text-xs font-mono text-zinc-300 space-y-3 border border-zinc-800/50">
                       <div className="flex justify-between items-center">
@@ -412,6 +427,11 @@ export default function App() {
                       <div className="flex justify-between items-center">
                         <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Zelle</span>
                         <strong className="text-white text-xs truncate max-w-[140px]" title="ashwinyedavalli@gmail.com">ashwinyeda...</strong>
+                      </div>
+                      <div className="border-t border-zinc-800"></div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Cash</span>
+                        <strong className="text-white text-sm">In person</strong>
                       </div>
                     </div>
                   </div>
