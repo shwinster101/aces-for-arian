@@ -46,10 +46,16 @@ const heroImages = [
   "photo10.jpg"
 ];
 
-const photoAlbums = [
-  { title: "2025 Highlights", url: "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9", image: "photo1.jpg" },
-  { title: "Arian's Journey", url: "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9", image: "photo2.jpg" },
-  { title: "Dunlap Legacy", url: "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9", image: "photo3.jpg" }
+// Public Google Photos album — the fail-safe "view full album" link.
+const ALBUM_URL = "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9";
+
+// Photos shown in the gallery slideshow. These are the optimized images already
+// in /public, so the slideshow is fully self-hosted and makes ZERO third-party
+// calls (no trackers, no account hand-off). To add more: drop files in /public
+// and list them here, or paste direct image URLs.
+const GALLERY_IMAGES = [
+  "photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg",
+  "photo6.jpg", "photo7.jpg", "photo8.jpg", "photo9.jpg", "photo10.jpg",
 ];
 
 // ==========================================
@@ -219,6 +225,62 @@ function Bracket({ rounds, names }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Self-hosted auto-advancing gallery slideshow. No third-party scripts.
+function Slideshow({ images, interval = 5000 }) {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused || images.length <= 1) return;
+    const id = setInterval(() => setIdx(i => (i + 1) % images.length), interval);
+    return () => clearInterval(id);
+  }, [paused, images.length, interval]);
+
+  if (!images.length) return null;
+  const go = (n) => setIdx((n + images.length) % images.length);
+
+  return (
+    <div
+      className="relative w-full h-[60vh] min-h-[360px] max-h-[640px] bg-black rounded-2xl overflow-hidden group select-none"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {images.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt={`Tournament photo ${i + 1}`}
+          loading={i === 0 ? 'eager' : 'lazy'}
+          draggable={false}
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${i === idx ? 'opacity-100' : 'opacity-0'}`}
+        />
+      ))}
+
+      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+
+      <button onClick={() => go(idx - 1)} aria-label="Previous photo"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 border border-white/10 text-white flex items-center justify-center backdrop-blur-sm transition-colors">
+        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+      </button>
+      <button onClick={() => go(idx + 1)} aria-label="Next photo"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 border border-white/10 text-white flex items-center justify-center backdrop-blur-sm transition-colors">
+        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+      </button>
+
+      <div className="absolute top-3 right-3 text-[10px] font-mono font-bold text-white/90 bg-black/50 border border-white/10 rounded-full px-2.5 py-1 backdrop-blur-sm">
+        {idx + 1} / {images.length}
+      </div>
+
+      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 px-4 flex-wrap">
+        {images.map((_, i) => (
+          <button key={i} onClick={() => go(i)} aria-label={`Go to photo ${i + 1}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-5 bg-[#fbbf24]' : 'w-1.5 bg-white/40 hover:bg-white/70'}`} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -685,26 +747,27 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Gallery</h2>
-                <p className="text-sm text-zinc-400 mt-2">Explore the official action shots from DHS.</p>
+                <p className="text-sm text-zinc-400 mt-2">Relive the highlights from the Dunlap courts.</p>
               </div>
               <ImageIcon className='w-12 h-12 text-zinc-800 hidden sm:block' />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {photoAlbums.map((album, index) => (
-                <div key={index} className="bg-[#151515] border border-zinc-800 rounded-2xl p-5 group flex flex-col justify-between hover:border-zinc-700 transition">
-                  <div>
-                    <div className="bg-[#111] rounded-xl aspect-video flex items-center justify-center mb-4 overflow-hidden border border-zinc-900">
-                      <img src={album.image} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                    </div>
-                    <h3 className="text-sm font-bold text-white mb-2">{album.title}</h3>
-                  </div>
-                  <a href={album.url} target="_blank" rel="noopener noreferrer" className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-[10px] uppercase tracking-wider py-3 rounded-xl flex items-center justify-center gap-2 transition mt-4">
-                    <span>View Album</span>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              ))}
+            {/* Self-hosted auto-slideshow — no third-party widget/scripts */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-2 md:p-3">
+              <Slideshow images={GALLERY_IMAGES} />
+            </div>
+
+            {/* Fail-safe: full album on Google Photos */}
+            <div className="text-center pt-1">
+              <a
+                href={ALBUM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors"
+              >
+                <span>View Full Album on Google Photos</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
         )}
