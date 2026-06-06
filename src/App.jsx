@@ -250,14 +250,15 @@ function seedOrder(n) {
 
 // Build the rounds of a single-elimination draw of n entrants.
 // Round 1 optionally shows seed lines (1..n); later rounds are TBD advancers.
-function singleElim(n, seeded = true) {
+// Seed names for an event, ordered by rank (seed 1 first) — drives bracket auto-seeding.
+const seededNames = (type) => topSeeds.filter(s => s.type === type).sort((a, b) => a.rank - b.rank).map(s => s.name);
+
+function singleElim(n, seeded = true, names = []) {
   const order = seedOrder(n);
+  const slot = (pos) => (seeded ? { seed: pos, name: names[pos - 1] || null } : {});
   const r1 = [];
   for (let i = 0; i < n; i += 2) {
-    r1.push({
-      a: seeded ? { seed: order[i] } : {},
-      b: seeded ? { seed: order[i + 1] } : {},
-    });
+    r1.push({ a: slot(order[i]), b: slot(order[i + 1]) });
   }
   const rounds = [r1];
   let m = n / 2;
@@ -532,7 +533,7 @@ export default function App() {
               
               <div className="flex-1 space-y-4 relative z-10">
                 <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit flex items-center gap-2 border border-zinc-800">
-                    <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 10-12, 2026 • Dunlap High Courts
+                    <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
                 </div>
                 <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-none">Play in the 5th Annual Aces for Arian</h3>
                 <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
@@ -826,7 +827,7 @@ export default function App() {
                 </div>
 
                 {[
-                  ['East — Championship Draw', singleElim(16, true)],
+                  ['East — Championship Draw', singleElim(16, true, seededNames('Doubles'))],
                   ['West Draw', singleElim(8, false)],
                   ['North Draw', singleElim(4, false)],
                   ['South Draw', singleElim(4, false)],
@@ -856,7 +857,7 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={singleElim(32, true)} />
+                  <Bracket rounds={singleElim(32, true, seededNames('Singles'))} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
@@ -932,25 +933,41 @@ export default function App() {
                 <div className="w-12 h-12 rounded-xl bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center mb-6">
                   <Award className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-white uppercase tracking-wider mb-4">Saturday Doubles Format</h3>
+                <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">Saturday Doubles</h3>
+                <p className="text-xs text-zinc-500 mb-4">July 11 · first matches 9:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
-                  <li><strong className="text-zinc-200">Format:</strong> Compass Draw. Minimum 4 matches guaranteed per team.</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> Best 2 out of 3 Fast-4 Sets. First to 4 games wins the set. No-Ad scoring is utilized.</li>
-                  <li><strong className="text-zinc-200">Tiebreak:</strong> Played at 3-3 in any set (First to 5 points wins).</li>
+                  <li><strong className="text-zinc-200">Format:</strong> Compass Draw — every team is guaranteed at least 3 matches (up to 5).</li>
+                  <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets (first to 4 games, no-ad; tiebreak at 3–3, first to 5 points).</li>
+                  <li><strong className="text-zinc-200">Quarterfinals on:</strong> teams may switch to 2-of-3 regular sets if everyone in the round agrees.</li>
+                  <li><strong className="text-zinc-200">Prizes:</strong> awarded to the top 3.</li>
                 </ul>
               </div>
               <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
                 <div className="w-12 h-12 rounded-xl bg-[#5c1313]/30 text-rose-500 flex items-center justify-center mb-6">
                   <Trophy className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-white uppercase tracking-wider mb-4">Sunday Singles Format</h3>
+                <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">Sunday Singles</h3>
+                <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 8:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
-                  <li><strong className="text-zinc-200">Format:</strong> Double Elimination Draw. Minimum 2 matches guaranteed.</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> Single 6-Game Set (No-Ad).</li>
-                  <li><strong className="text-zinc-200">Later Rounds (QF+):</strong> Upgraded to 8-game pro sets or 2/3 Fast-4 sets based on player consensus.</li>
-                  <li><strong className="text-zinc-200">Defaults:</strong> 15-minute grace period strictly enforced.</li>
+                  <li><strong className="text-zinc-200">Format:</strong> Double elimination — two losses to be out.</li>
+                  <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets.</li>
+                  <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
+                  <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
                 </ul>
               </div>
+            </div>
+
+            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
+              <div className="flex items-center gap-3 mb-4">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-lg font-black text-white uppercase tracking-wider">Check-In &amp; Conduct</h3>
+              </div>
+              <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
+                <li>Pay the <strong className="text-zinc-200">$40</strong> at sign-in before your first match — and grab your t-shirt.</li>
+                <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong>.</li>
+                <li><strong className="text-zinc-200">Arrive early and sign in.</strong> More than 15 minutes past match time is a default.</li>
+                <li>Schedule conflict? Tell a coordinator <strong className="text-zinc-200">ASAP</strong>.</li>
+              </ul>
             </div>
           </div>
         )}
@@ -999,20 +1016,28 @@ export default function App() {
               <ARLogo className="w-96 h-96 text-zinc-100 transform translate-x-1/4" />
             </div>
             
-            <div className="flex flex-col lg:flex-row gap-10 items-center relative z-10">
-              <div className="w-56 h-56 bg-[#5c1313] rounded-3xl border border-[#fbbf24]/30 flex flex-col justify-end p-6 relative overflow-hidden flex-shrink-0 shadow-2xl">
-                <h3 className="text-white font-black text-xl relative z-10">Arian Rahbar</h3>
-                <span className="text-[#fbbf24] font-mono text-sm relative z-10">1999 - 2021</span>
+            <div className="flex flex-col lg:flex-row gap-10 items-center lg:items-start relative z-10">
+              <div className="w-full sm:w-72 shrink-0">
+                <div className="rounded-3xl overflow-hidden border border-[#fbbf24]/30 shadow-2xl bg-black">
+                  <img src="/arian.jpg" alt="Arian Rahbar at the Dunlap High School tennis courts" className="w-full h-auto object-cover" loading="lazy" />
+                </div>
+                <div className="mt-3 text-center">
+                  <div className="text-white font-black text-lg">Arian Rahbar</div>
+                  <div className="text-[#fbbf24] font-mono text-xs tracking-wide">Dunlap Eagles · Class of 2019</div>
+                </div>
               </div>
-              
+
               <div className="flex-1 space-y-5">
-                <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Scholar & DHS State Champion</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Scholar, Eagle, State Qualifier</h2>
                 <div className="w-12 h-1 bg-[#fbbf24] rounded-full"></div>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  Arian was an exceptional student, athlete, and friend. Competing for the Dunlap Eagles, he entered the elite 100-Win Club and was a 3-time IHSA State qualifier, notably helping secure the 2017 State Championship.
+                  Arian Rahbar (DHS Class of 2019) put together a remarkable four-year career for the Dunlap Eagles — a member of the elite 100-Win Club, a 3-time IHSA State qualifier, and part of the 2017 1A Team State Championship squad. A 3-time Mid-Illini All-Conference selection, he is one of only 13 Dunlap men ever to qualify for State in both singles and doubles.
                 </p>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  After Dunlap, Arian pursued Computer Science at USC, earning a prestigious internship at Facebook. This tournament honors his legacy, funding a $1,500 scholarship for DHS seniors pursuing higher education.
+                  His positivity radiated on and off the court. After graduating with a near-perfect GPA, Arian studied Computer Science at USC and had earned a summer internship at Facebook. He was also one of the very first champions of this tournament — doubles, with Venil — back when it was the Eagle Classic.
+                </p>
+                <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
+                  Arian tragically lost his life in December 2021, a pedestrian victim of senseless street racing in Los Angeles. We gather each summer to play in his memory — to his heart's content, as he would. Every dollar raised funds the <strong className="text-zinc-200">Arian Rahbar Memorial Scholarship</strong> for Dunlap seniors pursuing higher education.
                 </p>
               </div>
             </div>
