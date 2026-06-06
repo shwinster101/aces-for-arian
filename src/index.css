@@ -24,3 +24,33 @@
     display: none;
   }
 }
+
+/* ---------- iOS / mobile optimizations ---------- */
+html,
+body {
+  background-color: #0a0a0a; /* no white flash on iOS overscroll bounce */
+}
+
+html {
+  -webkit-text-size-adjust: 100%; /* stop iOS auto-inflating text in landscape */
+  text-size-adjust: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* No gray tap-flash on iOS — buttons/links have their own hover/active states */
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Respect the iPhone notch / home indicator when added to the home screen */
+header {
+  padding-top: env(safe-area-inset-top);
+}
+footer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
