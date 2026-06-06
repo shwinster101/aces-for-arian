@@ -46,17 +46,26 @@ const heroImages = [
   "photo10.jpg"
 ];
 
-// Public Google Photos album — the fail-safe "view full album" link.
-const ALBUM_URL = "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9";
-
-// Photos shown in the gallery slideshow. These are the optimized images already
-// in /public, so the slideshow is fully self-hosted and makes ZERO third-party
-// calls (no trackers, no account hand-off). To add more: drop files in /public
-// and list them here, or paste direct image URLs.
-const GALLERY_IMAGES = [
-  "photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg",
-  "photo6.jpg", "photo7.jpg", "photo8.jpg", "photo9.jpg", "photo10.jpg",
+// The yearly Google Photos albums. `images` are optimized files in /public, so
+// the slideshow is fully self-hosted (ZERO third-party calls — no trackers, no
+// account hand-off). To self-host a year's photos: open the album in Google
+// Photos -> (3-dot menu) -> "Download all", drop the files into /public, and
+// list the filenames below. The `url` is always shown as a "full album" link.
+const ALBUMS = [
+  {
+    year: "2025",
+    url: "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9",
+    images: [
+      "photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg",
+      "photo6.jpg", "photo7.jpg", "photo8.jpg", "photo9.jpg", "photo10.jpg",
+    ],
+  },
+  { year: "2024", url: "https://photos.app.goo.gl/HjjNMQh3cQTKL4GW7", images: [] },
+  { year: "2023", url: "https://photos.app.goo.gl/JTonkVSzso5fnhAQ6", images: [] },
 ];
+
+// Flattened, captioned slides across every album.
+const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year })));
 
 // ==========================================
 // 2. THE SINGLE SOURCE OF TRUTH (DATA)
@@ -231,17 +240,18 @@ function Bracket({ rounds, names }) {
 
 // Self-hosted auto-advancing gallery slideshow. No third-party scripts.
 function Slideshow({ images, interval = 5000 }) {
+  const items = images.map(x => (typeof x === 'string' ? { src: x } : x));
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (paused || images.length <= 1) return;
-    const id = setInterval(() => setIdx(i => (i + 1) % images.length), interval);
+    if (paused || items.length <= 1) return;
+    const id = setInterval(() => setIdx(i => (i + 1) % items.length), interval);
     return () => clearInterval(id);
-  }, [paused, images.length, interval]);
+  }, [paused, items.length, interval]);
 
-  if (!images.length) return null;
-  const go = (n) => setIdx((n + images.length) % images.length);
+  if (!items.length) return null;
+  const go = (n) => setIdx((n + items.length) % items.length);
 
   return (
     <div
@@ -249,7 +259,7 @@ function Slideshow({ images, interval = 5000 }) {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {images.map((src, i) => (
+      {items.map(({ src }, i) => (
         <img
           key={src}
           src={src}
@@ -262,6 +272,12 @@ function Slideshow({ images, interval = 5000 }) {
 
       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
+      {items[idx].caption && (
+        <div className="absolute bottom-3 left-4 text-[10px] font-mono font-bold text-[#fbbf24] bg-black/50 border border-[#fbbf24]/20 rounded-full px-2.5 py-1 backdrop-blur-sm">
+          {items[idx].caption}
+        </div>
+      )}
+
       <button onClick={() => go(idx - 1)} aria-label="Previous photo"
         className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 border border-white/10 text-white flex items-center justify-center backdrop-blur-sm transition-colors">
         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
@@ -272,11 +288,11 @@ function Slideshow({ images, interval = 5000 }) {
       </button>
 
       <div className="absolute top-3 right-3 text-[10px] font-mono font-bold text-white/90 bg-black/50 border border-white/10 rounded-full px-2.5 py-1 backdrop-blur-sm">
-        {idx + 1} / {images.length}
+        {idx + 1} / {items.length}
       </div>
 
       <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 px-4 flex-wrap">
-        {images.map((_, i) => (
+        {items.map((_, i) => (
           <button key={i} onClick={() => go(i)} aria-label={`Go to photo ${i + 1}`}
             className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-5 bg-[#fbbf24]' : 'w-1.5 bg-white/40 hover:bg-white/70'}`} />
         ))}
@@ -594,6 +610,15 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* Tournament Memories — auto slideshow across all years */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-2 md:p-3">
+              <div className="px-3 pt-2 pb-1">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Memories</h3>
+              </div>
+              <Slideshow images={GALLERY} />
+            </div>
+
           </div>
         )}
 
@@ -747,27 +772,30 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Gallery</h2>
-                <p className="text-sm text-zinc-400 mt-2">Relive the highlights from the Dunlap courts.</p>
+                <p className="text-sm text-zinc-400 mt-2">Relive the highlights — rotating through every year of Aces for Arian.</p>
               </div>
               <ImageIcon className='w-12 h-12 text-zinc-800 hidden sm:block' />
             </div>
 
-            {/* Self-hosted auto-slideshow — no third-party widget/scripts */}
+            {/* Self-hosted auto-slideshow across all years — no third-party scripts */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-2 md:p-3">
-              <Slideshow images={GALLERY_IMAGES} />
+              <Slideshow images={GALLERY} />
             </div>
 
-            {/* Fail-safe: full album on Google Photos */}
-            <div className="text-center pt-1">
-              <a
-                href={ALBUM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors"
-              >
-                <span>View Full Album on Google Photos</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
+            {/* Full albums on Google Photos (one per year) */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Browse the Full Albums</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {ALBUMS.map(a => (
+                  <a key={a.year} href={a.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-[#111] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-xl px-4 py-3 transition-colors group">
+                    <span className="text-sm font-bold text-white">{a.year}</span>
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors">
+                      Google Photos <ExternalLink className="h-3 w-3" />
+                    </span>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         )}
