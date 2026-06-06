@@ -318,7 +318,8 @@ const topSeeds = [
   { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "100-win club. State contender." },
   { name: "Venil Tummarakota", type: "Singles", rank: 5, utr: "7.0", notes: "2017 State champ." },
   { name: "Aanan Kashyap", type: "Singles", rank: 6, utr: "6.9", notes: "DHS singles mainstay." },
-  { name: "Siddharth Patel", type: "Singles", rank: 7, utr: "6.4", notes: "Current varsity No. 1 court." },
+  { name: "Imadh Khan", type: "Singles", rank: 7, notes: "Triad champ" },
+  { name: "David Wu", type: "Singles", rank: 8, notes: "Does he still play?" },
   // Doubles
   { name: "Greyson & Andy", type: "Doubles", rank: 1, result: "2025 Champions", notes: "Reigning doubles champions." },
   { name: "A. Yedavalli / V. Tummarakota", type: "Doubles", rank: 2, utr: "7.1", notes: "Original champions." },
