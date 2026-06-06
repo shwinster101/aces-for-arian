@@ -9,7 +9,6 @@ import {
   BookOpen,
   Calendar,
   Clock,
-  Phone,
   ShieldCheck,
   CheckCircle2,
   Image as ImageIcon,
@@ -140,7 +139,7 @@ const ALBUMS = [
 ];
 
 // Arian Rahbar Memorial Tennis Scholarship.
-const SCHOLARSHIP_APPLY_URL = ""; // optional application-form link; empty = "contact a coordinator"
+const SCHOLARSHIP_APPLY_URL = "https://docs.google.com/document/d/11MrcbAXJIgxAz7ZRyTaMK8aIvh2XrE9n_lUvyoQY9Pw/edit?usp=sharing"; // application doc — low-key bottom link for now; promote in spring
 const SCHOLARSHIP_WINNERS = [
   // Past recipients, newest first: { year: "2025", name: "Jane Doe" },
 ];
@@ -1260,22 +1259,6 @@ export default function App() {
               </ul>
             </div>
 
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">Apply</h3>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Seniors: submit your 500-word essay and credentials to be considered. Reach out for the application form and this year's deadline.</p>
-              </div>
-              {SCHOLARSHIP_APPLY_URL ? (
-                <a href={SCHOLARSHIP_APPLY_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
-                  <span>Apply Now</span><ExternalLink className="h-4 w-4" />
-                </a>
-              ) : (
-                <a href="tel:3093618746" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
-                  <Phone className="h-4 w-4" /><span>Contact a Coordinator</span>
-                </a>
-              )}
-            </div>
-
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
               <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Past Recipients</h3>
               {SCHOLARSHIP_WINNERS.length > 0 ? (
@@ -1293,6 +1276,14 @@ export default function App() {
               ) : (
                 <p className="text-sm text-zinc-500">Recipients are honored at the tournament each summer — past winners will be celebrated here.</p>
               )}
+            </div>
+
+            {/* Application link — kept low-key off-season; promote in spring */}
+            <div className="text-center pt-1">
+              <a href={SCHOLARSHIP_APPLY_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                <span>Scholarship Application — opens each spring</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
         )}
