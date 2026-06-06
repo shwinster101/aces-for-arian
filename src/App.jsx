@@ -700,7 +700,7 @@ export default function App() {
                     <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Rules</h3>
                   </div>
                   <ul className="text-xs text-zinc-400 space-y-2.5">
-                    <li>• Arrive **15 mins** early for all matches.</li>
+                    <li>• Arrive <strong className="text-zinc-200">15 minutes</strong> early for all matches.</li>
                     <li>• Players 15 minutes late will be defaulted.</li>
                     <li>• Pre-payment required before taking the court.</li>
                   </ul>
