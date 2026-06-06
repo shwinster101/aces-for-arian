@@ -55,6 +55,7 @@ function ResultsArchive({ event }) {
   const past = [
     { label: '2024 Results', url: '/archive/aces-for-arian-2024-results.pdf' },
     { label: '2023 Results', url: '/archive/aces-for-arian-2023-results.pdf' },
+    { label: '2022 Results', url: '/archive/aces-for-arian-2022-results.pdf' },
     { label: '2021 · Eagle Classic', url: '/archive/eagle-classic-2021-results.pdf' },
   ];
   return (
@@ -99,6 +100,24 @@ function ResultsArchive({ event }) {
               <span className="text-sm font-bold text-white">{p.label}</span>
               <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors">PDF <ExternalLink className="h-3 w-3" /></span>
             </a>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2020 · Eagle Classic — Final Standings</h4>
+        <p className="text-[11px] text-zinc-500 mb-4">From the Eagle Classic era — when Arian was still out on the court with the team.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          {[
+            ['Doubles', ['1. Atishay / Ashwin', '2. Arian / Venil', '3. Doug / Graham']],
+            ['Doubles (Ladies)', ['1. Anagha / Akshara', '2. Sophie / Leah']],
+            ['Singles', ['1. Venil', '2. Ashwin', 'Semifinals: Kushal, Matthew', 'Back-draw: Abhi']],
+            ['Singles (Ladies)', ['1. Shikha', '2. Anna', 'Back-draw: Shaina']],
+          ].map(([div, places]) => (
+            <div key={div}>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">{div}</div>
+              {places.map(p => <div key={p} className="text-zinc-400 leading-relaxed">{p}</div>)}
+            </div>
           ))}
         </div>
       </div>
@@ -1277,8 +1296,8 @@ export default function App() {
               <div className="mt-3 bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
                 <div className="flex-1">
                   <div className="text-[10px] uppercase tracking-wider text-zinc-500">2022 – 2023</div>
-                  <div className="text-sm font-bold text-white">Funded the Arian Bench at DHS</div>
-                  <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Before the scholarship existed, those years' proceeds placed a memorial bench at the Dunlap courts.</div>
+                  <div className="text-sm font-bold text-white">A Bench in Arian's Memory</div>
+                  <div className="text-xs text-zinc-400 mt-1 leading-relaxed">The 2022 and 2023 tournaments helped place a memorial bench at the Dunlap courts — a lasting spot for the team to gather and remember.</div>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <img src="/bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
