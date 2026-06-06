@@ -53,8 +53,9 @@ function ResultsArchive({ event }) {
     ? { label: '2025 Singles Champion', name: 'Alex', format: '32-player double elimination', podium: [{ place: '2nd', name: 'Andrew' }, { place: '3rd', name: 'Shaan' }], pdf: '/archive/aces-for-arian-2025-singles.pdf' }
     : { label: '2025 Doubles Champions', name: 'Greyson & Andy', format: '16-team compass draw', podium: [], pdf: '/archive/aces-for-arian-2025-doubles.pdf' };
   const past = [
-    { year: '2024', url: '/archive/aces-for-arian-2024-results.pdf' },
-    { year: '2023', url: '/archive/aces-for-arian-2023-results.pdf' },
+    { label: '2024 Results', url: '/archive/aces-for-arian-2024-results.pdf' },
+    { label: '2023 Results', url: '/archive/aces-for-arian-2023-results.pdf' },
+    { label: '2021 · Eagle Classic', url: '/archive/eagle-classic-2021-results.pdf' },
   ];
   return (
     <>
@@ -93,9 +94,9 @@ function ResultsArchive({ event }) {
         <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Past Tournament Results</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {past.map(p => (
-            <a key={p.year} href={p.url} target="_blank" rel="noopener noreferrer"
+            <a key={p.label} href={p.url} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-between bg-[#111] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-xl px-4 py-3 transition-colors group">
-              <span className="text-sm font-bold text-white">{p.year} Results</span>
+              <span className="text-sm font-bold text-white">{p.label}</span>
               <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors">PDF <ExternalLink className="h-3 w-3" /></span>
             </a>
           ))}
@@ -141,7 +142,8 @@ const ALBUMS = [
 // Arian Rahbar Memorial Tennis Scholarship.
 const SCHOLARSHIP_APPLY_URL = "https://docs.google.com/document/d/11MrcbAXJIgxAz7ZRyTaMK8aIvh2XrE9n_lUvyoQY9Pw/edit?usp=sharing"; // application doc — low-key bottom link for now; promote in spring
 const SCHOLARSHIP_WINNERS = [
-  // Past recipients, newest first: { year: "2025", name: "Jane Doe" },
+  { year: "2025", names: ["Carolina Gusso", "Alex Fei"] },
+  { year: "2024", names: ["Sophie Muir", "Shikha Agarwal"] },
 ];
 
 // Flattened, captioned slides across every album.
@@ -1261,21 +1263,28 @@ export default function App() {
 
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
               <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Past Recipients</h3>
-              {SCHOLARSHIP_WINNERS.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {SCHOLARSHIP_WINNERS.map(w => (
-                    <div key={w.year + w.name} className="bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
-                        <div className="text-sm font-bold text-white">{w.name}</div>
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {SCHOLARSHIP_WINNERS.map(w => (
+                  <div key={w.year} className="bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
+                      <div className="text-sm font-bold text-white">{w.names.join(' · ')}</div>
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">2022 – 2023</div>
+                  <div className="text-sm font-bold text-white">Funded the Arian Bench at DHS</div>
+                  <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Before the scholarship existed, those years' proceeds placed a memorial bench at the Dunlap courts.</div>
                 </div>
-              ) : (
-                <p className="text-sm text-zinc-500">Recipients are honored at the tournament each summer — past winners will be celebrated here.</p>
-              )}
+                <div className="flex gap-2 shrink-0">
+                  <img src="/bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+                  <img src="/bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+                </div>
+              </div>
             </div>
 
             {/* Application link — kept low-key off-season; promote in spring */}
