@@ -658,13 +658,13 @@ export default function App() {
           <nav ref={navRef} className="flex space-x-6 md:space-x-8 py-3 overflow-x-auto no-scrollbar">
             {[
               { id: 'home', label: 'Home', icon: Home },
-              { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp },
               { id: 'draws', label: 'Brackets', icon: Award },
-              { id: 'photos', label: 'Photos', icon: ImageIcon },
+              { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp },
               { id: 'rules', label: 'Rules', icon: BookOpen },
-              { id: 'merch', label: 'Merch', icon: ShoppingBag },
+              { id: 'photos', label: 'Photos', icon: ImageIcon },
+              { id: 'scholarship', label: 'Scholarship', icon: GraduationCap },
               { id: 'legacy', label: 'Legacy', icon: Heart },
-              { id: 'scholarship', label: 'Scholarship', icon: GraduationCap }
+              { id: 'merch', label: 'Merch', icon: ShoppingBag }
             ].map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -727,61 +727,47 @@ export default function App() {
               <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-60" />
             </div>
 
-            {/* Registration Workflow */}
-            <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8 relative">
-              <div className="relative z-10">
-                <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">3 Steps to Play</h3>
-                <p className="text-xs text-zinc-400 mb-6">Complete all three steps to secure your draw placement. The ledger below updates automatically as players are confirmed.</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Step 1 */}
-                  <div className="bg-[#111] border border-[#fbbf24]/30 rounded-2xl p-6 flex flex-col justify-between shadow-lg shadow-amber-500/5">
-                    <div>
-                      <div className="w-8 h-8 rounded-full bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center font-black mb-4">1</div>
-                      <h4 className="text-base font-bold text-white mb-2">Google Form</h4>
-                      <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Select your singles/doubles events, note your partner, and choose your shirt size on the official form.</p>
-                    </div>
-                    <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
-                      <span>Open Form</span>
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
+            {/* How to enter — register, then pay */}
+            <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8">
+              <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">How to Enter</h3>
+              <p className="text-xs text-zinc-400 mb-6 max-w-2xl leading-relaxed">Two steps and you're in. Once your payment clears you'll appear on the <span className="text-zinc-300 font-semibold">Tournament Ledger</span> below as Verified — usually within 24 hours.</p>
 
-                  {/* Step 2 */}
-                  <div className="bg-[#111] border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="w-8 h-8 rounded-full bg-zinc-800 text-white flex items-center justify-center font-black mb-4">2</div>
-                      <h4 className="text-base font-bold text-white mb-2">Submit $40 Entry Fee</h4>
-                      <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Send your entry fee via Venmo, Zelle, or cash. Ashwin will verify the payment and update the roster below.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Step 1 — Register */}
+                <div className="bg-[#111] border border-[#fbbf24]/30 rounded-2xl p-6 flex flex-col justify-between shadow-lg shadow-amber-500/5">
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center font-black shrink-0">1</div>
+                      <h4 className="text-base font-bold text-white">Register on the form</h4>
                     </div>
-                    <div className="bg-black rounded-xl p-4 text-xs font-mono text-zinc-300 space-y-3 border border-zinc-800/50">
-                      <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Venmo</span>
-                        <strong className="text-white text-sm">@ashwiny</strong>
-                      </div>
-                      <div className="border-t border-zinc-800"></div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Zelle</span>
-                        <strong className="text-white text-xs truncate max-w-[140px]" title="ashwinyedavalli@gmail.com">ashwinyeda...</strong>
-                      </div>
-                      <div className="border-t border-zinc-800"></div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Cash</span>
-                        <strong className="text-white text-sm">In person</strong>
-                      </div>
-                    </div>
+                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, name your partner, and choose your shirt size.</p>
                   </div>
+                  <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                    <span>Open Form</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
 
-                  {/* Step 3 */}
-                  <div className="bg-[#111] border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="w-8 h-8 rounded-full bg-zinc-800 text-white flex items-center justify-center font-black mb-4">3</div>
-                      <h4 className="text-base font-bold text-white mb-2">Wait for Sync</h4>
-                      <p className="text-xs text-zinc-400 mb-6 leading-relaxed">You're done! Ashwin will verify your payment and add you to the dashboard roster within 24 hours.</p>
+                {/* Step 2 — Pay */}
+                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-zinc-800 text-white flex items-center justify-center font-black shrink-0">2</div>
+                    <h4 className="text-base font-bold text-white">Send the $40 entry fee</h4>
+                  </div>
+                  <div className="bg-black rounded-xl p-4 text-xs font-mono text-zinc-300 space-y-3 border border-zinc-800/50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Venmo</span>
+                      <strong className="text-white text-sm">@ashwiny</strong>
                     </div>
-                    <div className="w-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>Ready to Play</span>
+                    <div className="border-t border-zinc-800"></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Zelle</span>
+                      <strong className="text-white text-xs truncate max-w-[160px]" title="ashwinyedavalli@gmail.com">ashwinyeda...</strong>
+                    </div>
+                    <div className="border-t border-zinc-800"></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Cash</span>
+                      <strong className="text-white text-sm">In person</strong>
                     </div>
                   </div>
                 </div>
