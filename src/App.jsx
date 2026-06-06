@@ -164,18 +164,11 @@ function ResultsArchive({ event }) {
 }
 
 // Name your 10 photos exactly these names and place them in the "public" folder!
-const heroImages = [
-  "photo1.jpg",
-  "photo2.jpg",
-  "photo3.jpg",
-  "photo4.jpg",
-  "photo5.jpg",
-  "photo6.jpg",
-  "photo7.jpg",
-  "photo8.jpg",
-  "photo9.jpg",
-  "photo10.jpg"
-];
+// Two portrait hero slideshows flanking the register blurb. Split across the
+// two sets so each side shows a different rotation; which set lands on which
+// side (and the starting frame of each) is randomized per visit.
+const HERO_SET_A = ["photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg"];
+const HERO_SET_B = ["photo6.jpg", "photo7.jpg", "photo8.jpg", "photo9.jpg", "photo10.jpg", "photo11.jpg"];
 
 // The yearly Google Photos albums. `images` are optimized files in /public, so
 // the slideshow is fully self-hosted (ZERO third-party calls — no trackers, no
@@ -509,6 +502,37 @@ function Slideshow({ images, interval = 5000 }) {
   );
 }
 
+// Compact portrait hero slideshow: random starting frame on entry, then
+// auto-advances cyclically with a soft crossfade. No third-party scripts.
+function HeroCanvas({ images, className = "" }) {
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * images.length));
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const id = setInterval(() => setIdx(i => (i + 1) % images.length), 4500);
+    return () => clearInterval(id);
+  }, [images.length]);
+
+  return (
+    <div className={`relative aspect-[2/3] flex-shrink-0 bg-black rounded-2xl overflow-hidden border border-zinc-800 group ${className}`}>
+      {images.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt="Aces for Arian tournament highlight"
+          loading={i === 0 ? 'eager' : 'lazy'}
+          draggable={false}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === idx ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
+        />
+      ))}
+      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+        {images.map((_, i) => (
+          <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-4 bg-[#fbbf24]' : 'w-1.5 bg-white/40'}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ==========================================
 // 3. MAIN APPLICATION
 // ==========================================
@@ -517,18 +541,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [bracketEvent, setBracketEvent] = useState('doubles');
   const [seedingEvent, setSeedingEvent] = useState('Singles');
-  const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
+  // Randomize which photo set lands on the left vs. right on each visit.
+  const [heroSwap] = useState(() => Math.random() < 0.5);
+  const heroLeft = heroSwap ? HERO_SET_B : HERO_SET_A;
+  const heroRight = heroSwap ? HERO_SET_A : HERO_SET_B;
   const [roster, setRoster] = useState(fallbackRoster);
   const [courtBoard, setCourtBoard] = useState(COURT_BOARD);
   const [rosterLive, setRosterLive] = useState(false);
   const navRef = useRef(null);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentHeroImageIndex(prev => (prev + 1) % heroImages.length);
-    }, 4500);
-    return () => clearInterval(intervalId);
-  }, []);
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
   // to fallbackRoster so the dashboard never breaks.
@@ -675,21 +695,25 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
             
-            {/* Hero Section */}
-            <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden shadow-2xl shadow-black">
+            {/* Hero Section — twin slideshows flanking the register blurb */}
+            <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-wrap md:flex-nowrap items-center gap-5 md:gap-8 relative overflow-hidden shadow-2xl shadow-black">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="w-full h-full border border-zinc-700 absolute top-1 left-1 right-1 bottom-1"></div>
               </div>
-              
-              <div className="flex-1 space-y-4 relative z-10">
-                <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit flex items-center gap-2 border border-zinc-800">
+
+              {/* Left slideshow */}
+              <HeroCanvas images={heroLeft} className="relative z-10 order-2 md:order-1 w-[calc(50%-0.625rem)] md:w-60" />
+
+              {/* Center blurb */}
+              <div className="order-1 md:order-2 w-full md:w-auto md:flex-1 space-y-4 relative z-10 text-center md:text-left">
+                <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit mx-auto md:mx-0 flex items-center gap-2 border border-zinc-800">
                     <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
                 </div>
                 <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-none">Play in the 5th Annual Aces for Arian</h3>
-                <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
+                <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
                   Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and pro photos. Come play with the Dunlap tennis community; every dollar funds the Arian Rahbar Memorial Scholarship.
                 </p>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
                     <span>Register — $40</span>
@@ -699,19 +723,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Rotating Canvas */}
-              <div className="relative w-full md:w-80 aspect-[2/3] flex-shrink-0 bg-black rounded-2xl overflow-hidden border border-zinc-800 group">
-                <img 
-                  src={heroImages[currentHeroImageIndex]} 
-                  alt="Tournament Highlights" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                  {heroImages.map((_, i) => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === currentHeroImageIndex ? 'w-4 bg-[#fbbf24]' : 'w-1.5 bg-white/40'}`} />
-                  ))}
-                </div>
-              </div>
+              {/* Right slideshow */}
+              <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-60" />
             </div>
 
             {/* Registration Workflow */}
