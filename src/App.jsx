@@ -275,7 +275,7 @@ export default function App() {
               </div>
 
               {/* Rotating Canvas */}
-              <div className="relative w-full md:w-80 h-52 flex-shrink-0 bg-black rounded-2xl overflow-hidden border border-zinc-800 group">
+              <div className="relative w-full md:w-80 aspect-[3/4] flex-shrink-0 bg-black rounded-2xl overflow-hidden border border-zinc-800 group">
                 <img 
                   src={heroImages[currentHeroImageIndex]} 
                   alt="Tournament Highlights" 
