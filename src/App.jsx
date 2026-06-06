@@ -759,6 +759,39 @@ export default function App() {
                     </p>
                   </div>
                 </div>
+
+                {/* 2025 Singles — results archive */}
+                <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">Archive</span>
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider">2025 Singles Results</h4>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                    <div className="flex items-center gap-4">
+                      <Trophy className="w-10 h-10 text-[#fbbf24] shrink-0" />
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-500">Champion</div>
+                        <div className="text-2xl font-black text-white leading-none">Alex</div>
+                        <div className="text-[11px] text-zinc-500 mt-1">32-player double elimination</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 sm:ml-auto">
+                      <div className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-500">3rd</div>
+                        <div className="text-sm font-bold text-zinc-200">Imadh</div>
+                      </div>
+                      <div className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-500">5th</div>
+                        <div className="text-sm font-bold text-zinc-200">Andy</div>
+                      </div>
+                    </div>
+                  </div>
+                  <a href="/archive/aces-for-arian-2025-singles.pdf" target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
+                    <span>View the full bracket &amp; all scores (PDF)</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
             )}
           </div>
