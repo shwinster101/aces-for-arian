@@ -161,9 +161,9 @@ const DONATE_URL = "https://venmo.com/u/ashwiny";
 // Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
 // so the dashboard NEVER renders an empty roster.
 const fallbackRoster = [
-  { name: "Ashwin Yedavalli", classYear: "19", events: "Singles & Doubles", status: "Verified" },
+  { name: "Ashwin Yedavalli", classYear: "19", events: "Singles & Doubles", status: "Verified", bio: "Founder. Still chasing that elusive down-the-line winner." },
   { name: "Aanan Kashyap", classYear: "19", events: "Doubles", status: "Verified" },
-  { name: "Venil Tummarakota", classYear: "Alumni", events: "Singles & Doubles", status: "Verified" },
+  { name: "Venil Tummarakota", classYear: "Alumni", events: "Singles & Doubles", status: "Verified", bio: "2017 State champ, back to defend the name." },
   { name: "Tyler Miller", classYear: "Alumni", events: "Doubles", status: "Pending" }
 ];
 
@@ -197,6 +197,7 @@ function mapRoster(rows) {
   const iClass = col("class", "year", "grad");
   const iEvents = col("event");
   const iStatus = col("status", "paid", "verif", "confirm");
+  const iBio = col("bio", "line", "about", "yearbook", "quote");
   if (iName < 0) return [];
   return rows.slice(1)
     .filter(r => (r[iName] || "").trim())
@@ -209,19 +210,26 @@ function mapRoster(rows) {
         classYear: iClass >= 0 ? (r[iClass] || "").trim() : "",
         events: iEvents >= 0 ? (r[iEvents] || "").trim() : "",
         status: verified ? "Verified" : "Pending",
+        bio: iBio >= 0 ? (r[iBio] || "").trim() : "",
       };
     });
 }
 
+// Baseline seeding: prior A4A results first, then public UTR / WTN where players
+// have them, then committee + community refinement. result/utr/wtn are optional.
 const topSeeds = [
   // Singles
-  { name: "Ashwin Yedavalli", type: "Singles", utr: "7.2", rank: 1, notes: "100-win club. State Contender." },
-  { name: "Venil Tummarakota", type: "Singles", utr: "7.0", rank: 2, notes: "2017 State Champ." },
-  { name: "Aanan Kashyap", type: "Singles", utr: "6.9", rank: 3, notes: "DHS Singles mainstay." },
-  { name: "Siddharth Patel", type: "Singles", utr: "6.4", rank: 4, notes: "Current Varsity #1 court." },
+  { name: "Alex", type: "Singles", rank: 1, result: "2025 Champion", notes: "Reigning singles champion — automatic top seed." },
+  { name: "Andrew", type: "Singles", rank: 2, result: "2025 Finalist", notes: "Stormed the back draw to the final last year." },
+  { name: "Shaan", type: "Singles", rank: 3, result: "2025 3rd", notes: "2025 No. 1 seed." },
+  { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "100-win club. State contender." },
+  { name: "Venil Tummarakota", type: "Singles", rank: 5, utr: "7.0", notes: "2017 State champ." },
+  { name: "Aanan Kashyap", type: "Singles", rank: 6, utr: "6.9", notes: "DHS singles mainstay." },
+  { name: "Siddharth Patel", type: "Singles", rank: 7, utr: "6.4", notes: "Current varsity No. 1 court." },
   // Doubles
-  { name: "A. Yedavalli / V. Tummarakota", type: "Doubles", utr: "7.1", rank: 1, notes: "Original Champions." },
-  { name: "A. Kashyap / T. Miller", type: "Doubles", utr: "6.5", rank: 2, notes: "Varsity alumni standouts." }
+  { name: "Greyson & Andy", type: "Doubles", rank: 1, result: "2025 Champions", notes: "Reigning doubles champions." },
+  { name: "A. Yedavalli / V. Tummarakota", type: "Doubles", rank: 2, utr: "7.1", notes: "Original champions." },
+  { name: "A. Kashyap / T. Miller", type: "Doubles", rank: 3, utr: "6.5", notes: "Varsity alumni standouts." }
 ];
 
 // ==========================================
@@ -635,7 +643,10 @@ export default function App() {
                     <tbody className="divide-y divide-zinc-800/50 text-sm">
                       {roster.map((player, i) => (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
-                          <td className="py-4 pl-2 font-bold text-zinc-200">{player.name}</td>
+                          <td className="py-4 pl-2">
+                            <div className="font-bold text-zinc-200">{player.name}</div>
+                            {player.bio && <div className="text-[11px] text-zinc-500 font-normal italic mt-0.5 max-w-[15rem] truncate sm:whitespace-normal" title={player.bio}>{player.bio}</div>}
+                          </td>
                           <td className="py-4 text-zinc-400 text-xs">{player.classYear}</td>
                           <td className="py-4 text-zinc-400 text-xs">{player.events}</td>
                           <td className="py-4 pr-2 text-right">
@@ -702,9 +713,9 @@ export default function App() {
         {activeTab === 'seeding' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <h2 className="text-xl font-black text-white uppercase tracking-wider">Projected Top 8 Seeds</h2>
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Projected Seeds</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                These are the projected bracket placements organized by the Tournament Committee. Placements are primarily based on historic High School Varsity/Collegiate play and baseline UTR ratings.
+                Baseline seeding starts from objective signals — prior Aces for Arian results plus public UTR and WTN ratings where players have them — then the committee and community refine it. Reigning champions get an automatic top seed.
               </p>
             </div>
 
@@ -724,9 +735,17 @@ export default function App() {
                           {candidate.rank}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="text-base font-bold text-white">{candidate.name}</h4>
-                            <span className="text-[10px] font-mono bg-black px-2 py-0.5 rounded-md text-emerald-400 border border-zinc-800">UTR: {candidate.utr || 'N/A'}</span>
+                            {candidate.result && (
+                              <span className="text-[10px] font-mono font-bold bg-[#fbbf24]/10 px-2 py-0.5 rounded-md text-[#fbbf24] border border-[#fbbf24]/20">{candidate.result}</span>
+                            )}
+                            {candidate.utr && (
+                              <span className="text-[10px] font-mono bg-black px-2 py-0.5 rounded-md text-emerald-400 border border-zinc-800">UTR {candidate.utr}</span>
+                            )}
+                            {candidate.wtn && (
+                              <span className="text-[10px] font-mono bg-black px-2 py-0.5 rounded-md text-sky-400 border border-zinc-800">WTN {candidate.wtn}</span>
+                            )}
                           </div>
                           <p className="text-xs text-zinc-500 mt-1 italic">"{candidate.notes}"</p>
                         </div>
@@ -735,6 +754,19 @@ export default function App() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Crowdsource CTA */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <h4 className="text-sm font-black text-white uppercase tracking-wider">Help seed the draw</h4>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Drop your UTR / WTN and recent results on the registration form — and flag any seed that looks off. The committee finalizes from there.</p>
+              </div>
+              <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+                <span>Add my rating</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
             </div>
           </div>
         )}
