@@ -515,6 +515,11 @@ export default function App() {
               </h1>
             </div>
 
+            <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
+              <Trophy className="w-3.5 h-3.5 shrink-0" />
+              Five Years Hitting Aces for Arian
+            </span>
+
             <div className="flex items-center gap-4 md:gap-5 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
               <div>
                 <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1">Scholarship Fund</span>
@@ -584,18 +589,6 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
             
-            {/* 5th Annual commemoration banner */}
-            <div className="relative overflow-hidden rounded-3xl border border-[#fbbf24]/40 bg-gradient-to-r from-[#5c1313] via-[#3a0a0a] to-[#5c1313] px-6 py-5 text-center shadow-lg shadow-black/40">
-              <div className="absolute inset-0 opacity-10 pointer-events-none">
-                <div className="w-full h-full border-2 border-[#fbbf24] absolute top-1.5 left-1.5 right-1.5 bottom-1.5 rounded-2xl"></div>
-              </div>
-              <div className="relative z-10">
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#fbbf24]">Fifth Annual · 2022 – 2026</div>
-                <div className="text-xl md:text-2xl font-black text-white uppercase tracking-wide mt-1">Five Years of Aces for Arian</div>
-                <div className="text-xs text-zinc-300 mt-1.5 max-w-xl mx-auto">Five summers of community tennis in Arian's memory — thank you for being part of it.</div>
-              </div>
-            </div>
-
             {/* Hero Section */}
             <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden shadow-2xl shadow-black">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
