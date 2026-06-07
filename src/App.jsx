@@ -681,6 +681,25 @@ export default function App() {
     ledgerFilter === 'singles' ? roster.filter(p => p.events.includes('Singles'))
     : ledgerFilter === 'doubles' ? roster.filter(p => p.events.includes('Doubles'))
     : roster;
+
+  // Privacy-friendly ledger identity: show first name only, and a 'XX class
+  // year — but add a last initial when two registrants share a first name.
+  const firstNameCounts = roster.reduce((m, p) => {
+    const f = p.name.trim().split(/\s+/)[0].toLowerCase();
+    m[f] = (m[f] || 0) + 1;
+    return m;
+  }, {});
+  const ledgerName = (full) => {
+    const parts = full.trim().split(/\s+/);
+    const first = parts[0];
+    return (firstNameCounts[first.toLowerCase()] > 1 && parts.length > 1)
+      ? `${first} ${parts[parts.length - 1][0].toUpperCase()}.`
+      : first;
+  };
+  const classTag = (cy) => {
+    const m = (cy || '').match(/\d{2,4}/);
+    return m ? `'${m[0].slice(-2)}` : (cy || '').trim();
+  };
   // Meter is a manual pin ($550) for now; the Config tab's "raised" row overrides it live.
   const scholarshipGoal = config.goal ?? 1500;
   const calculatedFunding = config.raised ?? 550;
@@ -950,13 +969,13 @@ export default function App() {
                       {filteredRoster.map((player, i) => (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2">
-                            <div className="font-bold text-zinc-200">{player.name}</div>
+                            <div className="font-bold text-zinc-200">{ledgerName(player.name)}</div>
                             {player.partner
-                              ? <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner}</div>
+                              ? <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner.split(/\s+/)[0]}</div>
                               : player.events.includes('Doubles') && <div className="text-[11px] text-sky-400/90 font-medium mt-0.5">looking for a partner</div>}
                             {player.bio && <div className="text-[11px] text-zinc-500 font-normal italic mt-0.5 max-w-[15rem] truncate sm:whitespace-normal" title={player.bio}>{player.bio}</div>}
                           </td>
-                          <td className="py-4 text-zinc-400 text-xs">{player.classYear}</td>
+                          <td className="py-4 text-zinc-400 text-xs">{classTag(player.classYear)}</td>
                           <td className="py-4 text-zinc-400 text-xs">{player.events}</td>
                           <td className="py-4 pr-2 text-right">
                             <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
