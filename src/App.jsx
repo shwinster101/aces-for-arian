@@ -1,5 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
+import {
+  ROSTER_CSV_URL,
+  CONFIG_CSV_URL,
+  SEEDS_CSV_URL,
+  PHOTOS_CSV_URL,
+  COURT_BOARD,
+  COURT_BOARD_CSV_URL,
+  MATCHES_CSV_URL,
+  fallbackRoster,
+  parseCSV,
+  mapRoster,
+  mapConfig,
+  mapSeeds,
+  mapGallery,
+  mapCourtBoard,
+  mapMatches,
+} from './lib/sheet';
+import {
   Trophy, 
   Award, 
   TrendingUp, 
@@ -203,103 +220,11 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // 2. THE SINGLE SOURCE OF TRUTH (DATA)
 // ==========================================
 
-// --- LIVE ROSTER (auto-syncs from your Google Form responses) -------------
-// 1. In the Google Sheet that collects your form responses, add a NEW tab
-//    with ONLY these public-safe columns (do NOT publish emails/phones):
-//        Name | Class | Events | Status
-//    Set Status to "Verified" once you've confirmed someone's $40 payment;
-//    anything else (or blank) shows as "Pending".
-// 2. File -> Share -> Publish to web -> choose that tab -> CSV -> Publish.
-// 3. Paste the generated link between the quotes below.
-//    Leave it "" to fall back to the static list underneath.
-const ROSTER_CSV_URL = "";
+// The CSV data pipeline (Google Sheet URLs, parsing, mapping) is shared with
+// the ops admin panel — see src/lib/sheet.js for the full tab-by-tab rundown.
 
 // Where the header "Donate" button sends people (currently your Venmo).
 const DONATE_URL = "https://venmo.com/u/ashwiny";
-
-// Live court board for tournament day. Flip live=true and fill each court's
-// now/next with a match label (e.g. "#12 Alex/Sai vs Roy/Gus"). 9 courts.
-const COURT_BOARD = {
-  live: false,
-  updated: "",
-  courts: Array.from({ length: 9 }, (_, i) => ({ court: i + 1, now: "", next: "" })),
-};
-
-// Publish a sheet with columns Court | Now | Next and paste its CSV link here to
-// drive the board live from your phone. Empty = use the static COURT_BOARD above.
-const COURT_BOARD_CSV_URL = "";
-
-// Parse the court-board CSV into 9 court rows (overlaid onto empty courts).
-function mapCourtBoard(rows) {
-  if (rows.length < 2) return null;
-  const headers = rows[0].map(h => h.trim().toLowerCase());
-  const col = (...names) => headers.findIndex(h => names.some(n => h.includes(n)));
-  const iCourt = col("court"), iNow = col("now", "current", "on"), iNext = col("next", "up");
-  if (iCourt < 0) return null;
-  const by = {};
-  rows.slice(1).forEach(r => {
-    const c = parseInt(String(r[iCourt] || "").replace(/\D/g, ""), 10);
-    if (c >= 1 && c <= 9) by[c] = { now: iNow >= 0 ? (r[iNow] || "").trim() : "", next: iNext >= 0 ? (r[iNext] || "").trim() : "" };
-  });
-  return Array.from({ length: 9 }, (_, i) => ({ court: i + 1, now: by[i + 1]?.now || "", next: by[i + 1]?.next || "" }));
-}
-
-// Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
-// so the dashboard NEVER renders an empty roster.
-const fallbackRoster = [
-  { name: "Ashwin Yedavalli", classYear: "19", events: "Singles & Doubles", status: "Verified", bio: "Founder. Still chasing that elusive down-the-line winner." },
-  { name: "Aanan Kashyap", classYear: "19", events: "Doubles", status: "Verified" },
-  { name: "Venil Tummarakota", classYear: "Alumni", events: "Singles & Doubles", status: "Verified", bio: "2017 State champ, back to defend the name." },
-  { name: "Tyler Miller", classYear: "Alumni", events: "Doubles", status: "Pending" }
-];
-
-// Minimal RFC-4180-ish CSV parser (handles quoted fields, commas, newlines).
-function parseCSV(text) {
-  const rows = [];
-  let row = [], field = "", inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else if (c === '"') inQuotes = true;
-    else if (c === ",") { row.push(field); field = ""; }
-    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-    else if (c !== "\r") field += c;
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows;
-}
-
-// Map CSV rows -> roster objects via flexible, case-insensitive header matching,
-// so it works even if your column names aren't exactly "Name/Class/Events/Status".
-function mapRoster(rows) {
-  if (rows.length < 2) return [];
-  const headers = rows[0].map(h => h.trim().toLowerCase());
-  const col = (...names) => headers.findIndex(h => names.some(n => h.includes(n)));
-  const iName = col("name");
-  const iClass = col("class", "year", "grad");
-  const iEvents = col("event");
-  const iStatus = col("status", "paid", "verif", "confirm");
-  const iBio = col("bio", "line", "about", "yearbook", "quote");
-  if (iName < 0) return [];
-  return rows.slice(1)
-    .filter(r => (r[iName] || "").trim())
-    .map(r => {
-      const s = (iStatus >= 0 ? r[iStatus] : "").trim().toLowerCase();
-      const verified = /verif|paid|confirm|complete/.test(s) ||
-        ["y", "yes", "true", "1", "done", "✓"].includes(s);
-      return {
-        name: r[iName].trim(),
-        classYear: iClass >= 0 ? (r[iClass] || "").trim() : "",
-        events: iEvents >= 0 ? (r[iEvents] || "").trim() : "",
-        status: verified ? "Verified" : "Pending",
-        bio: iBio >= 0 ? (r[iBio] || "").trim() : "",
-      };
-    });
-}
 
 // Baseline seeding: prior A4A results first, then public UTR / WTN where players
 // have them, then committee + community refinement. result/utr/wtn are optional.
@@ -308,8 +233,8 @@ const topSeeds = [
   { name: "Alex", type: "Singles", rank: 1, result: "2025 Champion", notes: "Reigning singles champion — automatic top seed." },
   { name: "Andrew", type: "Singles", rank: 2, result: "2025 Finalist", notes: "Stormed the back draw to the final last year." },
   { name: "Shaan", type: "Singles", rank: 3, result: "2025 3rd", notes: "2025 No. 1 seed." },
-  { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "100-win club. State contender." },
-  { name: "Venil Tummarakota", type: "Singles", rank: 5, utr: "7.0", notes: "2017 State champ." },
+  { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "Part of 2017 champ team." },
+  { name: "Venil Tummarakota", type: "Singles", rank: 5, utr: "7.0", notes: "Can't buy a second serve." },
   { name: "Aanan Kashyap", type: "Singles", rank: 6, utr: "6.9", notes: "DHS singles mainstay." },
   { name: "Imadh Khan", type: "Singles", rank: 7, notes: "Triad champ" },
   { name: "David Wu", type: "Singles", rank: 8, notes: "Does he still play?" },
@@ -548,6 +473,12 @@ export default function App() {
   const [roster, setRoster] = useState(fallbackRoster);
   const [courtBoard, setCourtBoard] = useState(COURT_BOARD);
   const [rosterLive, setRosterLive] = useState(false);
+  const [config, setConfig] = useState({});        // from the "Config" tab
+  const [seeds, setSeeds] = useState(topSeeds);     // from the "Seeds" tab
+  const [gallery, setGallery] = useState(GALLERY);  // from the "Photos" tab
+  const [matches, setMatches] = useState([]);       // live scores, from the "Matches" tab
+  const [matchesLive, setMatchesLive] = useState(false);
+  const [matchesUpdated, setMatchesUpdated] = useState('');
   const navRef = useRef(null);
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
@@ -555,13 +486,39 @@ export default function App() {
   useEffect(() => {
     if (!ROSTER_CSV_URL) return;
     let cancelled = false;
-    fetch(ROSTER_CSV_URL)
+    fetch(`${ROSTER_CSV_URL}${ROSTER_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
         const players = mapRoster(parseCSV(text));
         if (!cancelled && players.length) { setRoster(players); setRosterLive(true); }
       })
       .catch(() => { /* keep fallbackRoster */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Auto-sync Config / Seeds / Photos from their tabs; each fails over silently
+  // to the static defaults so a missing tab never breaks the dashboard.
+  useEffect(() => {
+    let cancelled = false;
+    const grab = (url) => fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(text => parseCSV(text));
+
+    grab(CONFIG_CSV_URL).then(rows => {
+      const cfg = mapConfig(rows);
+      if (!cancelled && Object.keys(cfg).length) setConfig(cfg);
+    }).catch(() => {});
+
+    grab(SEEDS_CSV_URL).then(rows => {
+      const s = mapSeeds(rows);
+      if (!cancelled && s.length) setSeeds(s);
+    }).catch(() => {});
+
+    grab(PHOTOS_CSV_URL).then(rows => {
+      const g = mapGallery(rows);
+      if (!cancelled && g.length) setGallery(g);
+    }).catch(() => {});
+
     return () => { cancelled = true; };
   }, []);
 
@@ -582,21 +539,43 @@ export default function App() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
+  // Live match scores from a published sheet; refreshes every 60s. Hidden
+  // entirely until the "Matches" tab has rows — no static fallback to show.
+  useEffect(() => {
+    if (!MATCHES_CSV_URL) return;
+    let cancelled = false;
+    const load = () => fetch(`${MATCHES_CSV_URL}${MATCHES_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(text => {
+        const m = mapMatches(parseCSV(text));
+        if (!cancelled && m.length) {
+          setMatches(m);
+          setMatchesLive(true);
+          setMatchesUpdated(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+        }
+      })
+      .catch(() => { /* keep previous matches */ });
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   // Keep the active tab centered in the sticky nav strip (esp. on mobile).
   useEffect(() => {
     navRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   }, [activeTab]);
 
-  // Financial tracking math
-  const scholarshipGoal = 1500;
+  // Financial tracking math. The "Config" sheet tab overrides these when set:
+  //   raised -> calculatedFunding, goal -> scholarshipGoal, show bar -> showBar.
   const registrationFee = 40;
-  const baseDonations = 380; // Add your direct offline donations here
+  const baseDonations = 430; // Add your direct offline donations here
   const confirmedCount = roster.filter(p => p.status === 'Verified').length;
-  // Scholarship meter is pinned for now. Set fixedFunding to null to auto-calc
-  // from confirmed (paid) players: baseDonations + confirmedCount * registrationFee.
-  const fixedFunding = 500;
-  const calculatedFunding = fixedFunding ?? (baseDonations + confirmedCount * registrationFee);
+  // Local fallbacks used only when the Config tab doesn't set them.
+  const fixedFunding = 550;
+  const scholarshipGoal = config.goal ?? 1500;
+  const calculatedFunding = config.raised ?? fixedFunding ?? (baseDonations + confirmedCount * registrationFee);
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
+  const showScholarshipBar = config.showBar ?? true;
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] text-zinc-200 font-sans flex flex-col selection:bg-[#fbbf24] selection:text-[#5c1313]">
@@ -626,16 +605,20 @@ export default function App() {
             </span>
 
             <div className="flex items-center gap-4 md:gap-5 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
-              <div>
-                <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1">Scholarship Fund</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-black text-white">${calculatedFunding}</span>
-                  <span className="text-[10px] text-zinc-300">/ ${scholarshipGoal}</span>
-                </div>
-              </div>
-              <div className="w-16 md:w-24 h-2 bg-black/50 rounded-full overflow-hidden">
-                <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
-              </div>
+              {showScholarshipBar && (
+                <>
+                  <div>
+                    <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1">Scholarship Fund</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-lg font-black text-white">${calculatedFunding}</span>
+                      <span className="text-[10px] text-zinc-300">/ ${scholarshipGoal}</span>
+                    </div>
+                  </div>
+                  <div className="w-16 md:w-24 h-2 bg-black/50 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
+                  </div>
+                </>
+              )}
               <a
                 href={DONATE_URL}
                 target="_blank"
@@ -762,7 +745,7 @@ export default function App() {
                     <div className="border-t border-zinc-800"></div>
                     <div className="flex justify-between items-center">
                       <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Zelle</span>
-                      <strong className="text-white text-xs truncate max-w-[160px]" title="ashwinyedavalli@gmail.com">ashwinyeda...</strong>
+                      <strong className="text-white text-[11px] break-all text-right">ashwinyedavalli@gmail.com</strong>
                     </div>
                     <div className="border-t border-zinc-800"></div>
                     <div className="flex justify-between items-center">
@@ -807,6 +790,7 @@ export default function App() {
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2">
                             <div className="font-bold text-zinc-200">{player.name}</div>
+                            {player.partner && <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner}</div>}
                             {player.bio && <div className="text-[11px] text-zinc-500 font-normal italic mt-0.5 max-w-[15rem] truncate sm:whitespace-normal" title={player.bio}>{player.bio}</div>}
                           </td>
                           <td className="py-4 text-zinc-400 text-xs">{player.classYear}</td>
@@ -858,14 +842,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tournament Memories — auto slideshow across all years */}
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-2 md:p-3">
-              <div className="px-3 pt-2 pb-1">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Memories</h3>
-              </div>
-              <Slideshow images={GALLERY} />
-            </div>
-
           </div>
         )}
 
@@ -892,7 +868,7 @@ export default function App() {
                 <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${SEEDS_FINAL ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20'}`}>{SEEDS_FINAL ? 'Locked into the draw' : 'Currently in the draw'}</span>
               </div>
               <div className="grid grid-cols-1 gap-3">
-                {topSeeds.filter(item => item.type === seedingEvent).map((candidate, idx) => {
+                {seeds.filter(item => item.type === seedingEvent).map((candidate, idx) => {
                   const isTop3 = candidate.rank <= 3;
                   return (
                     <div key={idx} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4.5 rounded-2xl border ${isTop3 ? 'bg-[#111] border-[#fbbf24]/30' : 'bg-[#111] border-zinc-800/50'}`}>
@@ -986,6 +962,45 @@ export default function App() {
                 ))}
               </div>
             </div>
+
+            {/* Live scores — only appears once ops has posted at least one match */}
+            {matchesLive && matches.length > 0 && (
+              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Scores</h2>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500">Updated {matchesUpdated}</span>
+                </div>
+                <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
+                  Match results as they're posted courtside — <span className="text-emerald-400 font-semibold">live</span> matches update in real time, and <span className="text-[#fbbf24] font-semibold">winners</span> are highlighted once a match goes final.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {matches.map((m, i) => {
+                    const meta = [m.event, m.round && `Rd ${m.round}`, m.num && `M${m.num}`, m.court && `Court ${m.court}`].filter(Boolean).join(' · ');
+                    const badge = {
+                      live: { label: 'Live', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+                      final: { label: 'Final', cls: 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20' },
+                      scheduled: { label: 'Scheduled', cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' },
+                    }[m.status] || { label: m.status, cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' };
+                    return (
+                      <div key={i} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 truncate">{meta}</span>
+                          <span className={`shrink-0 text-[9px] font-black uppercase tracking-wider border rounded-full px-2 py-0.5 ${badge.cls}`}>{badge.label}</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className={`text-sm font-bold truncate ${m.winner === 'a' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{m.a || '—'}</div>
+                          <div className={`text-sm font-bold truncate ${m.winner === 'b' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{m.b || '—'}</div>
+                        </div>
+                        {m.score && <div className="text-xs text-zinc-400 font-mono mt-2.5 pt-2.5 border-t border-zinc-800/60">{m.score}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
@@ -1106,7 +1121,10 @@ export default function App() {
 
             {/* Self-hosted auto-slideshow across all years — no third-party scripts */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-2 md:p-3">
-              <Slideshow images={GALLERY} />
+              <div className="px-3 pt-2 pb-1">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Memories</h3>
+              </div>
+              <Slideshow images={gallery} />
             </div>
 
             {/* Full albums on Google Photos (one per year) */}

@@ -18,4 +18,18 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  // Build/config files run in Node, not the browser (need __dirname etc.).
+  {
+    files: ['vite.config.js', 'eslint.config.js'],
+    languageOptions: { globals: globals.node },
+  },
+  // Google Apps Script write-back: runs in Google's cloud (GAS globals), and
+  // doPost is an entry point invoked by Apps Script, not called from our code.
+  {
+    files: ['apps-script/**/*.js'],
+    languageOptions: {
+      globals: { SpreadsheetApp: 'readonly', ContentService: 'readonly' },
+    },
+    rules: { 'no-unused-vars': 'off' },
+  },
 ])
