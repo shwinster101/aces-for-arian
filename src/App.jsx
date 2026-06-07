@@ -30,7 +30,10 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Home,
-  GraduationCap
+  GraduationCap,
+  Menu,
+  X,
+  ChevronRight
 } from 'lucide-react';
 
 // ==========================================
@@ -215,9 +218,9 @@ const SCHOLARSHIP_APPLY_URL = "https://docs.google.com/document/d/11MrcbAXJIgxAz
 // Add an optional `amount` (e.g. amount: 1000) per year to light up the
 // running dollar total in <ScholarsList>; without it, the stat shows scholar count.
 const SCHOLARSHIP_WINNERS = [
-  { year: "2026", names: ["Anton", "Noelle"] },
-  { year: "2025", names: ["Carolina Gusso", "Alex Fei"] },
-  { year: "2024", names: ["Sophie Muir", "Shikha Agarwal"] },
+  { year: "2026", names: ["Anton Dahlin", "Noelle Daccache"], amount: 1500 },
+  { year: "2025", names: ["Carolina Gusso", "Alex Fei"], amount: 1000 },
+  { year: "2024", names: ["Sophie Muir", "Shikha Agarwal"], amount: 1000 },
 ];
 
 // Flattened, captioned slides across every album.
@@ -520,6 +523,20 @@ function ScholarsList({ showDonate = false }) {
   );
 }
 
+// Every tab in one place — the source of truth for both the sticky strip and
+// the mobile "Explore" menu. `blurb` is the 1-line "what's here" hook that turns
+// the menu into a discovery tool, not just navigation.
+const TABS = [
+  { id: 'home', label: 'Home', icon: Home, blurb: 'Register, roster & day-of basics' },
+  { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
+  { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp, blurb: "Who's seeded — and who's on the bubble" },
+  { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
+  { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Five years of tournament memories' },
+  { id: 'scholarship', label: 'Scholarship', icon: GraduationCap, blurb: 'Apply, recipients & the cause' },
+  { id: 'legacy', label: 'Legacy', icon: Heart, blurb: 'Remembering Arian & the Hall of Fame' },
+  { id: 'merch', label: 'Merch', icon: ShoppingBag, blurb: 'Tournament tees & gear' },
+];
+
 // ==========================================
 // 3. MAIN APPLICATION
 // ==========================================
@@ -543,6 +560,7 @@ export default function App() {
   const [matchesUpdated, setMatchesUpdated] = useState('');
   const [matchesLastOkAt, setMatchesLastOkAt] = useState(0);
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
+  const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
   const navRef = useRef(null);
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
@@ -639,6 +657,14 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  // Close the mobile menu on Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   // Keep the active tab centered in the sticky nav strip (esp. on mobile).
   useEffect(() => {
     navRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
@@ -674,11 +700,20 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 relative z-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
-            <div className="flex items-center gap-4">
-              <BrandLogo className="w-12 h-12 md:w-14 md:h-14 shrink-0" />
-              <h1 className="text-xl md:text-2xl font-black tracking-wide uppercase text-white">
-                Aces for Arian <span className="text-base md:text-lg font-light text-[#fefcbf]">2026</span>
-              </h1>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <BrandLogo className="w-12 h-12 md:w-14 md:h-14 shrink-0" />
+                <h1 className="text-xl md:text-2xl font-black tracking-wide uppercase text-white">
+                  Aces for Arian <span className="text-base md:text-lg font-light text-[#fefcbf]">2026</span>
+                </h1>
+              </div>
+              {/* Mobile menu trigger — fills the empty banner space and makes the
+                  other 7 tabs discoverable beyond the home page. */}
+              <button onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-expanded={menuOpen}
+                className="md:hidden shrink-0 inline-flex items-center gap-1.5 text-[#fbbf24] border border-[#fbbf24]/40 hover:bg-[#fbbf24]/10 rounded-lg px-3 py-2 transition-colors">
+                <Menu className="w-5 h-5" />
+                <span className="text-xs font-black uppercase tracking-wider">Menu</span>
+              </button>
             </div>
 
             <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
@@ -721,16 +756,7 @@ export default function App() {
       <div className="sticky top-0 z-40 bg-[#5c1313]/95 backdrop-blur-sm border-b-2 border-[#fbbf24] shadow-lg shadow-black/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <nav ref={navRef} className="flex space-x-6 md:space-x-8 py-3 overflow-x-auto no-scrollbar">
-            {[
-              { id: 'home', label: 'Home', icon: Home },
-              { id: 'draws', label: 'Brackets', icon: Award },
-              { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp },
-              { id: 'rules', label: 'Rules', icon: BookOpen },
-              { id: 'photos', label: 'Photos', icon: ImageIcon },
-              { id: 'scholarship', label: 'Scholarship', icon: GraduationCap },
-              { id: 'legacy', label: 'Legacy', icon: Heart },
-              { id: 'merch', label: 'Merch', icon: ShoppingBag }
-            ].map((tab) => {
+            {TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
@@ -750,6 +776,37 @@ export default function App() {
           <div className="pointer-events-none absolute right-0 inset-y-0 w-10 bg-gradient-to-l from-[#5c1313] to-transparent md:hidden"></div>
         </div>
       </div>
+
+      {/* Mobile "Explore" menu — the full tab list with 1-line blurbs */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMenuOpen(false)}></div>
+          <div className="absolute inset-x-0 top-0 max-h-[92dvh] overflow-y-auto bg-[#5c1313] border-b-2 border-[#fbbf24] shadow-2xl shadow-black animate-fade-in">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#fbbf24]/20">
+              <span className="text-sm font-black uppercase tracking-wider text-white">Explore the Dashboard</span>
+              <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="text-zinc-300 hover:text-white p-1">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-3 space-y-1">
+              {TABS.map((tab) => {
+                const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => { setActiveTab(tab.id); setMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${active ? 'bg-[#fbbf24] text-black' : 'text-zinc-100 hover:bg-white/5'}`}>
+                    <tab.icon className="w-5 h-5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold">{tab.label}</div>
+                      <div className={`text-xs ${active ? 'text-black/70' : 'text-zinc-400'}`}>{tab.blurb}</div>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 shrink-0 ${active ? 'text-black/60' : 'text-zinc-500'}`} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8">
