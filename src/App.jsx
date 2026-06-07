@@ -64,11 +64,11 @@ function BrandLogo({ className = "" }) {
 }
 
 // Past champions + downloadable result archives, per event (singles | doubles).
-function ResultsArchive({ event }) {
-  const isS = event === 'singles';
-  const champ = isS
-    ? { label: '2025 Singles Champion', name: 'Alex', format: '32-player double elimination', podium: [{ place: '2nd', name: 'Andrew' }, { place: '3rd', name: 'Shaan' }], pdf: '/archive/aces-for-arian-2025-singles.pdf' }
-    : { label: '2025 Doubles Champions', name: 'Greyson & Andy', format: '16-team compass draw', podium: [], pdf: '/archive/aces-for-arian-2025-doubles.pdf' };
+function HallOfFame() {
+  const champs2025 = [
+    { label: '2025 Singles Champion', name: 'Alex', single: true, format: '32-player double elimination', podium: [{ place: '2nd', name: 'Andrew' }, { place: '3rd', name: 'Shaan' }], pdf: '/archive/aces-for-arian-2025-singles.pdf' },
+    { label: '2025 Doubles Champions', name: 'Greyson & Andy', single: false, format: '16-team compass draw', podium: [], pdf: '/archive/aces-for-arian-2025-doubles.pdf' },
+  ];
   const past = [
     { label: '2024 Results', url: '/archive/aces-for-arian-2024-results.pdf' },
     { label: '2023 Results', url: '/archive/aces-for-arian-2023-results.pdf' },
@@ -76,35 +76,39 @@ function ResultsArchive({ event }) {
   ];
   return (
     <>
-      <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">Archive</span>
-          <h4 className="text-sm font-black text-white uppercase tracking-wider">{champ.label}</h4>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-          <div className="flex items-center gap-4">
-            <Trophy className="w-10 h-10 text-[#fbbf24] shrink-0" />
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-zinc-500">{isS ? 'Champion' : 'Champions'}</div>
-              <div className="text-2xl font-black text-white leading-none">{champ.name}</div>
-              <div className="text-[11px] text-zinc-500 mt-1">{champ.format}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {champs2025.map(champ => (
+          <div key={champ.label} className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">2025</span>
+              <h4 className="text-sm font-black text-white uppercase tracking-wider">{champ.label}</h4>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <Trophy className="w-10 h-10 text-[#fbbf24] shrink-0" />
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-zinc-500">{champ.single ? 'Champion' : 'Champions'}</div>
+                  <div className="text-2xl font-black text-white leading-none">{champ.name}</div>
+                  <div className="text-[11px] text-zinc-500 mt-1">{champ.format}</div>
+                </div>
+              </div>
+              {champ.podium.length > 0 && (
+                <div className="flex gap-2">
+                  {champ.podium.map(p => (
+                    <div key={p.place} className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
+                      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{p.place}</div>
+                      <div className="text-sm font-bold text-zinc-200">{p.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <a href={champ.pdf} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
+                <span>Full bracket (PDF)</span><ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
-          {champ.podium.length > 0 && (
-            <div className="flex gap-2">
-              {champ.podium.map(p => (
-                <div key={p.place} className="bg-[#111] border border-zinc-800 rounded-xl px-4 py-2 text-center">
-                  <div className="text-[9px] uppercase tracking-wider text-zinc-500">{p.place}</div>
-                  <div className="text-sm font-bold text-zinc-200">{p.name}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <a href={champ.pdf} target="_blank" rel="noopener noreferrer"
-            className="sm:ml-auto inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
-            <span>Full bracket (PDF)</span><ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
+        ))}
       </div>
 
       <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
@@ -1056,8 +1060,6 @@ export default function App() {
                     );
                   });
                 })()}
-
-                <ResultsArchive event="doubles" />
               </div>
             )}
 
@@ -1099,10 +1101,19 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-
-                <ResultsArchive event="singles" />
               </div>
             )}
+
+            <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-[#fbbf24] shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-white">Past champions &amp; full results archive</div>
+                  <div className="text-xs text-zinc-500">Five years of winners (2020–2025) now live in the Legacy tab.</div>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0">Legacy →</span>
+            </button>
           </div>
         )}
 
@@ -1282,7 +1293,10 @@ export default function App() {
             TAB: ARIAN'S LEGACY
             ========================================== */}
         {activeTab === 'legacy' && (
-          <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-8 md:p-12 animate-fade-in relative overflow-hidden">
+          <div className="space-y-8 animate-fade-in">
+
+            {/* 1 — Remembering Arian */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-8 md:p-12 relative overflow-hidden">
             <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-end">
               <ARLogo className="w-96 h-96 text-zinc-100 transform translate-x-1/4" />
             </div>
@@ -1323,6 +1337,53 @@ export default function App() {
                 <span>Donate to the Scholarship</span>
               </a>
             </div>
+          </div>
+
+            {/* 2 — Scholars we've funded (moved here from the Scholarship tab) */}
+            <section className="border-t border-zinc-800 pt-8">
+              <div className="flex items-center gap-3 mb-1">
+                <GraduationCap className="w-5 h-5 text-[#fbbf24]" />
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Scholars We've Funded</h2>
+              </div>
+              <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
+              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Every entry fee and donation goes to the Arian Rahbar Memorial Scholarship for Dunlap seniors. Here's where it's landed.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {SCHOLARSHIP_WINNERS.map(w => (
+                  <div key={w.year} className="bg-[#151515] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
+                      <div className="text-sm font-bold text-white">{w.names.join(' · ')}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 bg-[#151515] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">2022 – 2023</div>
+                  <div className="text-sm font-bold text-white">A Bench in Arian's Memory</div>
+                  <div className="text-xs text-zinc-400 mt-1 leading-relaxed">The 2022 and 2023 tournaments helped place a memorial bench at the Dunlap courts — a lasting spot for the team to gather and remember.</div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <img src="/Bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+                  <img src="/Bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+                </div>
+              </div>
+            </section>
+
+            {/* 3 — Hall of Fame (moved here from the Brackets tab) */}
+            <section className="border-t border-zinc-800 pt-8">
+              <div className="flex items-center gap-3 mb-1">
+                <Trophy className="w-5 h-5 text-[#fbbf24]" />
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Hall of Fame</h2>
+              </div>
+              <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
+              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Five years of champions — from the Eagle Classic era to today.</p>
+              <div className="space-y-5">
+                <HallOfFame />
+              </div>
+            </section>
+
           </div>
         )}
 
@@ -1373,31 +1434,16 @@ export default function App() {
               </ul>
             </div>
 
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Past Recipients</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {SCHOLARSHIP_WINNERS.map(w => (
-                  <div key={w.year} className="bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
-                      <div className="text-sm font-bold text-white">{w.names.join(' · ')}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">2022 – 2023</div>
-                  <div className="text-sm font-bold text-white">A Bench in Arian's Memory</div>
-                  <div className="text-xs text-zinc-400 mt-1 leading-relaxed">The 2022 and 2023 tournaments helped place a memorial bench at the Dunlap courts — a lasting spot for the team to gather and remember.</div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <img src="/Bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
-                  <img src="/Bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+            <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
+              <div className="flex items-center gap-3">
+                <GraduationCap className="w-5 h-5 text-[#fbbf24] shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-white">Past recipients &amp; Arian's legacy</div>
+                  <div className="text-xs text-zinc-500">See every scholar we've funded — and the memorial bench — in the Legacy tab.</div>
                 </div>
               </div>
-            </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0">Legacy →</span>
+            </button>
 
             {/* Application link — kept low-key off-season; promote in spring */}
             <div className="text-center pt-1">
