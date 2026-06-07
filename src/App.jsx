@@ -233,7 +233,7 @@ const topSeeds = [
   { name: "Alex", type: "Singles", rank: 1, result: "2025 Champion", notes: "Reigning singles champion — automatic top seed." },
   { name: "Andrew", type: "Singles", rank: 2, result: "2025 Finalist", notes: "Stormed the back draw to the final last year." },
   { name: "Shaan", type: "Singles", rank: 3, result: "2025 3rd", notes: "2025 No. 1 seed." },
-  { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "Part of 2017 champ team." },
+  { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "what's a backhand?" },
   { name: "Venil Tummarakota", type: "Singles", rank: 5, utr: "7.0", notes: "Can't buy a second serve." },
   { name: "Aanan Kashyap", type: "Singles", rank: 6, utr: "6.9", notes: "DHS singles mainstay." },
   { name: "Imadh Khan", type: "Singles", rank: 7, notes: "Triad champ" },
