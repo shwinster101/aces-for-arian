@@ -212,7 +212,10 @@ const ALBUMS = [
 
 // Arian Rahbar Memorial Tennis Scholarship.
 const SCHOLARSHIP_APPLY_URL = "https://docs.google.com/document/d/11MrcbAXJIgxAz7ZRyTaMK8aIvh2XrE9n_lUvyoQY9Pw/edit?usp=sharing"; // application doc — low-key bottom link for now; promote in spring
+// Add an optional `amount` (e.g. amount: 1000) per year to light up the
+// running dollar total in <ScholarsList>; without it, the stat shows scholar count.
 const SCHOLARSHIP_WINNERS = [
+  { year: "2026", names: ["Anton", "Noelle"] },
   { year: "2025", names: ["Carolina Gusso", "Alex Fei"] },
   { year: "2024", names: ["Sophie Muir", "Shikha Agarwal"] },
 ];
@@ -459,6 +462,61 @@ function HeroCanvas({ images, className = "" }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Shared "scholars we've funded" block — a running total, the recipients grid,
+// and the memorial-bench card. Rendered in BOTH the Scholarship tab (credibility
+// next to apply/donate) and the Legacy tab (tribute), so the two never drift.
+// Add a per-year `amount` to SCHOLARSHIP_WINNERS to light up the dollar total.
+function ScholarsList({ showDonate = false }) {
+  const scholarCount = SCHOLARSHIP_WINNERS.reduce((n, w) => n + w.names.length, 0);
+  const totalAwarded = SCHOLARSHIP_WINNERS.reduce((s, w) => s + (w.amount || 0), 0);
+  const years = SCHOLARSHIP_WINNERS.map(w => parseInt(w.year, 10)).filter(Boolean);
+  const since = years.length ? Math.min(...years) : null;
+  return (
+    <>
+      <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-2xl p-5 mb-4 flex items-center gap-4">
+        <GraduationCap className="w-8 h-8 text-[#fbbf24] shrink-0" />
+        <div>
+          <div className="text-2xl font-black text-white leading-none">
+            {totalAwarded > 0 ? `$${totalAwarded.toLocaleString()}` : scholarCount}
+            <span className="text-sm font-bold text-zinc-400"> {totalAwarded > 0 ? `· ${scholarCount} scholars` : 'scholars'}</span>
+          </div>
+          <div className="text-[11px] text-zinc-500 mt-1">awarded {since ? `since ${since}` : 'to date'} through Aces for Arian</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {SCHOLARSHIP_WINNERS.map(w => (
+          <div key={w.year} className="bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
+              <div className="text-sm font-bold text-white">{w.names.join(' · ')}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="flex-1">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-500">2022 – 2023</div>
+          <div className="text-sm font-bold text-white">A Bench in Arian's Memory</div>
+          <div className="text-xs text-zinc-400 mt-1 leading-relaxed">The 2022 and 2023 tournaments helped place a memorial bench at the Dunlap courts — a lasting spot for the team to gather and remember.</div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <img src="/Bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+          <img src="/Bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+        </div>
+      </div>
+
+      {showDonate && (
+        <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#fbbf24] hover:text-amber-300 transition-colors">
+          <Heart className="w-4 h-4" /><span>Fund the next scholar — donate</span>
+        </a>
+      )}
+    </>
   );
 }
 
@@ -1382,31 +1440,7 @@ export default function App() {
               </div>
               <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
               <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Every entry fee and donation goes to the Arian Rahbar Memorial Scholarship for Dunlap seniors. Here's where it's landed.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {SCHOLARSHIP_WINNERS.map(w => (
-                  <div key={w.year} className="bg-[#151515] border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5" /></div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{w.year}</div>
-                      <div className="text-sm font-bold text-white">{w.names.join(' · ')}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 bg-[#151515] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">2022 – 2023</div>
-                  <div className="text-sm font-bold text-white">A Bench in Arian's Memory</div>
-                  <div className="text-xs text-zinc-400 mt-1 leading-relaxed">The 2022 and 2023 tournaments helped place a memorial bench at the Dunlap courts — a lasting spot for the team to gather and remember.</div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <img src="/Bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
-                  <img src="/Bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
-                </div>
-              </div>
-              <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#fbbf24] hover:text-amber-300 transition-colors">
-                <Heart className="w-4 h-4" /><span>Fund the next scholar — donate</span>
-              </a>
+              <ScholarsList showDonate />
             </section>
 
           </div>
@@ -1459,16 +1493,13 @@ export default function App() {
               </ul>
             </div>
 
-            <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
-              <div className="flex items-center gap-3">
-                <GraduationCap className="w-5 h-5 text-[#fbbf24] shrink-0" />
-                <div>
-                  <div className="text-sm font-bold text-white">Past recipients &amp; Arian's legacy</div>
-                  <div className="text-xs text-zinc-500">See every scholar we've funded — and the memorial bench — in the Legacy tab.</div>
-                </div>
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Scholarship Recipients</h3>
+                <button onClick={() => setActiveTab('legacy')} className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">Arian's story → Legacy</button>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0">Legacy →</span>
-            </button>
+              <ScholarsList />
+            </div>
 
             {/* Application link — kept low-key off-season; promote in spring */}
             <div className="text-center pt-1">
