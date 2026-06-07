@@ -561,6 +561,7 @@ export default function App() {
   const [matchesLastOkAt, setMatchesLastOkAt] = useState(0);
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
+  const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
   const navRef = useRef(null);
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
@@ -673,6 +674,13 @@ export default function App() {
   // Financial tracking math. The "Config" sheet tab overrides these when set:
   //   raised -> calculatedFunding, goal -> scholarshipGoal, show bar -> showBar.
   const confirmedCount = roster.filter(p => p.status === 'Verified').length;
+  // Event counts ("Singles & Doubles" players count in both) + the filtered view.
+  const singlesCount = roster.filter(p => p.events.includes('Singles')).length;
+  const doublesCount = roster.filter(p => p.events.includes('Doubles')).length;
+  const filteredRoster =
+    ledgerFilter === 'singles' ? roster.filter(p => p.events.includes('Singles'))
+    : ledgerFilter === 'doubles' ? roster.filter(p => p.events.includes('Doubles'))
+    : roster;
   // Meter is a manual pin ($550) for now; the Config tab's "raised" row overrides it live.
   const scholarshipGoal = config.goal ?? 1500;
   const calculatedFunding = config.raised ?? 550;
@@ -862,7 +870,7 @@ export default function App() {
                       <div className="w-8 h-8 rounded-full bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center font-black shrink-0">1</div>
                       <h4 className="text-base font-bold text-white">Register on the form</h4>
                     </div>
-                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, name your partner, and choose your shirt size.</p>
+                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — you can add or change your partner anytime before the draw.</p>
                   </div>
                   <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
                     <span>Open Form</span>
@@ -900,18 +908,32 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               <div className="lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                <div className="flex justify-between items-center pb-4 border-b border-zinc-800 mb-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Ledger</h3>
-                    {rosterLive && (
-                      <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
-                      </span>
-                    )}
+                <div className="pb-4 border-b border-zinc-800 mb-4">
+                  <div className="flex justify-between items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Ledger</h3>
+                      {rosterLive && (
+                        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-[10px] font-mono font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-md text-emerald-400">
+                      {confirmedCount} paid
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono font-bold bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-3 py-1 rounded-md text-[#fbbf24]">
-                    {confirmedCount} Confirmed · {roster.length} Registered
-                  </span>
+                  {/* Filter the ledger by event — the chips double as live counts */}
+                  <div className="flex gap-2 flex-wrap">
+                    {[['all', 'All', roster.length], ['singles', 'Singles', singlesCount], ['doubles', 'Doubles', doublesCount]].map(([key, label, n]) => {
+                      const on = ledgerFilter === key;
+                      return (
+                        <button key={key} onClick={() => setLedgerFilter(key)}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${on ? 'bg-[#fbbf24] text-black' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>
+                          {label} <span className={on ? 'text-black/60' : 'text-zinc-500'}>{n}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -925,11 +947,13 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/50 text-sm">
-                      {roster.map((player, i) => (
+                      {filteredRoster.map((player, i) => (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2">
                             <div className="font-bold text-zinc-200">{player.name}</div>
-                            {player.partner && <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner}</div>}
+                            {player.partner
+                              ? <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner}</div>
+                              : player.events.includes('Doubles') && <div className="text-[11px] text-sky-400/90 font-medium mt-0.5">looking for a partner</div>}
                             {player.bio && <div className="text-[11px] text-zinc-500 font-normal italic mt-0.5 max-w-[15rem] truncate sm:whitespace-normal" title={player.bio}>{player.bio}</div>}
                           </td>
                           <td className="py-4 text-zinc-400 text-xs">{player.classYear}</td>
@@ -943,6 +967,13 @@ export default function App() {
                           </td>
                         </tr>
                       ))}
+                      {filteredRoster.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-xs text-zinc-500">
+                            No {ledgerFilter} entries yet — be the first.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
