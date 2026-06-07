@@ -19,8 +19,14 @@
 // apps-script/ops-write-back.js the first time the admin panel publishes a
 // court board or posts a match — you don't have to create them by hand.
 export const SHEET_ID = "1u94hz6xL-WbLEQAOW9HLgSvKJ9B1LoqFX7lW1JMnjNM";
-export const sheetCsv = (tab) =>
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv${tab ? `&sheet=${encodeURIComponent(tab)}` : ""}`;
+// PROD (Cloudflare Pages) routes reads through the edge-cached /api/sheet
+// Function so 50+ phones polling collapse into ~1 Google fetch per tab/window.
+// DEV (vite) has no Function, so it hits gviz directly.
+const READ_BASE = import.meta.env.PROD ? "/api/sheet?tab=" : "";
+export const sheetCsv = (tab = "") =>
+  READ_BASE
+    ? `${READ_BASE}${encodeURIComponent(tab)}`
+    : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv${tab ? `&sheet=${encodeURIComponent(tab)}` : ""}`;
 
 export const ROSTER_CSV_URL  = sheetCsv();           // default tab = Form responses
 export const CONFIG_CSV_URL  = sheetCsv("Config");   // scholarship $ + toggles
@@ -278,14 +284,4 @@ export function mapMatches(rows) {
         winner: iWinner >= 0 ? (r[iWinner] || "").toString().trim().toLowerCase() : "",
       };
     });
-}
-
-// Fetch + parse a tab; resolves to [] / null on any failure so callers can
-// always fall back to static defaults without a try/catch of their own.
-export function fetchSheet(url) {
-  if (!url) return Promise.resolve([]);
-  return fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`)
-    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
-    .then(parseCSV)
-    .catch(() => []);
 }

@@ -486,7 +486,7 @@ export default function App() {
   useEffect(() => {
     if (!ROSTER_CSV_URL) return;
     let cancelled = false;
-    fetch(`${ROSTER_CSV_URL}${ROSTER_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+    fetch(ROSTER_CSV_URL)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
         const players = mapRoster(parseCSV(text));
@@ -500,7 +500,7 @@ export default function App() {
   // to the static defaults so a missing tab never breaks the dashboard.
   useEffect(() => {
     let cancelled = false;
-    const grab = (url) => fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+    const grab = (url) => fetch(url)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => parseCSV(text));
 
@@ -527,7 +527,7 @@ export default function App() {
   useEffect(() => {
     if (!COURT_BOARD_CSV_URL) return;
     let cancelled = false;
-    const load = () => fetch(`${COURT_BOARD_CSV_URL}${COURT_BOARD_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+    const load = () => fetch(COURT_BOARD_CSV_URL)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
         const courts = mapCourtBoard(parseCSV(text));
@@ -544,7 +544,7 @@ export default function App() {
   useEffect(() => {
     if (!MATCHES_CSV_URL) return;
     let cancelled = false;
-    const load = () => fetch(`${MATCHES_CSV_URL}${MATCHES_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+    const load = () => fetch(MATCHES_CSV_URL)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
         const m = mapMatches(parseCSV(text));
@@ -1393,8 +1393,8 @@ export default function App() {
                   <div className="text-xs text-zinc-400 mt-1 leading-relaxed">The 2022 and 2023 tournaments helped place a memorial bench at the Dunlap courts — a lasting spot for the team to gather and remember.</div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <img src="/bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
-                  <img src="/bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+                  <img src="/Bench1.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
+                  <img src="/Bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
                 </div>
               </div>
             </div>

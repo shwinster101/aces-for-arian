@@ -50,7 +50,7 @@ function OpsConsole({ onLock }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${ROSTER_CSV_URL}${ROSTER_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`)
+    fetch(ROSTER_CSV_URL)
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
       .then(text => {
         if (cancelled) return;
