@@ -8,9 +8,13 @@
 // public site already knows how to read them back live.
 //
 // WHAT THIS DOES
-//   • Seeds          -> mirrors the admin's seed list into a "Seeds" tab,
-//                       which the public "Projected Seeds" tab already reads
-//                       live via SEEDS_CSV_URL + mapSeeds (see lib/sheet.js).
+//   • Seeds          -> publishes ONLY Name | Event | Rank into a
+//                       "SeedBoardPublic" tab, which the public "Projected
+//                       Seeds" page reads live via SEED_BOARD_PUBLIC_CSV_URL +
+//                       mapSeeds (see lib/sheet.js). This tab is the sole
+//                       sanctioned bridge from the admin's committee seed data
+//                       to the public site — see "WHY SEEDS ARE SANITIZED
+//                       HERE, NOT JUST CLIENT-SIDE" near writeSeeds_ below.
 //   • Court board    -> mirrors the 9-court Now/Next grid into a "Courts"
 //                       tab, which the public "Live Court Board" already
 //                       reads live once COURT_BOARD_CSV_URL is set.
@@ -74,16 +78,41 @@ function doPost(e) {
   return ContentService.createTextOutput('ok');
 }
 
-var SEED_HEADERS  = ['Name', 'Event', 'Rank', 'Result', 'UTR', 'WTN', 'Note'];
+// SeedBoardPublic is the SANITIZED public board — Name | Event | Rank ONLY.
+// It deliberately has no Notes/Result/UTR/WTN columns: this script is the
+// last line of defense before data lands in the link-viewable spreadsheet
+// (see "PUBLIC / COMMITTEE DATA SEPARATION" in src/lib/sheet.js — the whole
+// sheet is fetchable by anyone with the link, tab name and all), so it must
+// never persist committee notes/votes/internal comments even if a client sent
+// them. The admin already strips `notes` before this request is sent (see
+// setSeeds in src/admin/store.js) — this header list is what makes that the
+// *enforced* contract rather than just a client-side courtesy.
+var SEED_HEADERS  = ['Name', 'Event', 'Rank'];
 var COURT_HEADERS = ['Court', 'Now', 'Next'];
 var MATCH_HEADERS = ['Event', 'Round', 'Num', 'Player A', 'Player B', 'Court', 'Status', 'Score', 'Winner', 'ID'];
+
+// --------------------------------------------------------------------------
+// WHY SEEDS ARE SANITIZED HERE, NOT JUST CLIENT-SIDE
+// --------------------------------------------------------------------------
+// Prior audit finding: raw committee seed notes were flowing straight into a
+// publicly-readable "Seeds" tab — a parent or player could read committee
+// commentary about players right on the live site (or just by guessing the
+// tab name in a gviz URL, since the whole spreadsheet is link-viewable).
+//
+// The fix is a hard sanitization boundary at the ONE place that actually
+// writes into the public sheet: here. Even if a future client bug, a stale
+// build, or a tampered request sent `result`/`utr`/`wtn`/`notes` alongside
+// `name`, writeSeeds_ below physically cannot persist them — the row shape
+// is fixed at three columns. Committee notes live and stay in each admin
+// device's localStorage (src/admin/store.js) and nowhere else.
+// --------------------------------------------------------------------------
 
 // The admin sends its full seed list for one event on every change (add,
 // remove, reorder, edit). The admin is the source of truth for order, so
 // the simplest correct move is: drop that event's old rows, append the new
 // ones — no row-by-row diffing that could drift out of sync.
 function writeSeeds_(payload) {
-  var sheet = sheetByName_('Seeds', SEED_HEADERS);
+  var sheet = sheetByName_('SeedBoardPublic', SEED_HEADERS);
   var rows = readRows_(sheet);
   var keep = rows.filter(function (r) {
     return String(r[1] || '').trim().toLowerCase() !== String(payload.event || '').toLowerCase();
@@ -91,9 +120,10 @@ function writeSeeds_(payload) {
   // Position in the list IS the seed rank — the admin reorders by moving rows,
   // so derive Rank from index here rather than trusting a stored s.rank that
   // goes stale on reorder/remove. This keeps the public badges contiguous
-  // (1..N) and in exactly the order staff set.
+  // (1..N) and in exactly the order staff set. Name + Event + Rank is ALL
+  // that gets written — see SEED_HEADERS above for why that's enforced here.
   var fresh = (payload.list || []).map(function (s, i) {
-    return [s.name || '', payload.event, i + 1, '', '', '', s.notes || ''];
+    return [s.name || '', payload.event, i + 1];
   });
   writeRows_(sheet, keep.concat(fresh));
 }

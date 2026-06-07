@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ROSTER_CSV_URL,
   CONFIG_CSV_URL,
-  SEEDS_CSV_URL,
+  SEED_BOARD_PUBLIC_CSV_URL,
   PHOTOS_CSV_URL,
   COURT_BOARD,
   COURT_BOARD_CSV_URL,
@@ -478,7 +478,7 @@ export default function App() {
   const [courtBoard, setCourtBoard] = useState(COURT_BOARD);
   const [rosterLive, setRosterLive] = useState(false);
   const [config, setConfig] = useState({});        // from the "Config" tab
-  const [seeds, setSeeds] = useState(topSeeds);     // from the "Seeds" tab
+  const [seeds, setSeeds] = useState(topSeeds);     // from the sanitized "SeedBoardPublic" tab — never raw committee data
   const [gallery, setGallery] = useState(GALLERY);  // from the "Photos" tab
   const [matches, setMatches] = useState([]);       // live scores, from the "Matches" tab
   const [matchesLive, setMatchesLive] = useState(false);
@@ -515,7 +515,9 @@ export default function App() {
       if (!cancelled && Object.keys(cfg).length) setConfig(cfg);
     }).catch(() => {});
 
-    grab(SEEDS_CSV_URL).then(rows => {
+    // Sanitized seed board ONLY — see SEED_BOARD_PUBLIC_CSV_URL in lib/sheet.js.
+    // Never point this at committee-side seed data.
+    grab(SEED_BOARD_PUBLIC_CSV_URL).then(rows => {
       const s = mapSeeds(rows);
       if (!cancelled && s.length) setSeeds(s);
     }).catch(() => {});
@@ -911,7 +913,9 @@ export default function App() {
                               <span className="text-[10px] font-mono bg-black px-2 py-0.5 rounded-md text-sky-400 border border-zinc-800">WTN {candidate.wtn}</span>
                             )}
                           </div>
-                          <p className="text-xs text-zinc-500 mt-1 italic">"{candidate.notes}"</p>
+                          {candidate.notes && (
+                            <p className="text-xs text-zinc-500 mt-1 italic">"{candidate.notes}"</p>
+                          )}
                         </div>
                       </div>
                     </div>

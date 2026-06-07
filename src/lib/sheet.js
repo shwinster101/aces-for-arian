@@ -6,18 +6,38 @@
 // endpoint — the sheet just needs to be link-viewable ("Anyone with the
 // link -> Viewer"); no "Publish to web" needed.
 //
-//   • Roster  -> the default first tab (raw Google Form responses).
-//   • Config  -> a tab named "Config"  (scholarship $, goal, show/hide bar).
-//   • Seeds   -> a tab named "Seeds"   (Name | Event | Rank | Note ...).
-//   • Photos  -> a tab named "Photos"  (image URL | Caption).
-//   • Courts  -> a tab named "Courts"  (Court | Now | Next) — live court board.
-//   • Matches -> a tab named "Matches" (Event | Round | Num | Player A/B | ...) — live scores.
+//   • Roster          -> the default first tab (raw Google Form responses).
+//   • Config          -> a tab named "Config" (scholarship $, goal, show/hide bar).
+//   • SeedBoardPublic -> a tab named "SeedBoardPublic" (Name | Event | Rank) —
+//                        the SANITIZED, public-safe seed board. See note below.
+//   • Photos          -> a tab named "Photos" (image URL | Caption).
+//   • Courts          -> a tab named "Courts" (Court | Now | Next) — live court board.
+//   • Matches         -> a tab named "Matches" (Event | Round | Num | Player A/B | ...) — live scores.
 //
 // Any tab that doesn't exist yet is simply ignored and callers fall back to
-// static defaults — so tabs can be added one at a time. The last two
-// (Courts, Matches) are written automatically by the Apps Script in
-// apps-script/ops-write-back.js the first time the admin panel publishes a
-// court board or posts a match — you don't have to create them by hand.
+// static defaults — so tabs can be added one at a time. The last three
+// (SeedBoardPublic, Courts, Matches) are written automatically by the Apps
+// Script in apps-script/ops-write-back.js the first time the admin panel
+// saves seeds, publishes a court board, or posts a match — you don't have to
+// create them by hand.
+//
+// --- PUBLIC / COMMITTEE DATA SEPARATION ------------------------------------
+// This spreadsheet is link-viewable ("Anyone with the link -> Viewer"), which
+// means EVERY tab in it — not just the ones this app reads — is fetchable by
+// anyone who has the link and knows (or guesses) a tab name via the gviz/tq
+// CSV export. That makes it the wrong place to ever store committee-internal
+// data: seed-committee notes/deliberation, votes, raw player submissions,
+// payment details, etc.
+//
+// So "SeedBoardPublic" is intentionally a *separate, sanitized* tab —
+// Name | Event | Rank ONLY — that the Apps Script writes as the one and only
+// publish target for seeding. The admin's full committee view (with notes)
+// lives solely in that device's localStorage (see admin/store.js); raw notes
+// are stripped before anything ever leaves the browser AND the Apps Script
+// (the actual write boundary into this link-viewable sheet) only persists
+// the three sanitized columns no matter what a client sends. Never add a
+// "Seeds"/"Committee"/notes-bearing tab back into this spreadsheet, and never
+// point SEED_BOARD_PUBLIC_CSV_URL (or the public site) at anything else.
 export const SHEET_ID = "1u94hz6xL-WbLEQAOW9HLgSvKJ9B1LoqFX7lW1JMnjNM";
 // PROD (Cloudflare Pages) routes reads through the edge-cached /api/sheet
 // Function so 50+ phones polling collapse into ~1 Google fetch per tab/window.
@@ -30,7 +50,10 @@ export const sheetCsv = (tab = "") =>
 
 export const ROSTER_CSV_URL  = sheetCsv();           // default tab = Form responses
 export const CONFIG_CSV_URL  = sheetCsv("Config");   // scholarship $ + toggles
-export const SEEDS_CSV_URL   = sheetCsv("Seeds");    // projected seeds
+// Public-safe seed board ONLY — Name | Event | Rank. The public site must
+// never read seed data from anywhere else (see "PUBLIC / COMMITTEE DATA
+// SEPARATION" above) — that's how raw committee notes stay off the live site.
+export const SEED_BOARD_PUBLIC_CSV_URL = sheetCsv("SeedBoardPublic");
 export const PHOTOS_CSV_URL  = sheetCsv("Photos");   // gallery / wheel images
 export const COURT_BOARD_CSV_URL = sheetCsv("Courts");  // live court board (Court | Now | Next)
 export const MATCHES_CSV_URL     = sheetCsv("Matches"); // live scores (Event | Round | Num | ...)
@@ -181,8 +204,15 @@ export function mapConfig(rows) {
   return out;
 }
 
-// --- SEEDS TAB -> [{ name, type, rank, result, utr, wtn, notes }] ----------
-// Columns (flexible, any order): Name | Event | Rank | Result | UTR | WTN | Note
+// --- SeedBoardPublic TAB -> [{ name, type, rank, result, utr, wtn, notes }] -
+// Columns (flexible, any order): Name | Event | Rank, plus optional
+// Result | UTR | WTN | Note IF a sheet owner deliberately adds them by hand.
+// NOTE: the live write-back (apps-script/ops-write-back.js) only ever
+// publishes Name | Event | Rank — Result/UTR/WTN/Note come back blank for any
+// row it writes. Those extra columns exist purely so a human can curate a
+// short, *reviewed* blurb directly in the sheet if they want one; they are
+// never populated from raw admin/committee free text. Treat anything in this
+// tab as already public — never wire raw committee data into it.
 export function mapSeeds(rows) {
   if (!rows || rows.length < 2) return [];
   const headers = rows[0].map(h => h.trim().toLowerCase());
