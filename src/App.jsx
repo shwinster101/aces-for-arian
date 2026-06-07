@@ -692,7 +692,7 @@ export default function App() {
                 <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit mx-auto md:mx-0 flex items-center gap-2 border border-zinc-800">
                     <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
                 </div>
-                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-none">Play in the 5th Annual Aces for Arian</h3>
+                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-[1.05]">Play in the 5th Annual <span className="whitespace-nowrap">Aces for Arian</span></h3>
                 <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
                   Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and pro photos. Come play with the Dunlap tennis community; every dollar funds the Arian Rahbar Memorial Scholarship.
                 </p>
