@@ -483,6 +483,8 @@ export default function App() {
   const [matches, setMatches] = useState([]);       // live scores, from the "Matches" tab
   const [matchesLive, setMatchesLive] = useState(false);
   const [matchesUpdated, setMatchesUpdated] = useState('');
+  const [matchesLastOkAt, setMatchesLastOkAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const navRef = useRef(null);
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
@@ -526,42 +528,55 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Live court board from a published sheet; refreshes every 60s. Falls back to
-  // the static COURT_BOARD if no URL is set or a fetch fails.
+  // Live court board from a published sheet. Polls every 60s; on a failed fetch
+  // it backs off (60s -> 120s -> 240s max) instead of hammering, resetting to
+  // 60s on success. Falls back to the static COURT_BOARD until live data lands.
   useEffect(() => {
     if (!COURT_BOARD_CSV_URL) return;
-    let cancelled = false;
+    let cancelled = false, timer, delay = 60000;
     const load = () => fetch(COURT_BOARD_CSV_URL)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
+        if (cancelled) return;
+        delay = 60000; // healthy fetch -> normal cadence
         const courts = mapCourtBoard(parseCSV(text));
-        if (courts && !cancelled) setCourtBoard({ live: true, updated: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), courts });
+        if (courts) setCourtBoard({ live: true, updated: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), lastOkAt: Date.now(), courts });
       })
-      .catch(() => { /* keep previous / static board */ });
+      .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
+      .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
     load();
-    const id = setInterval(load, 60000);
-    return () => { cancelled = true; clearInterval(id); };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
-  // Live match scores from a published sheet; refreshes every 60s. Hidden
-  // entirely until the "Matches" tab has rows — no static fallback to show.
+  // Live match scores from a published sheet. Same 60s poll + backoff as the
+  // court board. Hidden entirely until the "Matches" tab has rows.
   useEffect(() => {
     if (!MATCHES_CSV_URL) return;
-    let cancelled = false;
+    let cancelled = false, timer, delay = 60000;
     const load = () => fetch(MATCHES_CSV_URL)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
+        if (cancelled) return;
+        delay = 60000;
         const m = mapMatches(parseCSV(text));
-        if (!cancelled && m.length) {
+        if (m.length) {
           setMatches(m);
           setMatchesLive(true);
           setMatchesUpdated(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+          setMatchesLastOkAt(Date.now());
         }
       })
-      .catch(() => { /* keep previous matches */ });
+      .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
+      .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
     load();
-    const id = setInterval(load, 60000);
-    return () => { cancelled = true; clearInterval(id); };
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
+  // Heartbeat: re-render every 30s so the "Live" badges can flip to
+  // "reconnecting…" on their own once a feed has been stale for >3 min.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
   }, []);
 
   // Keep the active tab centered in the sticky nav strip (esp. on mobile).
@@ -571,15 +586,18 @@ export default function App() {
 
   // Financial tracking math. The "Config" sheet tab overrides these when set:
   //   raised -> calculatedFunding, goal -> scholarshipGoal, show bar -> showBar.
-  const registrationFee = 40;
-  const baseDonations = 430; // Add your direct offline donations here
   const confirmedCount = roster.filter(p => p.status === 'Verified').length;
-  // Local fallbacks used only when the Config tab doesn't set them.
-  const fixedFunding = 550;
+  // Meter is a manual pin ($550) for now; the Config tab's "raised" row overrides it live.
   const scholarshipGoal = config.goal ?? 1500;
-  const calculatedFunding = config.raised ?? fixedFunding ?? (baseDonations + confirmedCount * registrationFee);
+  const calculatedFunding = config.raised ?? 550;
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
   const showScholarshipBar = config.showBar ?? true;
+
+  // A feed counts as "Live" only if its last good fetch was under 3 min ago;
+  // otherwise the badge honestly shows "reconnecting…".
+  const FRESH_MS = 180000;
+  const courtFresh = courtBoard.live && courtBoard.lastOkAt && now - courtBoard.lastOkAt < FRESH_MS;
+  const matchesFresh = matchesLive && matchesLastOkAt && now - matchesLastOkAt < FRESH_MS;
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] text-zinc-200 font-sans flex flex-col selection:bg-[#fbbf24] selection:text-[#5c1313]">
@@ -942,10 +960,10 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${courtBoard.live ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${courtFresh ? 'bg-emerald-400 animate-pulse' : courtBoard.live ? 'bg-amber-400' : 'bg-zinc-600'}`}></span>
                   <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Court Board</h2>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-500">{courtBoard.live ? `Updated ${courtBoard.updated}` : 'Goes live tournament morning'}</span>
+                <span className="text-[10px] font-mono text-zinc-500">{courtFresh ? `Updated ${courtBoard.updated}` : courtBoard.live ? 'Reconnecting…' : 'Goes live tournament morning'}</span>
               </div>
               <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
                 Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
@@ -972,10 +990,10 @@ export default function App() {
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className={`w-2 h-2 rounded-full ${matchesFresh ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
                     <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Scores</h2>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-500">Updated {matchesUpdated}</span>
+                  <span className="text-[10px] font-mono text-zinc-500">{matchesFresh ? `Updated ${matchesUpdated}` : 'Reconnecting…'}</span>
                 </div>
                 <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
                   Match results as they're posted courtside — <span className="text-emerald-400 font-semibold">live</span> matches update in real time, and <span className="text-[#fbbf24] font-semibold">winners</span> are highlighted once a match goes final.
@@ -1339,7 +1357,20 @@ export default function App() {
             </div>
           </div>
 
-            {/* 2 — Scholars we've funded (moved here from the Scholarship tab) */}
+            {/* 2 — Hall of Fame (moved here from the Brackets tab) */}
+            <section className="border-t border-zinc-800 pt-8">
+              <div className="flex items-center gap-3 mb-1">
+                <Trophy className="w-5 h-5 text-[#fbbf24]" />
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Hall of Fame</h2>
+              </div>
+              <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
+              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Five years of champions — from the Eagle Classic era to today.</p>
+              <div className="space-y-5">
+                <HallOfFame />
+              </div>
+            </section>
+
+            {/* 3 — Scholars we've funded (moved here from the Scholarship tab) — the emotional close */}
             <section className="border-t border-zinc-800 pt-8">
               <div className="flex items-center gap-3 mb-1">
                 <GraduationCap className="w-5 h-5 text-[#fbbf24]" />
@@ -1369,19 +1400,9 @@ export default function App() {
                   <img src="/Bench2.jpg" alt="The Arian memorial bench at the Dunlap courts" className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-zinc-800" loading="lazy" />
                 </div>
               </div>
-            </section>
-
-            {/* 3 — Hall of Fame (moved here from the Brackets tab) */}
-            <section className="border-t border-zinc-800 pt-8">
-              <div className="flex items-center gap-3 mb-1">
-                <Trophy className="w-5 h-5 text-[#fbbf24]" />
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Hall of Fame</h2>
-              </div>
-              <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
-              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Five years of champions — from the Eagle Classic era to today.</p>
-              <div className="space-y-5">
-                <HallOfFame />
-              </div>
+              <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#fbbf24] hover:text-amber-300 transition-colors">
+                <Heart className="w-4 h-4" /><span>Fund the next scholar — donate</span>
+              </a>
             </section>
 
           </div>

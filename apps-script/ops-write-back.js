@@ -53,6 +53,12 @@
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
+    // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
+    // Obfuscation only (the token ships in the public bundle), but it stops
+    // drive-by writes from anyone who merely opens /admin.html.
+    if (body.token !== 'a4a-49010c3b149e53e25be43297') {
+      return ContentService.createTextOutput('forbidden');
+    }
     switch (body.type) {
       case 'seeds':        writeSeeds_(body.payload); break;
       case 'court-board':  writeCourtBoard_(body.payload); break;

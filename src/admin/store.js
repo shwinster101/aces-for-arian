@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { SHEET_WRITE_URL } from '../lib/sheet';
 
+// Shared-secret gate for the write-back endpoint. Must match the token checked
+// in apps-script/ops-write-back.js. It ships in the public admin bundle, so it
+// only deters drive-by writes — not a determined actor. Rotate by changing it
+// here AND in the Apps Script, then redeploying the script (New version).
+const WRITE_TOKEN = 'a4a-49010c3b149e53e25be43297';
+
 // ==========================================
 // OPS DATA STORE — localStorage-backed overlay
 // ==========================================
@@ -71,7 +77,7 @@ export function pushToSheet(type, payload) {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type, payload, ts: Date.now() }),
+      body: JSON.stringify({ type, payload, ts: Date.now(), token: WRITE_TOKEN }),
     }).catch(() => {});
   } catch { /* ignore — local store is still authoritative */ }
 }
