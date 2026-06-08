@@ -106,9 +106,15 @@ function doPost(e) {
 //
 // Contract: valid token + existing allowlisted tab -> that tab as CSV.
 // Anything else (no/bad token, unknown tab, missing tab) -> EMPTY, so callers
-// fall back to their static defaults. The Function still column-filters the
-// roster down to non-PII fields, so PII never leaves even via this path.
-var READ_TOKEN = 'a4a-read-9aff116498180a56dfd50efb4ec09a20'; // must match SHEET_READ_TOKEN in Cloudflare
+// fall back to their static defaults.
+//
+// READ_TOKEN is NOT a real secret — this very file is committed in the PUBLIC
+// repo, so treat it like WRITE_TOKEN: a drive-by deterrent, nothing more. The
+// actual PII protection is that doGet itself strips the roster down to the
+// public columns (filterRosterCols_ below) before returning — so even with the
+// token in hand, the raw roster (email/phone/payment) NEVER leaves this script.
+// The Cloudflare Function filters again on its side (defense in depth).
+var READ_TOKEN = 'a4a-read-9aff116498180a56dfd50efb4ec09a20'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
 var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches']; // '' = roster (first tab)
 
 function doGet(e) {
@@ -121,7 +127,36 @@ function doGet(e) {
   if (!sheet) return csvOut_('');                           // tab doesn't exist -> empty
   var rows = sheet.getLastRow(), cols = sheet.getLastColumn();
   if (rows < 1 || cols < 1) return csvOut_('');
-  return csvOut_(rowsToCsv_(sheet.getRange(1, 1, rows, cols).getValues()));
+  var values = sheet.getRange(1, 1, rows, cols).getValues();
+  if (tab === '') values = filterRosterCols_(values);       // strip PII from the raw roster
+  return csvOut_(rowsToCsv_(values));
+}
+
+// Keep only the roster columns the public site renders (name/class/events/
+// partner/status/bio/hide) — drops email/phone/payment/comments. Mirrors
+// isPublicRosterCol() in functions/api/sheet.js so the two boundaries agree.
+function filterRosterCols_(values) {
+  if (!values.length) return values;
+  var keep = values[0].map(function (h) { return isPublicRosterCol_(h); });
+  return values.map(function (row) {
+    return row.filter(function (_, i) { return keep[i]; });
+  });
+}
+
+function isPublicRosterCol_(header) {
+  var h = String(header == null ? '' : header).trim().toLowerCase();
+  return (
+    h.indexOf('name') >= 0 ||
+    h.indexOf('class') >= 0 || h.indexOf('grad') >= 0 || h.indexOf('year') >= 0 ||
+    (h.indexOf('doubles') >= 0 && (h.indexOf('tourney') >= 0 || h.indexOf('saturday') >= 0)) ||
+    (h.indexOf('singles') >= 0 && (h.indexOf('sunday') >= 0 || h.indexOf('tourney') >= 0)) ||
+    /\bevents?\b/.test(h) ||
+    h.indexOf('partner') >= 0 ||
+    h.indexOf('bio') >= 0 || h.indexOf('yearbook') >= 0 || h.indexOf('nickname') >= 0 ||
+    h.indexOf('about') >= 0 || h.indexOf('quote') >= 0 ||
+    h.indexOf('status') >= 0 || h.indexOf('verif') >= 0 || h.indexOf('confirm') >= 0 ||
+    h.indexOf('hide') >= 0 || h.indexOf('hidden') >= 0
+  );
 }
 
 function csvOut_(text) {
