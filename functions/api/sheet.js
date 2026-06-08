@@ -76,51 +76,65 @@ function filterRoster(csv) {
   return toCSV(rows.map((r) => r.filter((_, i) => keep[i])));
 }
 
+const gvizUrl = (tab) =>
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv` +
+  (tab ? `&sheet=${encodeURIComponent(tab)}` : "");
+
+// Roster ('') → strip PII to the public columns; a named tab that came back
+// looking like the roster (gviz missing-tab fallback) → fail closed.
+const shape = (body, tab) =>
+  tab === "" ? filterRoster(body) : looksLikeRoster(body) ? "" : body;
+
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   const tab = url.searchParams.get("tab") || "";
   if (!ALLOWED.has(tab)) return new Response("Unknown tab", { status: 400 });
 
-  // Edge cache (per colo), keyed by the normalized public URL, so the crowd's
-  // polling collapses to ~1 upstream fetch per tab per TTL. We cache OUR clean
-  // response explicitly via the Cache API instead of fetch({cf:cacheEverything})
-  // — the latter throws (Worker error 1101) on Google's redirecting/cookie-
-  // setting Apps Script response, and only ever worked for plain gviz.
-  const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}${url.pathname}?tab=${encodeURIComponent(tab)}`);
-  const hit = await cache.match(cacheKey);
-  if (hit) return hit;
-
-  // Prefer the authenticated, owner-run Apps Script read proxy (doGet) — it can
-  // read the sheet even when it's set to "Restricted" (private), closing the
-  // "anyone with the SHEET_ID can hit gviz directly" backdoor. The read token
-  // travels in this server-to-server URL only; it never reaches a browser.
-  // Until SHEET_READ_URL is set in Cloudflare, fall back to public gviz.
-  const upstreamUrl = env.SHEET_READ_URL
-    ? `${env.SHEET_READ_URL}?token=${encodeURIComponent(env.SHEET_READ_TOKEN || "")}` +
-      `&tab=${encodeURIComponent(tab)}`
-    : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv` +
-      (tab ? `&sheet=${encodeURIComponent(tab)}` : "");
-
-  const upstream = await fetch(upstreamUrl);
-  if (!upstream.ok) return new Response("", { status: 502 });
-
-  let body = await upstream.text();
-  if (tab === "") {
-    // Roster endpoint: strip PII columns down to what mapRoster uses.
-    body = filterRoster(body);
-  } else if (looksLikeRoster(body)) {
-    // Requested tab doesn't exist → upstream fell back to the roster. Fail closed.
-    body = "";
-  }
-
-  const resp = new Response(body, {
+  const csv = (body, extra) => new Response(body, {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Cache-Control": `public, max-age=20, s-maxage=${TTL}`,
+      ...(extra || {}),
     },
   });
-  if (waitUntil) waitUntil(cache.put(cacheKey, resp.clone()));
-  return resp;
+
+  try {
+    // Edge cache (per colo), keyed by the normalized public URL, so the crowd's
+    // polling collapses to ~1 upstream fetch per tab per TTL. We cache OUR clean
+    // response explicitly via the Cache API instead of fetch({cf:cacheEverything})
+    // — the latter throws on Google's redirecting/cookie-setting Apps Script
+    // response, and only ever worked for plain gviz.
+    const cache = caches.default;
+    const cacheKey = new Request(`${url.origin}${url.pathname}?tab=${encodeURIComponent(tab)}`);
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+
+    // Prefer the authenticated, owner-run Apps Script read proxy (doGet): it can
+    // read the sheet even when set to "Restricted", closing the gviz backdoor.
+    // The read token travels in this server-to-server URL only. Until
+    // SHEET_READ_URL is set in Cloudflare, fall back to public gviz.
+    const upstreamUrl = env.SHEET_READ_URL
+      ? `${env.SHEET_READ_URL}?token=${encodeURIComponent(env.SHEET_READ_TOKEN || "")}` +
+        `&tab=${encodeURIComponent(tab)}`
+      : gvizUrl(tab);
+
+    const upstream = await fetch(upstreamUrl);
+    if (!upstream.ok) throw new Error("upstream " + upstream.status);
+
+    const resp = csv(shape(await upstream.text(), tab));
+    if (waitUntil) waitUntil(cache.put(cacheKey, resp.clone()));
+    return resp;
+  } catch (err) {
+    // Never hard-fail the public site. Fall back to direct gviz (works while the
+    // sheet is public) and surface the error in a header for diagnosis.
+    const msg = String((err && err.message) || err).slice(0, 160);
+    try {
+      const g = await fetch(gvizUrl(tab));
+      if (!g.ok) throw new Error("gviz " + g.status);
+      return csv(shape(await g.text(), tab), { "X-Fallback": "gviz", "X-Error": msg });
+    } catch {
+      return new Response("", { status: 502, headers: { "X-Error": msg } });
+    }
+  }
 }
