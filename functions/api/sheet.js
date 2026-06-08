@@ -129,12 +129,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
     // Never hard-fail the public site. Fall back to direct gviz (works while the
     // sheet is public) and surface the error in a header for diagnosis.
     const msg = String((err && err.message) || err).slice(0, 160);
-    try {
-      const g = await fetch(gvizUrl(tab));
-      if (!g.ok) throw new Error("gviz " + g.status);
-      return csv(shape(await g.text(), tab), { "X-Fallback": "gviz", "X-Error": msg });
-    } catch {
-      return new Response("", { status: 502, headers: { "X-Error": msg } });
-    }
+    const g = await fetch(gvizUrl(tab)).catch(() => null);
+    if (!g || !g.ok) return new Response("", { status: 502, headers: { "X-Error": msg } });
+    const body = await g.text().catch(() => "");
+    return csv(shape(body, tab), { "X-Fallback": "gviz", "X-Error": msg });
   }
 }
