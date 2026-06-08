@@ -108,7 +108,7 @@ function doPost(e) {
 // Anything else (no/bad token, unknown tab, missing tab) -> EMPTY, so callers
 // fall back to their static defaults. The Function still column-filters the
 // roster down to non-PII fields, so PII never leaves even via this path.
-var READ_TOKEN = 'a4a-read-021eb2961bd098f39a11922db1c2c58c'; // must match SHEET_READ_TOKEN in Cloudflare
+var READ_TOKEN = 'a4a-read-9aff116498180a56dfd50efb4ec09a20'; // must match SHEET_READ_TOKEN in Cloudflare
 var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches']; // '' = roster (first tab)
 
 function doGet(e) {

@@ -126,12 +126,14 @@ export async function onRequestGet({ request, env, waitUntil }) {
     if (waitUntil) waitUntil(cache.put(cacheKey, resp.clone()));
     return resp;
   } catch (err) {
-    // Never hard-fail the public site. Fall back to direct gviz (works while the
-    // sheet is public) and surface the error in a header for diagnosis.
-    const msg = String((err && err.message) || err).slice(0, 160);
+    // Never hard-fail the public site. Log the error server-side (visible in
+    // Cloudflare's real-time logs — NOT in a public header, since the error can
+    // contain the upstream URL + read token) and fall back to direct gviz, which
+    // works while the sheet is still public.
+    console.error("sheet read failed:", err);
     const g = await fetch(gvizUrl(tab)).catch(() => null);
-    if (!g || !g.ok) return new Response("", { status: 502, headers: { "X-Error": msg } });
+    if (!g || !g.ok) return new Response("", { status: 502 });
     const body = await g.text().catch(() => "");
-    return csv(shape(body, tab), { "X-Fallback": "gviz", "X-Error": msg });
+    return csv(shape(body, tab), { "X-Fallback": "gviz" });
   }
 }
