@@ -76,16 +76,26 @@ function filterRoster(csv) {
   return toCSV(rows.map((r) => r.filter((_, i) => keep[i])));
 }
 
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env }) {
   const tab = new URL(request.url).searchParams.get("tab") || "";
   if (!ALLOWED.has(tab)) return new Response("Unknown tab", { status: 400 });
 
-  const gviz =
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv` +
-    (tab ? `&sheet=${encodeURIComponent(tab)}` : "");
+  // Prefer the authenticated, owner-run Apps Script read proxy (doGet) — it can
+  // read the sheet even when it's set to "Restricted" (private), which closes
+  // the "anyone with the SHEET_ID can hit gviz directly" backdoor. The read
+  // token travels in this server-to-server URL only; it never reaches a browser.
+  // Until SHEET_READ_URL is configured in Cloudflare, fall back to public gviz
+  // so nothing breaks before the cutover.
+  const upstreamUrl = env.SHEET_READ_URL
+    ? `${env.SHEET_READ_URL}?token=${encodeURIComponent(env.SHEET_READ_TOKEN || "")}` +
+      `&tab=${encodeURIComponent(tab)}`
+    : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv` +
+      (tab ? `&sheet=${encodeURIComponent(tab)}` : "");
 
-  // cacheTtl also caches the upstream gviz subrequest at Cloudflare's edge.
-  const upstream = await fetch(gviz, { cf: { cacheEverything: true, cacheTtl: TTL } });
+  // cacheTtl caches this upstream subrequest at Cloudflare's edge, so the crowd's
+  // polling collapses to ~1 real upstream fetch per tab per TTL (works for both
+  // the Apps Script and gviz URLs — neither carries an Authorization header).
+  const upstream = await fetch(upstreamUrl, { cf: { cacheEverything: true, cacheTtl: TTL } });
   if (!upstream.ok) return new Response("", { status: 502 });
 
   let body = await upstream.text();

@@ -52,6 +52,21 @@
 // If you ever need to change the code, edit it here, then Deploy -> Manage
 // deployments -> pencil icon -> "New version" -> Deploy. (Creating a brand
 // new deployment instead would change the URL and break the live site.)
+//
+// --------------------------------------------------------------------------
+// MAKING THE SHEET PRIVATE (closes the gviz backdoor) — see doGet below
+// --------------------------------------------------------------------------
+// This script also serves READS via doGet so the public site keeps working
+// after you set the sheet to "Restricted". To turn that on:
+//   1. Redeploy this script (Manage deployments -> New version) so doGet is live.
+//   2. In Cloudflare Pages -> your project -> Settings -> Variables, add:
+//        SHEET_READ_URL   = this web app's /exec URL (same one as the write URL)
+//        SHEET_READ_TOKEN = the READ_TOKEN value below
+//      Redeploy the Pages project.
+//   3. Confirm the live site still loads, THEN set the Google Sheet to
+//      "Restricted" (Share -> General access -> Restricted).
+// Until SHEET_READ_URL is set in Cloudflare, the Function keeps reading via
+// public gviz, so nothing breaks before you flip it.
 // ==========================================================================
 
 function doPost(e) {
@@ -76,6 +91,50 @@ function doPost(e) {
     // let a bad payload 500 the endpoint for the next request.
   }
   return ContentService.createTextOutput('ok');
+}
+
+// --------------------------------------------------------------------------
+// READ PROXY (doGet) — lets the site keep reading once the sheet is PRIVATE
+// --------------------------------------------------------------------------
+// Called server-to-server ONLY by the Cloudflare Function (functions/api/
+// sheet.js), never by a browser. Once the spreadsheet is set to "Restricted"
+// (private), gviz can no longer read it anonymously — but THIS script runs as
+// the owner, so it still can. The Cloudflare Function holds READ_TOKEN in an
+// env var (never shipped to the browser) and passes it as ?token=...; without
+// the right token this returns nothing. That's what closes the "anyone with
+// the SHEET_ID can hit gviz" backdoor.
+//
+// Contract: valid token + existing allowlisted tab -> that tab as CSV.
+// Anything else (no/bad token, unknown tab, missing tab) -> EMPTY, so callers
+// fall back to their static defaults. The Function still column-filters the
+// roster down to non-PII fields, so PII never leaves even via this path.
+var READ_TOKEN = 'a4a-read-021eb2961bd098f39a11922db1c2c58c'; // must match SHEET_READ_TOKEN in Cloudflare
+var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches']; // '' = roster (first tab)
+
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.token !== READ_TOKEN) return csvOut_('');          // fail closed: no/bad token
+  var tab = p.tab || '';
+  if (READABLE.indexOf(tab) < 0) return csvOut_('');        // not allowlisted
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = tab ? ss.getSheetByName(tab) : ss.getSheets()[0]; // '' = default/roster tab
+  if (!sheet) return csvOut_('');                           // tab doesn't exist -> empty
+  var rows = sheet.getLastRow(), cols = sheet.getLastColumn();
+  if (rows < 1 || cols < 1) return csvOut_('');
+  return csvOut_(rowsToCsv_(sheet.getRange(1, 1, rows, cols).getValues()));
+}
+
+function csvOut_(text) {
+  return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.CSV);
+}
+
+function rowsToCsv_(rows) {
+  return rows.map(function (r) {
+    return r.map(function (f) {
+      var s = (f === null || f === undefined) ? '' : String(f);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',');
+  }).join('\n');
 }
 
 // SeedBoardPublic is the SANITIZED public board — Name | Event | Rank ONLY.

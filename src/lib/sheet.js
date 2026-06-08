@@ -41,7 +41,11 @@
 export const SHEET_ID = "1u94hz6xL-WbLEQAOW9HLgSvKJ9B1LoqFX7lW1JMnjNM";
 // PROD (Cloudflare Pages) routes reads through the edge-cached /api/sheet
 // Function so 50+ phones polling collapse into ~1 Google fetch per tab/window.
-// DEV (vite) has no Function, so it hits gviz directly.
+// (Once the sheet is set to "Restricted", that Function reads it via the
+// owner-run Apps Script doGet — see functions/api/sheet.js + apps-script/.)
+// DEV (vite) has no Function, so it hits gviz directly — which means local dev
+// reads FALL BACK to the static defaults once the sheet is private (gviz 403s).
+// That's fine: the admin panel still works fully on localStorage in dev.
 const READ_BASE = import.meta.env.PROD ? "/api/sheet?tab=" : "";
 export const sheetCsv = (tab = "") =>
   READ_BASE
