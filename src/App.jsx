@@ -1503,13 +1503,18 @@ export default function App() {
                 <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Remembering Arian</h2>
                 <div className="w-12 h-1 bg-[#fbbf24] rounded-full"></div>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  Arian was one of those people who made everything more fun — especially the tennis court. Sure, he could play (a 100-win Dunlap Eagle and a State qualifier in both singles and doubles), but if you knew him, it's the energy and the grin you remember, not the trophies.
+                  Arian Rahbar (DHS class of 2019) achieved an impressive 4-year high school career playing for the Dunlap Eagles Tennis Team. Arian is part of an elite group of Dunlap Tennis players in the <strong className="text-zinc-200">100 win club</strong>, and is a 3-time IHSA State qualifier. This includes being a part of the <strong className="text-zinc-200">2017 State Championship Dunlap Tennis Team</strong>! Also a 3-time selection on the Mid-Illini All-Conference team, Arian is 1 of only 13 Dunlap men to qualify for the State Tournament in both Singles and Doubles.
                 </p>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  He was also low-key brilliant — near-perfect grades, headed to USC for Computer Science with a Facebook internship lined up — and one of the original champions of this tournament back when it was still the Eagle Classic (doubles, with Venil).
+                  Arian's positivity radiates on and off the court. Graduating from DHS with a nearly perfect GPA, he took his talents to study Computer Science at <strong className="text-zinc-200">USC</strong> in Los Angeles. His diligence earned him an upcoming summer internship at <strong className="text-zinc-200">Facebook</strong> following his Junior year.
                 </p>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  We lost Arian in December 2021. So every summer we get the community back on the courts to play the way he did — all heart, lots of laughs. Whatever we raise goes to the <strong className="text-zinc-200">Arian Rahbar Memorial Scholarship</strong> for Dunlap seniors chasing their next thing.
+                  Arian tragically lost his life in December 2021 as a pedestrian victim to senseless street racing in LA. Let us come together for the 7th straight year as a Dunlap community to enjoy some summer tennis as Arian would, playing to his heart's content on the court. After all, Arian was one of the first champions of this tournament in 2020 — formerly called the Eagle Classic!
+                </p>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  <a href="https://www.pjstar.com/story/news/2021/12/13/arian-rahbar-dunlop-illinois-killed-in-los-angeles/6491771001/" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">
+                    Read the Peoria Journal Star's coverage →
+                  </a>
                 </p>
               </div>
             </div>
