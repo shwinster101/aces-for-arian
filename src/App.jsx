@@ -945,6 +945,30 @@ export default function App() {
               </div>
             </div>
 
+            {/* Women's & Mixed Doubles — no-partner welcome (casual partner gap + recruiting) */}
+            <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/25 rounded-3xl p-6 md:p-7 flex flex-col sm:flex-row sm:items-center gap-5">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Heart className="w-4 h-4 text-[#fbbf24] shrink-0" />
+                  <h3 className="text-base font-black text-white uppercase tracking-wider">Women's &amp; Mixed Doubles — no partner needed</h3>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
+                  New here or don't have a partner? <span className="text-zinc-200 font-semibold">We'll match you with one.</span> All levels, all genders — come enjoy the weekend with the Dunlap tennis community. Women have played and won here for years; we'd love more of you on court.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0 w-full sm:w-52">
+                <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+                  <span>Register — $40</span>
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <a href="mailto:ashwinyedavalli@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian"
+                  className="text-[11px] text-center text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">
+                  Need a partner? Email us →
+                </a>
+              </div>
+            </div>
+
             {/* Roster & Info Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
@@ -1034,6 +1058,9 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+                <p className="text-[11px] text-zinc-600 mt-3 px-1 leading-relaxed">
+                  Registered as a pair? You'll show as <span className="text-[#fbbf24]/70 font-medium">"w/ [partner]"</span> here once both you and your partner are confirmed — until then, doubles entries read <span className="text-sky-400/70">"looking for a partner."</span>
+                </p>
               </div>
 
               <div className="space-y-6">
