@@ -879,7 +879,7 @@ export default function App() {
             {/* How to enter — register, then pay */}
             <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8">
               <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">How to Enter</h3>
-              <p className="text-xs text-zinc-400 mb-6 max-w-2xl leading-relaxed">Two steps and you're in. Once your payment clears you'll appear on the <span className="text-zinc-300 font-semibold">Tournament Ledger</span> below as Verified — usually within 24 hours.</p>
+              <p className="text-xs text-zinc-400 mb-6 max-w-2xl leading-relaxed">Two steps and you're in. Once your payment clears you'll appear on the <span className="text-zinc-300 font-semibold">Roster</span> below as Verified — usually within 24 hours.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Step 1 — Register */}
@@ -930,7 +930,7 @@ export default function App() {
                 <div className="pb-4 border-b border-zinc-800 mb-4">
                   <div className="flex justify-between items-center gap-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Ledger</h3>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">Roster</h3>
                       {rosterLive && (
                         <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
