@@ -911,7 +911,7 @@ export default function App() {
                       <div className="w-8 h-8 rounded-full bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center font-black shrink-0">1</div>
                       <h4 className="text-base font-bold text-white">Register on the form</h4>
                     </div>
-                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — you can add or change your partner anytime before the draw.</p>
+                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:ashwinyedavalli@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
                   </div>
                   <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
                     <span>Open Form</span>
@@ -943,17 +943,6 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Women's & mixed doubles — discreet no-partner note (casual gap + recruiting) */}
-            <div className="border border-dashed border-zinc-700/50 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                <span className="text-zinc-400">Women's &amp; mixed doubles welcome</span> — no partner needed, we'll match you. All levels.
-              </p>
-              <a href="mailto:ashwinyedavalli@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian"
-                className="text-[11px] text-zinc-500 hover:text-[#fbbf24] underline underline-offset-2 transition-colors shrink-0">
-                Need a partner? Email us →
-              </a>
             </div>
 
             {/* Roster & Info Grid */}
