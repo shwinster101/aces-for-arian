@@ -881,7 +881,7 @@ export default function App() {
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
                 <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and pro photos. Come play with the Dunlap tennis community.
+                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community.
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
