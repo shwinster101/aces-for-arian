@@ -531,9 +531,9 @@ const TABS = [
   { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
   { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp, blurb: "Who's seeded — and who's on the bubble" },
   { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
-  { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Five years of tournament memories' },
+  { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Tournament memories, 2020 to today' },
   { id: 'scholarship', label: 'Scholarship', icon: GraduationCap, blurb: 'Apply, recipients & the cause' },
-  { id: 'legacy', label: 'Legacy', icon: Heart, blurb: 'Remembering Arian & the Hall of Fame' },
+  { id: 'legacy', label: 'Legacy', icon: Heart, blurb: "Arian's story, Hall of Fame & past results" },
   { id: 'merch', label: 'Merch', icon: ShoppingBag, blurb: 'Tournament tees & gear' },
 ];
 
@@ -695,6 +695,21 @@ export default function App() {
     return (firstNameCounts[first.toLowerCase()] > 1 && parts.length > 1)
       ? `${first} ${parts[parts.length - 1][0].toUpperCase()}.`
       : first;
+  };
+  // Match a roster name to a published seed and return its rank (or null).
+  // Conservative on purpose — exact full-name for singles, exact-name-in-team
+  // for doubles — so we never mislabel the wrong person as a seed.
+  const seedFor = (full) => {
+    const name = full.trim().toLowerCase();
+    let best = null;
+    for (const s of seeds) {
+      const sn = (s.name || '').trim().toLowerCase();
+      const hit = s.type === 'Doubles'
+        ? sn.split(/\s*&\s*/).includes(name)
+        : sn === name;
+      if (hit && (best == null || s.rank < best)) best = s.rank;
+    }
+    return best;
   };
   const classTag = (cy) => {
     const m = (cy || '').match(/\d{2,4}/);
@@ -859,8 +874,14 @@ export default function App() {
                     <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
                 </div>
                 <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-[1.05]">Play in the 5th Annual <span className="whitespace-nowrap">Aces for Arian</span></h3>
+                <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }}
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#fbbf24]/90 hover:text-[#fbbf24] transition-colors">
+                  <Heart className="w-3.5 h-3.5 shrink-0" />
+                  <span>In memory of Arian Rahbar — every dollar goes toward his scholarship</span>
+                  <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
+                </button>
                 <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and pro photos. Come play with the Dunlap tennis community; every dollar funds the Arian Rahbar Memorial Scholarship.
+                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and pro photos. Come play with the Dunlap tennis community.
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
@@ -868,6 +889,7 @@ export default function App() {
                     <span>Register — $40</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                  <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
                   <span className="text-xs text-zinc-500">Sign-ups close July 6</span>
                 </div>
               </div>
@@ -941,8 +963,8 @@ export default function App() {
                       {confirmedCount} paid
                     </span>
                   </div>
-                  {/* Filter the ledger by event — the chips double as live counts */}
-                  <div className="flex gap-2 flex-wrap">
+                  {/* Filter the roster by event — the chips double as live counts */}
+                  <div className="flex gap-2 flex-wrap items-center">
                     {[['all', 'All', roster.length], ['singles', 'Singles', singlesCount], ['doubles', 'Doubles', doublesCount]].map(([key, label, n]) => {
                       const on = ledgerFilter === key;
                       return (
@@ -952,6 +974,10 @@ export default function App() {
                         </button>
                       );
                     })}
+                    <button onClick={() => { setActiveTab('seeding'); window.scrollTo({ top: 0 }); }}
+                      className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                      Projected Seeds <span aria-hidden>→</span>
+                    </button>
                   </div>
                 </div>
 
@@ -966,10 +992,21 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/50 text-sm">
-                      {filteredRoster.map((player, i) => (
+                      {filteredRoster.map((player, i) => {
+                        const seed = seedFor(player.name);
+                        return (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2">
-                            <div className="font-bold text-zinc-200">{ledgerName(player.name)}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-zinc-200">{ledgerName(player.name)}</span>
+                              {seed != null && (
+                                <button onClick={() => { setActiveTab('seeding'); window.scrollTo({ top: 0 }); }}
+                                  title="See the projected seed board"
+                                  className="shrink-0 text-[9px] font-mono font-bold uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25 rounded px-1.5 py-0.5 hover:bg-[#fbbf24]/20 transition-colors">
+                                  Seed #{seed}
+                                </button>
+                              )}
+                            </div>
                             {player.partner
                               ? <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner.split(/\s+/)[0]}</div>
                               : player.events.includes('Doubles') && <div className="text-[11px] text-sky-400/90 font-medium mt-0.5">looking for a partner</div>}
@@ -985,7 +1022,8 @@ export default function App() {
                             </span>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                       {filteredRoster.length === 0 && (
                         <tr>
                           <td colSpan={4} className="py-8 text-center text-xs text-zinc-500">
@@ -1043,6 +1081,12 @@ export default function App() {
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Projected Seeds</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
                 Current projected seeds based on prior AFA results, UTR/WTN, recent results, and committee review. These players and teams are currently slotted into the bracket. Reigning champions get an automatic top seed.
+              </p>
+              <p className="text-xs text-zinc-500 mt-3 max-w-2xl leading-relaxed">
+                Think you belong higher? Send your UTR / WTN or recent results to{' '}
+                <a href="mailto:ashwinyedavalli@gmail.com?subject=Seeding%20consideration%20—%20Aces%20for%20Arian"
+                  className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">the committee</a>{' '}
+                — we review right up to the entry cutoff.
               </p>
             </div>
 
@@ -1296,7 +1340,7 @@ export default function App() {
                 <Trophy className="w-5 h-5 text-[#fbbf24] shrink-0" />
                 <div>
                   <div className="text-sm font-bold text-white">Past champions &amp; full results archive</div>
-                  <div className="text-xs text-zinc-500">Five years of winners (2020–2025) now live in the Legacy tab.</div>
+                  <div className="text-xs text-zinc-500">Every winner since 2020 — now in the Legacy tab.</div>
                 </div>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0">Legacy →</span>
@@ -1538,7 +1582,7 @@ export default function App() {
                 <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Hall of Fame</h2>
               </div>
               <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
-              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Five years of champions — from the Eagle Classic era to today.</p>
+              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Champions from every year — the Eagle Classic era to today.</p>
               <div className="space-y-5">
                 <HallOfFame />
               </div>
