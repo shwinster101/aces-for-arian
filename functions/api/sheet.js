@@ -27,7 +27,8 @@ function isPublicRosterCol(header) {
     h.includes("bio") || h.includes("yearbook") || h.includes("nickname") ||
     h.includes("about") || h.includes("quote") ||
     h.includes("status") || h.includes("verif") || h.includes("confirm") ||
-    h.includes("hide") || h.includes("hidden")
+    h.includes("hide") || h.includes("hidden") ||
+    h.includes("shirt") // shirt size — not sensitive; feeds the merch order planner
   );
 }
 

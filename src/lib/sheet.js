@@ -144,6 +144,7 @@ export function mapRoster(rows) {
   const iBio = col("bio", "yearbook", "nickname", "about", "quote");
   const iHide = col("hide", "hidden");
   const iPartner = col("partner");
+  const iShirt = col("shirt");
   if (iName < 0) return [];
 
   // Did they opt in to an event? "Sign me up!" = yes; "No thanks." / "Not
@@ -177,6 +178,7 @@ export function mapRoster(rows) {
         partner,
         status: verified ? "Verified" : "Pending",
         bio: iBio >= 0 ? (r[iBio] || "").trim() : "",
+        shirtSize: iShirt >= 0 ? (r[iShirt] || "").trim() : "",
       };
     });
 }

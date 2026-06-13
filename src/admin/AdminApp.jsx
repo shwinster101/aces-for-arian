@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   Swords,
   Grid3x3,
+  Package,
   RefreshCw,
   LogOut,
   ExternalLink,
@@ -20,13 +21,15 @@ import CheckIns from './sections/CheckIns';
 import Payments from './sections/Payments';
 import Seeding from './sections/Seeding';
 import Scores from './sections/Scores';
+import Merch from './sections/Merch';
 
 const TABS = [
   { id: 'registrations', label: 'Registrations', icon: ClipboardList },
   { id: 'checkins', label: 'Check-ins', icon: UserCheck },
-  { id: 'payments', label: 'Payments & Merch', icon: CircleDollarSign },
+  { id: 'payments', label: 'Payments', icon: CircleDollarSign },
   { id: 'seeding', label: 'Seeding & Draws', icon: Swords },
   { id: 'scores', label: 'Scores & Courts', icon: Grid3x3 },
+  { id: 'merch', label: 'Merch', icon: Package },
 ];
 
 // Where each admin section shows up on the public site — drives the contextual
@@ -38,6 +41,7 @@ const PUBLIC_VIEW = {
   payments: { hash: 'home', label: 'public roster' },
   seeding: { hash: 'seeding', label: 'projected seeds' },
   scores: { hash: 'brackets', label: 'live court board' },
+  merch: { hash: 'merch', label: 'merch page' },
 };
 
 export default function AdminApp() {
@@ -164,6 +168,7 @@ function OpsConsole({ onLock }) {
         {tab === 'payments' && <Payments {...sectionProps} />}
         {tab === 'seeding' && <Seeding {...sectionProps} />}
         {tab === 'scores' && <Scores {...sectionProps} />}
+        {tab === 'merch' && <Merch {...sectionProps} />}
       </main>
 
       <footer className="py-6 text-center text-[10px] text-zinc-700 border-t border-zinc-900">

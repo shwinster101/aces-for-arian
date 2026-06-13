@@ -46,6 +46,7 @@ const initialStore = () => ({
   seeds: { Singles: [], Doubles: [] },       // [{ id, rank, name, notes }]
   matches: [],                               // [{ id, event, round, num, a, b, court, status, score, winner }]
   courtBoard: emptyCourtBoard(),
+  merch: {},                                 // inventory: key ('shirt:M' | 'sweatbands' | …) -> { order, stock }
 });
 
 function load() {
@@ -61,6 +62,7 @@ function load() {
       seeds: { Singles: parsed.seeds?.Singles || [], Doubles: parsed.seeds?.Doubles || [] },
       matches: Array.isArray(parsed.matches) ? parsed.matches : [],
       courtBoard: parsed.courtBoard?.courts ? parsed.courtBoard : emptyCourtBoard(),
+      merch: parsed.merch && typeof parsed.merch === 'object' ? parsed.merch : {},
     };
   } catch {
     return initialStore();
@@ -184,6 +186,12 @@ export function useOpsStore() {
     pushes.forEach(p => pushToSheet('match', p));
   };
 
+  // Merch inventory (order/stock per item) — local to this device; the gear
+  // locker is run from one laptop, so no sheet round-trip needed.
+  const setMerch = (key, patch) => {
+    setStore(s => ({ ...s, merch: { ...s.merch, [key]: { order: 0, stock: 0, ...s.merch[key], ...patch } } }));
+  };
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   return {
@@ -192,6 +200,7 @@ export function useOpsStore() {
     addWalkUp, removeWalkUp,
     setSeeds,
     addMatch, updateMatch, removeMatch, moveMatch,
+    setMerch,
     exportJSON,
   };
 }

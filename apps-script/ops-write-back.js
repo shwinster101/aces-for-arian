@@ -72,6 +72,9 @@
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
+    // Public idea/suggestion box — no token (anyone on the site can submit).
+    // Emails the owner; capped + trimmed so it can't be abused as a relay.
+    if (body.type === 'idea') { handleIdea_(body.payload); return ContentService.createTextOutput('ok'); }
     // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
     // Obfuscation only (the token ships in the public bundle), but it stops
     // drive-by writes from anyone who merely opens /admin.html.
@@ -91,6 +94,21 @@ function doPost(e) {
     // let a bad payload 500 the endpoint for the next request.
   }
   return ContentService.createTextOutput('ok');
+}
+
+// Public "got an idea?" box on the site -> emails the owner. Runs as the owner,
+// so MailApp can send. (First deploy with this will prompt for a new "send
+// email" permission — approve it.) Length-capped so it can't relay spam.
+var IDEA_EMAIL = 'ashwinyedavalli@gmail.com';
+function handleIdea_(payload) {
+  var text = String((payload && payload.text) || '').slice(0, 4000).trim();
+  if (!text) return;
+  var from = String((payload && payload.from) || '').slice(0, 200).trim();
+  MailApp.sendEmail(
+    IDEA_EMAIL,
+    'Aces for Arian — idea from the site' + (from ? ' (' + from + ')' : ''),
+    [text, '', 'From: ' + (from || '(anonymous)'), 'Sent ' + new Date()].join('\n')
+  );
 }
 
 // --------------------------------------------------------------------------
@@ -155,7 +173,8 @@ function isPublicRosterCol_(header) {
     h.indexOf('bio') >= 0 || h.indexOf('yearbook') >= 0 || h.indexOf('nickname') >= 0 ||
     h.indexOf('about') >= 0 || h.indexOf('quote') >= 0 ||
     h.indexOf('status') >= 0 || h.indexOf('verif') >= 0 || h.indexOf('confirm') >= 0 ||
-    h.indexOf('hide') >= 0 || h.indexOf('hidden') >= 0
+    h.indexOf('hide') >= 0 || h.indexOf('hidden') >= 0 ||
+    h.indexOf('shirt') >= 0 // shirt size — not sensitive; feeds the merch order planner
   );
 }
 

@@ -35,7 +35,7 @@ export default function Payments({ participants, ops }) {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Payments & Merch" subtitle="Track who's paid the $40 entry (and how) and who's collected their tournament tee." />
+      <PageHeader title="Payments" subtitle="Track who's paid the $40 entry (and how) and who's collected their tournament tee. Order quantities live in the Merch tab." />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <Stat label="Paid" value={`${stats.paid} / ${participants.length}`} tone="emerald" />

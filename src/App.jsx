@@ -5,6 +5,7 @@ import {
   SEED_BOARD_PUBLIC_CSV_URL,
   PHOTOS_CSV_URL,
   MATCHES_CSV_URL,
+  SHEET_WRITE_URL,
   fallbackRoster,
   parseCSV,
   mapRoster,
@@ -545,6 +546,55 @@ const tabForSlug = (slug) => {
   const alias = Object.entries(TAB_SLUGS).find(([, s]) => s === slug);
   return alias ? alias[0] : null;
 };
+
+// Public "got an idea?" box — fire-and-forget POST to the Apps Script (type
+// 'idea'), which emails the organizers. no-cors means we can't read a response,
+// so we confirm optimistically.
+function IdeaBox() {
+  const [text, setText] = useState('');
+  const [from, setFrom] = useState('');
+  const [sent, setSent] = useState(false);
+  if (!SHEET_WRITE_URL) return null;
+  const submit = (e) => {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body) return;
+    try {
+      fetch(SHEET_WRITE_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'idea', payload: { text: body.slice(0, 3000), from: from.trim().slice(0, 150) } }),
+      }).catch(() => {});
+    } catch { /* fire and forget */ }
+    setText(''); setFrom(''); setSent(true);
+  };
+  return (
+    <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-7">
+      <h3 className="text-sm font-black text-white uppercase tracking-wider">Got an idea?</h3>
+      <p className="text-xs text-zinc-400 mt-1 mb-4 max-w-2xl leading-relaxed">A new event, a format tweak, a sponsor, something for next year — send it straight to the organizers.</p>
+      {sent ? (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-sm text-emerald-300">
+          Thanks — your idea's on its way. <button onClick={() => setSent(false)} className="text-emerald-400/80 hover:text-emerald-200 underline underline-offset-2 ml-1">Send another</button>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="space-y-2.5">
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={3000}
+            placeholder="Your idea…"
+            className="w-full bg-[#111] border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors resize-y" />
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <input value={from} onChange={(e) => setFrom(e.target.value)} maxLength={150}
+              placeholder="Name or email (optional, so we can reply)"
+              className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+            <button type="submit" disabled={!text.trim()}
+              className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
+              Send idea
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
 
 // ==========================================
 // 3. MAIN APPLICATION
@@ -1115,6 +1165,8 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            <IdeaBox />
 
           </div>
         )}
