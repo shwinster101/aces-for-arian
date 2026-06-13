@@ -171,12 +171,17 @@ function OpsConsole({ onLock }) {
         {tab === 'merch' && <Merch {...sectionProps} />}
       </main>
 
-      <footer className="py-6 text-center text-[10px] text-zinc-700 border-t border-zinc-900">
+      <footer className="py-6 text-center text-[10px] text-zinc-700 border-t border-zinc-900 space-y-2">
         <p>Ops console · not linked from the public site ·{' '}
           <a href="/" className="inline-flex items-center gap-1 text-zinc-600 hover:text-[#fbbf24] transition-colors">
             View public site <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </p>
+        <button
+          onClick={() => { if (window.confirm("Clear ALL ops data saved on THIS device — check-ins, payments, walk-ups, seeds, matches & merch? This can't be undone. (The public roster from the Google Sheet is unaffected.)")) ops.clearOps(); }}
+          className="text-zinc-700 hover:text-rose-400 underline underline-offset-2 transition-colors">
+          Clear this device's ops data
+        </button>
       </footer>
     </div>
   );

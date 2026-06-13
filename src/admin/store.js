@@ -96,18 +96,22 @@ export function useOpsStore() {
 
   const getOverlay = (name) => ({ ...emptyOverlay(), ...store.participants[name] });
 
+  // Check-in / payment / shirt / walk-up overlay stays LOCAL to this device.
+  // We deliberately do NOT push it: the Apps Script ignores those types anyway
+  // (writing them into the raw Form-responses tab by name-match is fragile —
+  // see that file's bottom note), and not sending them keeps payment/check-in
+  // data off the wire. A shared multi-device ops state would need its own
+  // private "Ops" tab/backend with explicit columns, not this overlay.
   const setOverlay = (name, patch) => {
     setStore(s => {
       const merged = { ...emptyOverlay(), ...s.participants[name], ...patch };
       return { ...s, participants: { ...s.participants, [name]: merged } };
     });
-    pushToSheet('participant', { name, ...patch });
   };
 
   const addWalkUp = (entry) => {
     const row = { id: nextId(), name: '', classYear: '', events: 'Supporter', partner: '', ...entry };
     setStore(s => ({ ...s, added: [...s.added, row] }));
-    pushToSheet('walk-up', row);
     return row.id;
   };
   const removeWalkUp = (id) => setStore(s => ({ ...s, added: s.added.filter(r => r.id !== id) }));
@@ -194,6 +198,13 @@ export function useOpsStore() {
 
   const exportJSON = () => JSON.stringify(store, null, 2);
 
+  // Wipe everything this device has stored (check-ins, payments, walk-ups,
+  // seeds, matches, merch) — for post-tournament cleanup. Irreversible.
+  const clearOps = () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setStore(initialStore());
+  };
+
   return {
     store,
     getOverlay, setOverlay,
@@ -201,6 +212,6 @@ export function useOpsStore() {
     setSeeds,
     addMatch, updateMatch, removeMatch, moveMatch,
     setMerch,
-    exportJSON,
+    exportJSON, clearOps,
   };
 }
