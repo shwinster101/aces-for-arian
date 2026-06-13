@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Zap } from 'lucide-react';
 import { Card, PageHeader, Pills, TextInput, Select, EmptyState } from '../ui';
 
 const EVENTS = [
@@ -28,6 +28,8 @@ export default function Scores({ ops }) {
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Scores & Courts" subtitle="Work the queue in playing order: set a match live + assign its court when it goes on, then tap the winner and enter the score. The public board follows automatically. Reorder the queue from Seeding & Draws." />
+
+      <AceTracker ops={ops} />
 
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -81,6 +83,41 @@ function ScoreRow({ m, ops }) {
           options={['scheduled', 'live', 'final']} placeholder="Status" />
       </div>
     </div>
+  );
+}
+
+// Courtside "+1 Ace" — pushes the running total to the sheet so the public
+// Brackets tab's Live Ace Tracker ($5/ace, capped at $500) follows live.
+// -1 covers a misclick; it's disabled at 0 so the count can't go negative.
+function AceTracker({ ops }) {
+  const count = ops.store.aces || 0;
+  const dollars = Math.min(count * 5, 500);
+  const capped = count * 5 >= 500;
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Zap className="w-4 h-4 text-[#fbbf24]" /> Live Ace Tracker</h3>
+        <span className="text-[10px] text-zinc-500">$5/ace · capped at $500</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <button onClick={ops.decrementAces} disabled={count === 0} aria-label="Remove an ace"
+          className="shrink-0 w-11 h-11 rounded-xl bg-black border border-zinc-800 text-zinc-400 text-lg font-black hover:text-white hover:border-zinc-700 disabled:opacity-30 transition-colors">
+          −
+        </button>
+        <div className="flex-1 text-center">
+          <div className="text-4xl font-black text-white tabular-nums">{count}</div>
+          <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
+            Aces hit{capped ? ' · cap reached' : ` · $${dollars} raised`}
+          </div>
+        </div>
+        <button onClick={ops.incrementAces} aria-label="Add an ace"
+          className="shrink-0 inline-flex items-center justify-center min-w-20 h-11 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-colors active:scale-[0.97]">
+          +1 Ace
+        </button>
+      </div>
+      <p className="text-[10px] text-zinc-600 mt-3">Tap +1 every time someone hits an ace — the public Brackets tab follows within ~1 min.</p>
+    </Card>
   );
 }
 

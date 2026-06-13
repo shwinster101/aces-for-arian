@@ -1,14 +1,10 @@
 import { useMemo } from 'react';
 import { Shirt, Package } from 'lucide-react';
 import { Card, PageHeader, Stat } from '../ui';
+import { MERCH_ITEMS, MERCH_PRICE } from '../../lib/sheet';
 
 // Canonical adult shirt sizes; any other value a registrant typed gets appended.
 const SHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-const OTHER_ITEMS = [
-  { key: 'sweatbands', label: 'Sweatbands' },
-  { key: 'towels', label: 'Towels' },
-  { key: 'hats', label: 'Hats' },
-];
 
 const toInt = (v) => { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
 
@@ -46,6 +42,10 @@ export default function Merch({ participants, ops }) {
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Merch & Inventory"
         subtitle="Shirt sizes requested at registration drive the order count. Track how many of each item you've ordered and what's left in the gear locker." />
+
+      <p className="text-[10px] text-zinc-600 -mt-1">
+        Extra gear (below) sells for <span className="text-zinc-400 font-bold">${MERCH_PRICE} flat via Venmo @acesforarian</span> on the public Merch tab — buyers are asked to put the item name in their Venmo note. Check Venmo activity/notifications to match payments to orders and keep "In stock" current.
+      </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <Stat label="Shirt requests" value={totalRequested} tone="amber" />
@@ -93,7 +93,7 @@ export default function Merch({ participants, ops }) {
 
       {/* Other gear — no per-person size, just order + stock */}
       <Card className="p-4 sm:p-5">
-        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Package className="w-4 h-4 text-[#fbbf24]" /> Other gear</h3>
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Package className="w-4 h-4 text-[#fbbf24]" /> Other gear — ${MERCH_PRICE} each</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -104,7 +104,7 @@ export default function Merch({ participants, ops }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
-              {OTHER_ITEMS.map(item => {
+              {MERCH_ITEMS.map(item => {
                 const m = get(item.key);
                 return (
                   <tr key={item.key}>

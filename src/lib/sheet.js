@@ -13,13 +13,14 @@
 //   • Photos          -> a tab named "Photos" (image URL | Caption).
 //   • Courts          -> a tab named "Courts" (Court | Now | Next) — live court board.
 //   • Matches         -> a tab named "Matches" (Event | Round | Num | Player A/B | ...) — live scores.
+//   • Aces            -> a tab named "Aces" (Count) — live ace counter.
 //
 // Any tab that doesn't exist yet is simply ignored and callers fall back to
-// static defaults — so tabs can be added one at a time. The last three
-// (SeedBoardPublic, Courts, Matches) are written automatically by the Apps
-// Script in apps-script/ops-write-back.js the first time the admin panel
-// saves seeds, publishes a court board, or posts a match — you don't have to
-// create them by hand.
+// static defaults — so tabs can be added one at a time. The last four
+// (SeedBoardPublic, Courts, Matches, Aces) are written automatically by the
+// Apps Script in apps-script/ops-write-back.js the first time the admin panel
+// saves seeds, publishes a court board, posts a match, or taps +1 on the live
+// ace tracker — you don't have to create them by hand.
 //
 // --- PUBLIC / COMMITTEE DATA SEPARATION ------------------------------------
 // This spreadsheet is link-viewable ("Anyone with the link -> Viewer"), which
@@ -61,6 +62,7 @@ export const SEED_BOARD_PUBLIC_CSV_URL = sheetCsv("SeedBoardPublic");
 export const PHOTOS_CSV_URL  = sheetCsv("Photos");   // gallery / wheel images
 export const COURT_BOARD_CSV_URL = sheetCsv("Courts");  // live court board (Court | Now | Next)
 export const MATCHES_CSV_URL     = sheetCsv("Matches"); // live scores (Event | Round | Num | ...)
+export const ACES_CSV_URL        = sheetCsv("Aces");    // live ace counter (Count)
 
 // --- WRITE-BACK ------------------------------------------------------------
 // Google's CSV export is read-only, so by itself the admin panel can only
@@ -332,3 +334,26 @@ export function mapMatches(rows) {
       };
     });
 }
+
+// --- ACES TAB -> { count } | null -------------------------------------------
+// Single "Count" column, written by writeAces_ in apps-script/ops-write-back.js
+// every time the admin taps +1/-1 on the live Ace Tracker. Returns null until
+// that first tap creates the tab + writes a row, so the public Ace Tracker
+// (App.jsx, Brackets tab) stays hidden rather than showing a premature "0".
+export function mapAces(rows) {
+  if (!rows || rows.length < 2) return null;
+  const n = parseInt(String(rows[1][0] || "").replace(/[^0-9]/g, ""), 10);
+  return { count: isNaN(n) ? 0 : n };
+}
+
+// --- MERCH (Gear Locker) -----------------------------------------------------
+// Standalone items sold for $20 flat via Venmo (see VENMO_URL in App.jsx).
+// Shared between the public Gear Locker cards and the admin's "Other gear"
+// order/stock planner (src/admin/sections/Merch.jsx) so the two never drift —
+// the public site can't sell something the gear-locker table isn't tracking.
+export const MERCH_PRICE = 20;
+export const MERCH_ITEMS = [
+  { key: "hat", label: "Dad Hat", desc: "Embroidered cardinal/gold on black cap." },
+  { key: "wristbands", label: "Wristbands", desc: "Thick cardinal red bands with gold trim." },
+  { key: "towel", label: "Court Towel", desc: "Cardinal & gold sideline towel." },
+];

@@ -178,7 +178,7 @@ function OpsConsole({ onLock }) {
           </a>
         </p>
         <button
-          onClick={() => { if (window.confirm("Clear ALL ops data saved on THIS device — check-ins, payments, walk-ups, seeds, matches & merch? This can't be undone. (The public roster from the Google Sheet is unaffected.)")) ops.clearOps(); }}
+          onClick={() => { if (window.confirm("Clear ALL ops data saved on THIS device — check-ins, payments, walk-ups, seeds, matches, merch & the ace counter? This can't be undone. (The public roster from the Google Sheet is unaffected.)")) ops.clearOps(); }}
           className="text-zinc-700 hover:text-rose-400 underline underline-offset-2 transition-colors">
           Clear this device's ops data
         </button>

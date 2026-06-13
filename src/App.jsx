@@ -5,7 +5,10 @@ import {
   SEED_BOARD_PUBLIC_CSV_URL,
   PHOTOS_CSV_URL,
   MATCHES_CSV_URL,
+  ACES_CSV_URL,
   SHEET_WRITE_URL,
+  MERCH_ITEMS,
+  MERCH_PRICE,
   fallbackRoster,
   parseCSV,
   mapRoster,
@@ -13,6 +16,7 @@ import {
   mapSeeds,
   mapGallery,
   mapMatches,
+  mapAces,
 } from './lib/sheet';
 import {
   Trophy, 
@@ -61,6 +65,18 @@ function BrandLogo({ className = "" }) {
       <img src="/ar-logo.png" alt="Aces for Arian logo" className="w-[82%] h-[82%] object-contain"
         draggable={false} onError={() => setOk(false)} />
     </div>
+  );
+}
+
+// Tennis-ball glyph for the Live Ace Tracker — drawn in brand colors (amber
+// ball, maroon seams) so it reads as "tennis" without a new accent color.
+function TennisBallIcon({ className = "w-12 h-12" }) {
+  return (
+    <svg viewBox="0 0 100 100" className={className}>
+      <circle cx="50" cy="50" r="46" fill="#fbbf24" />
+      <path d="M10,28 C32,44 32,56 10,72" stroke="#5c1313" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <path d="M90,28 C68,44 68,56 90,72" stroke="#5c1313" strokeWidth="6" fill="none" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -231,8 +247,29 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // The CSV data pipeline (Google Sheet URLs, parsing, mapping) is shared with
 // the ops admin panel — see src/lib/sheet.js for the full tab-by-tab rundown.
 
-// Where the header "Donate" button sends people (currently your Venmo).
-const DONATE_URL = "https://venmo.com/u/ashwiny";
+// Tournament Venmo — entry fees + donations. The URL is the account's
+// QR-code permalink (opens the Venmo app to pay @acesforarian directly when
+// tapped on mobile — handy for courtside payments), so it doubles as both
+// the "Donate" link and the Step 2 entry-fee link below.
+const VENMO_HANDLE = "@acesforarian";
+const VENMO_URL = "https://venmo.com/code?user_id=4618810715800962447&created=1781373203.858971&printed=1";
+// Where the header "Donate" button sends people.
+const DONATE_URL = VENMO_URL;
+
+// Icons for the Gear Locker's standalone items — keyed by MERCH_ITEMS[].key
+// (see "MERCH (Gear Locker)" in lib/sheet.js), so admin + public always show
+// the same item set.
+const MERCH_ICONS = {
+  hat: <path d="M50,110 C50,60 150,60 150,110 Z M40,112 Q100,105 160,112 C170,122 155,128 100,123 C45,128 30,122 40,112 Z" fill="#222" />,
+  wristbands: <rect x="60" y="70" width="80" height="60" rx="5" fill="#5c1313" />,
+  towel: (
+    <>
+      <rect x="45" y="35" width="110" height="130" rx="10" fill="#222" />
+      <rect x="45" y="70" width="110" height="14" fill="#5c1313" />
+      <rect x="45" y="120" width="110" height="14" fill="#fbbf24" />
+    </>
+  ),
+};
 
 // Baseline seeding: prior A4A results first, then public UTR / WTN where players
 // have them, then committee + community refinement. result/utr/wtn are optional.
@@ -617,6 +654,8 @@ export default function App() {
   const [matchesLive, setMatchesLive] = useState(false);
   const [matchesUpdated, setMatchesUpdated] = useState('');
   const [matchesLastOkAt, setMatchesLastOkAt] = useState(0);
+  const [aces, setAces] = useState(0);              // live ace count, from the "Aces" tab
+  const [acesLive, setAcesLive] = useState(false);
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
   const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
@@ -684,6 +723,26 @@ export default function App() {
           setMatchesUpdated(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
           setMatchesLastOkAt(Date.now());
         }
+      })
+      .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
+      .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
+    load();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
+  // Live ace counter — same poll/backoff shape as Matches above. Hidden
+  // entirely (mapAces returns null) until the admin's first +1 creates the
+  // "Aces" tab, so the public Brackets tab never shows a premature "0".
+  useEffect(() => {
+    if (!ACES_CSV_URL) return;
+    let cancelled = false, timer, delay = 60000;
+    const load = () => fetch(ACES_CSV_URL)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(text => {
+        if (cancelled) return;
+        delay = 60000;
+        const a = mapAces(parseCSV(text));
+        if (a) { setAces(a.count); setAcesLive(true); }
       })
       .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
       .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
@@ -802,6 +861,11 @@ export default function App() {
   const boardLive = useMatchBoard;
   const boardFresh = matchesFresh;
   const boardUpdated = matchesUpdated;
+
+  // Live Ace Tracker: $5/ace toward the scholarship, capped at $500.
+  const aceDollars = Math.min(aces * 5, 500);
+  const aceCapped = aces * 5 >= 500;
+  const acePct = Math.min((aces * 5 / 500) * 100, 100);
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
@@ -1021,21 +1085,25 @@ export default function App() {
                     <h4 className="text-base font-bold text-white">Send the $40 entry fee</h4>
                   </div>
                   <div className="bg-black rounded-xl p-4 text-xs font-mono text-zinc-300 space-y-3 border border-zinc-800/50">
-                    <div className="flex justify-between items-center">
+                    <a
+                      href={VENMO_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex justify-between items-center -m-1 p-1 rounded-lg hover:bg-zinc-900/60 active:bg-zinc-900 transition-colors"
+                    >
                       <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Venmo</span>
-                      <strong className="text-white text-sm">@ashwiny</strong>
-                    </div>
-                    <div className="border-t border-zinc-800"></div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Zelle</span>
-                      <strong className="text-white text-[11px] break-all text-right">ashwinyedavalli@gmail.com</strong>
-                    </div>
+                      <span className="flex items-center gap-1.5 text-[#fbbf24]">
+                        <strong className="text-sm">{VENMO_HANDLE}</strong>
+                        <ExternalLink className="h-3 w-3" />
+                      </span>
+                    </a>
                     <div className="border-t border-zinc-800"></div>
                     <div className="flex justify-between items-center">
                       <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Cash</span>
                       <strong className="text-white text-sm">In person</strong>
                     </div>
                   </div>
+                  <p className="text-[10px] text-zinc-600 mt-2">Tap Venmo above to pay @acesforarian directly — works great courtside on mobile.</p>
                 </div>
               </div>
             </div>
@@ -1268,6 +1336,36 @@ export default function App() {
             ========================================== */}
         {activeTab === 'draws' && (
           <div className="space-y-6 animate-fade-in">
+
+            {/* Live Ace Tracker — every ace hit on a live court adds $5
+                toward Arian's scholarship, up to $500. Hidden until the
+                admin's first +1 (see mapAces in lib/sheet.js). */}
+            {acesLive && (
+              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-5 md:gap-8">
+                  <div className="flex items-center gap-4 shrink-0">
+                    <TennisBallIcon className="w-14 h-14 md:w-16 md:h-16 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Live Ace Tracker</div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl md:text-5xl font-black text-white tabular-nums">{aces}</span>
+                        <span className="text-sm text-zinc-400 uppercase tracking-wider font-bold">{aces === 1 ? 'Ace' : 'Aces'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 w-full">
+                    <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                      <span className="text-xs text-zinc-400">$5 per ace, straight to the scholarship fund</span>
+                      <span className="text-sm font-black text-white">${aceDollars} <span className="text-zinc-500 font-normal text-xs">/ $500</span></span>
+                    </div>
+                    <div className="h-2.5 bg-black/50 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#fbbf24] rounded-full transition-all duration-500" style={{ width: `${acePct}%` }}></div>
+                    </div>
+                    {aceCapped && <p className="text-[10px] text-emerald-400 mt-1.5 font-bold uppercase tracking-wider">Cap reached — thanks for bringing the heat!</p>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Live court board — answers "when is my next match?" */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
@@ -1642,30 +1740,54 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="text-center md:text-left">
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">2026 Gear Locker</h2>
-                <p className="text-xs text-zinc-400 mt-1">To order standalone merch, text Ashwin or add it to your Venmo payment details.</p>
+                <p className="text-xs text-zinc-400 mt-1">Your tournament tee is included with entry. Grab extra gear below for ${MERCH_PRICE} flat, paid via Venmo.</p>
               </div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { title: 'Player Tee', price: '$25', desc: 'Included with entry. Eagle Black.', svg: <path d="M40,50 L55,40 L70,48 L130,48 L145,40 L160,50 L150,85 L135,80 L135,170 L65,170 L65,80 L50,85 Z" fill="#222" /> },
-                { title: 'Dad Hat', price: '$20', desc: 'Embroidered cardinal/gold on black cap.', svg: <path d="M50,110 C50,60 150,60 150,110 Z M40,112 Q100,105 160,112 C170,122 155,128 100,123 C45,128 30,122 40,112 Z" fill="#222" /> },
-                { title: 'Wristbands', price: '$10', desc: 'Thick cardinal red bands with gold trim.', svg: <rect x="60" y="70" width="80" height="60" rx="5" fill="#5c1313" /> }
-              ].map((item, i) => (
-                <div key={i} className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:border-zinc-700 transition">
-                  <div>
-                    <div className="bg-[#0a0a0a] rounded-2xl aspect-square flex items-center justify-center mb-6 border border-zinc-900 shadow-inner">
-                      <svg viewBox="0 0 200 200" className="w-32 h-32 text-zinc-800">{item.svg}</svg>
-                    </div>
-                    <div className="flex justify-between items-baseline mb-2">
-                      <h3 className="text-base font-bold text-white">{item.title}</h3>
-                      <span className="text-[#fbbf24] font-mono font-bold text-sm">{item.price}</span>
-                    </div>
-                    <p className="text-xs text-zinc-500 mb-2">{item.desc}</p>
-                  </div>
+
+            {/* Included with entry */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex items-center gap-5">
+              <div className="bg-[#0a0a0a] rounded-2xl w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center border border-zinc-900 shadow-inner">
+                <svg viewBox="0 0 200 200" className="w-14 h-14 sm:w-16 sm:h-16 text-zinc-800">
+                  <path d="M40,50 L55,40 L70,48 L130,48 L145,40 L160,50 L150,85 L135,80 L135,170 L65,170 L65,80 L50,85 Z" fill="#222" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h3 className="text-base font-bold text-white">Player Tee</h3>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">Included with entry</span>
                 </div>
-              ))}
+                <p className="text-xs text-zinc-500">Eagle Black, in the size you picked at registration — pick it up day-of at the gear locker.</p>
+              </div>
             </div>
+
+            {/* Extra gear — flat-priced, Buy via Venmo */}
+            <div>
+              <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Extra Gear — ${MERCH_PRICE} each</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {MERCH_ITEMS.map((item) => (
+                  <div key={item.key} className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+                    <div>
+                      <div className="bg-[#0a0a0a] rounded-2xl aspect-square flex items-center justify-center mb-6 border border-zinc-900 shadow-inner">
+                        <svg viewBox="0 0 200 200" className="w-32 h-32 text-zinc-800">{MERCH_ICONS[item.key]}</svg>
+                      </div>
+                      <div className="flex justify-between items-baseline mb-2">
+                        <h3 className="text-base font-bold text-white">{item.label}</h3>
+                        <span className="text-[#fbbf24] font-mono font-bold text-sm">${MERCH_PRICE}</span>
+                      </div>
+                      <p className="text-xs text-zinc-500 mb-4">{item.desc}</p>
+                    </div>
+                    <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-colors">
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>Buy — ${MERCH_PRICE}</span>
+                    </a>
+                    <p className="text-[10px] text-zinc-600 mt-2 text-center">Add "{item.label}" to your Venmo note so we know what to bring.</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-[10px] text-zinc-600 text-center">Pay via Venmo {VENMO_HANDLE} — gear is handed out at the locker once payment clears.</p>
           </div>
         )}
 

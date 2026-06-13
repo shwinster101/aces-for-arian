@@ -21,6 +21,9 @@
 //   • Match scores   -> mirrors each match edit into a "Matches" tab, which
 //                       the public "Live Scores" section reads live via
 //                       MATCHES_CSV_URL + mapMatches.
+//   • Ace counter    -> writes a single running total into an "Aces" tab,
+//                       which the public "Live Ace Tracker" (Brackets tab)
+//                       reads live via ACES_CSV_URL + mapAces.
 //   • Registrations / check-ins / payments are intentionally NOT handled
 //     here — see the note at the bottom of this file for why, and what it
 //     would take to add them safely.
@@ -99,6 +102,7 @@ function doPost(e) {
       case 'court-board':  writeCourtBoard_(body.payload); break;
       case 'match':        writeMatch_(body.payload); break;
       case 'match-delete': deleteMatch_(body.payload); break;
+      case 'aces':         writeAces_(body.payload); break;
       // 'participant' / 'walk-up': see the note at the bottom of this file.
     }
   } catch (err) {
@@ -146,7 +150,7 @@ function handleIdea_(payload) {
 // token in hand, the raw roster (email/phone/payment) NEVER leaves this script.
 // The Cloudflare Function filters again on its side (defense in depth).
 var READ_TOKEN = 'a4a-read-9aff116498180a56dfd50efb4ec09a20'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
-var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches']; // '' = roster (first tab)
+var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces']; // '' = roster (first tab)
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
@@ -216,6 +220,7 @@ function rowsToCsv_(rows) {
 var SEED_HEADERS  = ['Name', 'Event', 'Rank'];
 var COURT_HEADERS = ['Court', 'Now', 'Next'];
 var MATCH_HEADERS = ['Event', 'Round', 'Num', 'Player A', 'Player B', 'Court', 'Status', 'Score', 'Winner', 'ID'];
+var ACES_HEADERS  = ['Count'];
 
 // --------------------------------------------------------------------------
 // WHY SEEDS ARE SANITIZED HERE, NOT JUST CLIENT-SIDE
@@ -289,6 +294,16 @@ function writeMatch_(patch) {
   if ('winner' in patch) next[8] = patch.winner;
   if (idx >= 0) rows[idx] = next; else rows.push(next);
   writeRows_(sheet, rows);
+}
+
+// The Live Ace Tracker sends its current absolute total on every +1/-1 tap
+// (not a delta), so a duplicate/late no-cors POST can't double-count — just
+// overwrite the single data row with whatever total the admin device has now.
+function writeAces_(payload) {
+  var sheet = sheetByName_('Aces', ACES_HEADERS);
+  var n = parseInt(payload && payload.count, 10);
+  if (isNaN(n) || n < 0) n = 0;
+  writeRows_(sheet, [[n]]);
 }
 
 // Drop a match by its admin id when it's removed from the draw, so it stops

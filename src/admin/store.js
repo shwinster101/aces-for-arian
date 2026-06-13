@@ -47,6 +47,7 @@ const initialStore = () => ({
   matches: [],                               // [{ id, event, round, num, a, b, court, status, score, winner }]
   courtBoard: emptyCourtBoard(),
   merch: {},                                 // inventory: key ('shirt:M' | 'sweatbands' | …) -> { order, stock }
+  aces: 0,                                   // live "Ace Tracker" running total — see incrementAces/decrementAces
 });
 
 function load() {
@@ -63,6 +64,7 @@ function load() {
       matches: Array.isArray(parsed.matches) ? parsed.matches : [],
       courtBoard: parsed.courtBoard?.courts ? parsed.courtBoard : emptyCourtBoard(),
       merch: parsed.merch && typeof parsed.merch === 'object' ? parsed.merch : {},
+      aces: typeof parsed.aces === 'number' && parsed.aces >= 0 ? parsed.aces : 0,
     };
   } catch {
     return initialStore();
@@ -196,6 +198,20 @@ export function useOpsStore() {
     setStore(s => ({ ...s, merch: { ...s.merch, [key]: { order: 0, stock: 0, ...s.merch[key], ...patch } } }));
   };
 
+  // Live "Ace Tracker" — courtside +1/-1, pushed to the sheet as an absolute
+  // total (not a delta) so a duplicate/late no-cors POST can't double-count.
+  // The public Brackets tab polls ACES_CSV_URL for "$5/ace, capped at $500".
+  const incrementAces = () => {
+    let next;
+    setStore(s => { next = (s.aces || 0) + 1; return { ...s, aces: next }; });
+    pushToSheet('aces', { count: next });
+  };
+  const decrementAces = () => {
+    let next;
+    setStore(s => { next = Math.max(0, (s.aces || 0) - 1); return { ...s, aces: next }; });
+    pushToSheet('aces', { count: next });
+  };
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
@@ -212,6 +228,7 @@ export function useOpsStore() {
     setSeeds,
     addMatch, updateMatch, removeMatch, moveMatch,
     setMerch,
+    incrementAces, decrementAces,
     exportJSON, clearOps,
   };
 }
