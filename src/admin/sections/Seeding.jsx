@@ -142,7 +142,7 @@ export function DrawEditor({ event, ops, namesInEvent }) {
   return (
     <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Swords className="w-4 h-4 text-[#fbbf24]" /> Draw — {event} matches</h3>
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Swords className="w-4 h-4 text-[#fbbf24]" /> Match order — {event}</h3>
         <button onClick={() => ops.addMatch(event)} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
           <Plus className="w-3.5 h-3.5" /> Add match
         </button>

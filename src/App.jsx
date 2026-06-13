@@ -4,8 +4,6 @@ import {
   CONFIG_CSV_URL,
   SEED_BOARD_PUBLIC_CSV_URL,
   PHOTOS_CSV_URL,
-  COURT_BOARD,
-  COURT_BOARD_CSV_URL,
   MATCHES_CSV_URL,
   fallbackRoster,
   parseCSV,
@@ -13,7 +11,6 @@ import {
   mapConfig,
   mapSeeds,
   mapGallery,
-  mapCourtBoard,
   mapMatches,
 } from './lib/sheet';
 import {
@@ -562,7 +559,6 @@ export default function App() {
   const heroLeft = heroSwap ? HERO_SET_B : HERO_SET_A;
   const heroRight = heroSwap ? HERO_SET_A : HERO_SET_B;
   const [roster, setRoster] = useState(fallbackRoster);
-  const [courtBoard, setCourtBoard] = useState(COURT_BOARD);
   const [rosterLive, setRosterLive] = useState(false);
   const [config, setConfig] = useState({});        // from the "Config" tab
   const [seeds, setSeeds] = useState(topSeeds);     // from the sanitized "SeedBoardPublic" tab — never raw committee data
@@ -620,28 +616,9 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Live court board from a published sheet. Polls every 60s; on a failed fetch
-  // it backs off (60s -> 120s -> 240s max) instead of hammering, resetting to
-  // 60s on success. Falls back to the static COURT_BOARD until live data lands.
-  useEffect(() => {
-    if (!COURT_BOARD_CSV_URL) return;
-    let cancelled = false, timer, delay = 60000;
-    const load = () => fetch(COURT_BOARD_CSV_URL)
-      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
-      .then(text => {
-        if (cancelled) return;
-        delay = 60000; // healthy fetch -> normal cadence
-        const courts = mapCourtBoard(parseCSV(text));
-        if (courts) setCourtBoard({ live: true, updated: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), lastOkAt: Date.now(), courts });
-      })
-      .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
-      .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
-    load();
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, []);
-
-  // Live match scores from a published sheet. Same 60s poll + backoff as the
-  // court board. Hidden entirely until the "Matches" tab has rows.
+  // Live match scores from a published sheet. Polls every 60s; on a failed
+  // fetch it backs off (60s -> 120s -> 240s max), resetting to 60s on success.
+  // Hidden entirely until the "Matches" tab has rows.
   useEffect(() => {
     if (!MATCHES_CSV_URL) return;
     let cancelled = false, timer, delay = 60000;
@@ -755,7 +732,6 @@ export default function App() {
   // A feed counts as "Live" only if its last good fetch was under 3 min ago;
   // otherwise the badge honestly shows "reconnecting…".
   const FRESH_MS = 180000;
-  const courtFresh = courtBoard.live && courtBoard.lastOkAt && now - courtBoard.lastOkAt < FRESH_MS;
   const matchesFresh = matchesLive && matchesLastOkAt && now - matchesLastOkAt < FRESH_MS;
 
   // Courts are assigned dynamically (the next match goes to whichever court
@@ -770,12 +746,12 @@ export default function App() {
     .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
   const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
-  // Board prefers match-derived data once matches are posted; else the manual
-  // Courts tab; else nothing (placeholder).
+  // The board is entirely match-derived: live once matches are posted, else a
+  // pre-tournament placeholder.
   const useMatchBoard = matchesLive && matches.length > 0;
-  const boardLive = useMatchBoard || courtBoard.live;
-  const boardFresh = useMatchBoard ? matchesFresh : courtFresh;
-  const boardUpdated = useMatchBoard ? matchesUpdated : courtBoard.updated;
+  const boardLive = useMatchBoard;
+  const boardFresh = matchesFresh;
+  const boardUpdated = matchesUpdated;
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
@@ -1274,65 +1250,40 @@ export default function App() {
                       )}
                     </div>
                   )}
-                  {useMatchBoard ? (
-                    <>
-                      <p className="text-sm text-zinc-400 mb-4 max-w-2xl leading-relaxed">
-                        Courts open up as matches finish, so the <span className="text-zinc-200 font-semibold">order</span> is what to watch — the next match goes to whichever court frees up first.
-                      </p>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">On court now</div>
-                      {livePlaying.length === 0 ? (
-                        <p className="text-xs text-zinc-500 mb-5">No match on a court yet — first up is in the queue below.</p>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-                          {livePlaying.map((m, i) => (
-                            <div key={i} className="bg-[#111] border border-emerald-500/20 rounded-xl p-4">
-                              <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">{m.court ? `Court ${m.court}` : 'On court'}</div>
-                              <div className="text-sm text-zinc-100 font-bold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</div>
-                              {m.score && <div className="text-xs text-zinc-400 font-mono mt-1">{m.score}</div>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-baseline justify-between gap-2 mb-2">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Up next</div>
-                        <div className="text-[10px] text-zinc-600">called to the next open court</div>
-                      </div>
-                      {upNextQueue.length === 0 ? (
-                        <p className="text-xs text-zinc-500">Nothing queued — check back as rounds advance.</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {upNextQueue.slice(0, 8).map((m, i) => (
-                            <div key={i} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
-                              <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black ${i === 0 ? 'bg-[#fbbf24] text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>{i + 1}</span>
-                              <span className="text-sm text-zinc-200 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
-                              {i === 0 && <span className="ml-auto shrink-0 text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
-                            </div>
-                          ))}
-                          {upNextQueue.length > 8 && <p className="text-[10px] text-zinc-600 pl-1 pt-1">+{upNextQueue.length - 8} more in the queue</p>}
-                        </div>
-                      )}
-                    </>
+                  <p className="text-sm text-zinc-400 mb-4 max-w-2xl leading-relaxed">
+                    Courts open up as matches finish, so the <span className="text-zinc-200 font-semibold">order</span> is what to watch — the next match goes to whichever court frees up first.
+                  </p>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">On court now</div>
+                  {livePlaying.length === 0 ? (
+                    <p className="text-xs text-zinc-500 mb-5">No match on a court yet — first up is in the queue below.</p>
                   ) : (
-                    <>
-                      <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
-                        Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {courtBoard.courts.map(c => (
-                          <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] uppercase tracking-wider text-emerald-400 w-11 shrink-0">On now</span>
-                              <span className="text-sm text-zinc-100 font-bold truncate">{c.now || '—'}</span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800/60">
-                              <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-11 shrink-0">Next</span>
-                              <span className="text-sm text-zinc-400 truncate">{c.next || '—'}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+                      {livePlaying.map((m, i) => (
+                        <div key={i} className="bg-[#111] border border-emerald-500/20 rounded-xl p-4">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">{m.court ? `Court ${m.court}` : 'On court'}</div>
+                          <div className="text-sm text-zinc-100 font-bold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</div>
+                          {m.score && <div className="text-xs text-zinc-400 font-mono mt-1">{m.score}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-baseline justify-between gap-2 mb-2">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Up next</div>
+                    <div className="text-[10px] text-zinc-600">called to the next open court</div>
+                  </div>
+                  {upNextQueue.length === 0 ? (
+                    <p className="text-xs text-zinc-500">Nothing queued — check back as rounds advance.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {upNextQueue.slice(0, 8).map((m, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                          <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black ${i === 0 ? 'bg-[#fbbf24] text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>{i + 1}</span>
+                          <span className="text-sm text-zinc-200 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
+                          {i === 0 && <span className="ml-auto shrink-0 text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
+                        </div>
+                      ))}
+                      {upNextQueue.length > 8 && <p className="text-[10px] text-zinc-600 pl-1 pt-1">+{upNextQueue.length - 8} more in the queue</p>}
+                    </div>
                   )}
                 </>
               ) : (

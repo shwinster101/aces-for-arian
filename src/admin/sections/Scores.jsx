@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Grid3x3, Save, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Card, PageHeader, Pills, TextInput, Select, EmptyState } from '../ui';
-import { SHEET_WRITE_URL } from '../../lib/sheet';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -28,9 +27,7 @@ export default function Scores({ ops }) {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Scores & Courts" subtitle="Update live scores as matches finish, reassign courts on the fly, and keep the public court board current." />
-
-      <CourtBoardEditor ops={ops} />
+      <PageHeader title="Scores & Courts" subtitle="Work the queue in playing order: set a match live + assign its court when it goes on, then tap the winner and enter the score. The public board follows automatically. Reorder the queue from Seeding & Draws." />
 
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -87,58 +84,3 @@ function ScoreRow({ m, ops }) {
   );
 }
 
-function CourtBoardEditor({ ops }) {
-  const { courts, updated } = ops.store.courtBoard;
-  // Local draft so keystrokes don't republish (and re-timestamp) on every
-  // character — "Publish" commits it to the store ops.setCourtBoard manages.
-  // This component is the sole writer of courtBoard, so the lazy initial
-  // value never goes stale across re-renders.
-  const [draft, setDraft] = useState(() => courts);
-  const [dirty, setDirty] = useState(false);
-
-  const patch = (court, field, value) => {
-    setDraft(d => d.map(c => (c.court === court ? { ...c, [field]: value } : c)));
-    setDirty(true);
-  };
-
-  const publish = () => { ops.setCourtBoard(draft); setDirty(false); };
-
-  return (
-    <Card className="p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Grid3x3 className="w-4 h-4 text-[#fbbf24]" /> Live court board</h3>
-        <button onClick={publish} disabled={!dirty}
-          className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-black bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg px-3.5 py-2 transition-colors">
-          <Save className="w-3.5 h-3.5" /> Publish
-        </button>
-      </div>
-      <p className="text-[11px] text-zinc-500 mb-3 leading-relaxed">
-        <span className="text-zinc-400">Once you post match scores below, the public court board fills in from them automatically</span> — by match number, advancing as scores land. This manual board only shows on the public site <span className="text-zinc-400">before any match is posted</span> (or as an override).{' '}
-        {SHEET_WRITE_URL
-          ? (updated ? `Last published ${updated}.` : 'Not published yet.')
-          : <>Saved on this device — deploy <code className="text-zinc-400">apps-script/ops-write-back.js</code> + set <code className="text-zinc-400">SHEET_WRITE_URL</code> to push live.</>}
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        {draft.map(c => (
-          <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
-            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
-            <div className="space-y-1.5">
-              <LabeledInput label="Now" value={c.now} onChange={(v) => patch(c.court, 'now', v)} />
-              <LabeledInput label="Next" value={c.next} onChange={(v) => patch(c.court, 'next', v)} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function LabeledInput({ label, value, onChange }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-9 shrink-0">{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="e.g. #12 Alex/Sai vs Roy/Gus"
-        className="flex-1 min-w-0 bg-black border border-zinc-800 rounded-lg min-h-11 px-2.5 py-1.5 text-xs text-zinc-200 outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-700" />
-    </div>
-  );
-}

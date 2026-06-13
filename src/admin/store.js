@@ -184,12 +184,6 @@ export function useOpsStore() {
     pushes.forEach(p => pushToSheet('match', p));
   };
 
-  const setCourtBoard = (courts) => {
-    const updated = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    setStore(s => ({ ...s, courtBoard: { updated, courts } }));
-    pushToSheet('court-board', { updated, courts });
-  };
-
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   return {
@@ -198,7 +192,6 @@ export function useOpsStore() {
     addWalkUp, removeWalkUp,
     setSeeds,
     addMatch, updateMatch, removeMatch, moveMatch,
-    setCourtBoard,
     exportJSON,
   };
 }
