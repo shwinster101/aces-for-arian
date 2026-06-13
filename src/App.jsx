@@ -562,6 +562,7 @@ export default function App() {
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
   const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
+  const [matchQuery, setMatchQuery] = useState(''); // day-of "find my match" search
   const navRef = useRef(null);
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
@@ -731,6 +732,47 @@ export default function App() {
   const FRESH_MS = 180000;
   const courtFresh = courtBoard.live && courtBoard.lastOkAt && now - courtBoard.lastOkAt < FRESH_MS;
   const matchesFresh = matchesLive && matchesLastOkAt && now - matchesLastOkAt < FRESH_MS;
+
+  // Per-court "on now / next" derived from the posted matches, ordered by match
+  // number: on-now = a live match (else the earliest still-to-play), next = the
+  // one after it. Final matches drop off — so entering a score auto-advances the
+  // board to the next match by number. This is the source of truth for the
+  // public court board whenever matches have been posted (matchesLive); the
+  // manually-typed Courts tab is the fallback before any matches exist.
+  const courtsFromMatches = Array.from({ length: 9 }, (_, i) => {
+    const c = i + 1;
+    const list = matches
+      .filter(m => parseInt(String(m.court).replace(/\D/g, ''), 10) === c)
+      .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+    const pending = list.filter(m => m.status !== 'final');
+    const onNow = pending.find(m => m.status === 'live') || pending[0] || null;
+    const nextUp = pending.find(m => m !== onNow) || null;
+    return { court: c, now: onNow, next: nextUp };
+  });
+  const matchLabel = (m) => m ? `${m.a || '?'} vs ${m.b || '?'}${m.status === 'live' && m.score ? ` (${m.score})` : ''}` : '';
+  const onNowSet = new Set(courtsFromMatches.map(c => c.now).filter(Boolean));
+  const nextUpSet = new Set(courtsFromMatches.map(c => c.next).filter(Boolean));
+
+  // Board prefers match-derived data once matches are posted; else the manual
+  // Courts tab; else nothing (placeholder).
+  const useMatchBoard = matchesLive && matches.length > 0;
+  const boardLive = useMatchBoard || courtBoard.live;
+  const boardFresh = useMatchBoard ? matchesFresh : courtFresh;
+  const boardUpdated = useMatchBoard ? matchesUpdated : courtBoard.updated;
+  const boardCourts = useMatchBoard
+    ? courtsFromMatches.map(c => ({ court: c.court, now: matchLabel(c.now), next: matchLabel(c.next) }))
+    : courtBoard.courts;
+
+  // "Find my match" — look up the player's posted matches and say where/when.
+  const myMatches = matchQuery.trim().length >= 2
+    ? matches.filter(m => `${m.a || ''} ${m.b || ''}`.toLowerCase().includes(matchQuery.trim().toLowerCase()))
+    : [];
+  const matchWhere = (m) =>
+    m.status === 'live' ? { label: `On Court ${m.court} now`, cls: 'text-emerald-400' }
+    : m.status === 'final' ? { label: `Final${m.score ? ` · ${m.score}` : ''}`, cls: 'text-[#fbbf24]' }
+    : onNowSet.has(m) ? { label: `On deck · Court ${m.court}`, cls: 'text-emerald-400/80' }
+    : nextUpSet.has(m) ? { label: `Up next · Court ${m.court}`, cls: 'text-zinc-100' }
+    : { label: `Scheduled${m.court ? ` · Court ${m.court}` : ''}${m.num ? ` · Match ${m.num}` : ''}`, cls: 'text-zinc-400' };
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] text-zinc-200 font-sans flex flex-col selection:bg-[#fbbf24] selection:text-[#5c1313]">
@@ -1188,18 +1230,41 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${courtFresh ? 'bg-emerald-400 animate-pulse' : courtBoard.live ? 'bg-amber-400' : 'bg-zinc-600'}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${boardFresh ? 'bg-emerald-400 animate-pulse' : boardLive ? 'bg-amber-400' : 'bg-zinc-600'}`}></span>
                   <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Court Board</h2>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-500">{courtFresh ? `Updated ${courtBoard.updated}` : courtBoard.live ? 'Reconnecting…' : 'Goes live tournament morning'}</span>
+                <span className="text-[10px] font-mono text-zinc-500">{boardFresh ? `Updated ${boardUpdated}` : boardLive ? 'Reconnecting…' : 'Goes live tournament morning'}</span>
               </div>
-              {courtBoard.live ? (
+              {boardLive ? (
                 <>
+                  {/* Find my match — type a name, instantly see your court + when */}
+                  {useMatchBoard && (
+                    <div className="mb-5">
+                      <input value={matchQuery} onChange={(e) => setMatchQuery(e.target.value)}
+                        placeholder="Find your match — type your name"
+                        className="w-full bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+                      {matchQuery.trim().length >= 2 && (
+                        <div className="mt-2 space-y-1.5">
+                          {myMatches.length === 0 ? (
+                            <p className="text-xs text-zinc-500 px-1">No match posted for "{matchQuery.trim()}" yet — check the spelling, or it may not be up yet.</p>
+                          ) : myMatches.map((m, i) => {
+                            const w = matchWhere(m);
+                            return (
+                              <div key={i} className="flex items-center justify-between gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                                <span className="text-xs text-zinc-300 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
+                                <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider ${w.cls}`}>{w.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
-                    Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
+                    What's <span className="text-emerald-400 font-semibold">on now</span> and <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts — the board advances by match number as scores come in.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {courtBoard.courts.map(c => (
+                    {boardCourts.map(c => (
                       <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
                         <div className="flex items-center gap-2">
@@ -1216,7 +1281,7 @@ export default function App() {
                 </>
               ) : (
                 <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl">
-                  The board lights up tournament morning — once play starts, find your match number here to see what's <span className="text-emerald-400/80 font-semibold">on now</span> and <span className="text-zinc-300 font-semibold">up next</span> across all 9 courts.
+                  The board lights up tournament morning — once play starts, type your name above to jump straight to your court, and see what's <span className="text-emerald-400/80 font-semibold">on now</span> and <span className="text-zinc-300 font-semibold">up next</span> across all 9 courts.
                 </p>
               )}
             </div>
