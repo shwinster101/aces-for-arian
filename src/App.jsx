@@ -991,6 +991,7 @@ export default function App() {
               {/* Right slideshow */}
               <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-60" />
             </div>
+            <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
 
             {/* How to enter — register, then pay */}
             <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8">
@@ -1514,6 +1515,7 @@ export default function App() {
                 <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Memories</h3>
               </div>
               <Slideshow images={gallery} />
+              <div className="px-3 pt-2 pb-1 text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</div>
             </div>
 
             {/* Full albums on Google Photos (one per year) */}
