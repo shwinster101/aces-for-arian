@@ -677,6 +677,11 @@ export default function App() {
   // Event counts ("Singles & Doubles" players count in both) + the filtered view.
   const singlesCount = roster.filter(p => p.events.includes('Singles')).length;
   const doublesCount = roster.filter(p => p.events.includes('Doubles')).length;
+  // Field-filling momentum: doubles run as 16 teams (~2 players each), singles
+  // as a 32 draw. Countdown to the July 6 sign-up close, live off the heartbeat.
+  const doublesTeams = Math.ceil(doublesCount / 2);
+  const daysLeft = Math.ceil((new Date('2026-07-06T23:59:59') - now) / 86400000);
+  const closeText = daysLeft > 1 ? `in ${daysLeft} days` : daysLeft === 1 ? 'tomorrow' : daysLeft === 0 ? 'today' : 'closed';
   const filteredRoster =
     ledgerFilter === 'singles' ? roster.filter(p => p.events.includes('Singles'))
     : ledgerFilter === 'doubles' ? roster.filter(p => p.events.includes('Doubles'))
@@ -890,7 +895,14 @@ export default function App() {
                     <ExternalLink className="h-4 w-4" />
                   </a>
                   <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
-                  <span className="text-xs text-zinc-500">Sign-ups close July 6</span>
+                </div>
+                {/* Field-filling momentum — social proof + scarcity off the live roster */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+                  <span><strong className="text-[#fbbf24] font-bold">{doublesTeams}</strong><span className="text-zinc-600">/16</span> doubles teams</span>
+                  <span className="text-zinc-700">·</span>
+                  <span><strong className="text-[#fbbf24] font-bold">{singlesCount}</strong><span className="text-zinc-600">/32</span> singles</span>
+                  <span className="text-zinc-700">·</span>
+                  <span className="text-zinc-500">sign-ups close <strong className="text-zinc-300 font-semibold">{closeText}</strong> (July 6)</span>
                 </div>
               </div>
 
