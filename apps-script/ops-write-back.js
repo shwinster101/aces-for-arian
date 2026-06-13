@@ -91,7 +91,7 @@ function doPost(e) {
     // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
     // Obfuscation only (the token ships in the public bundle), but it stops
     // drive-by writes from anyone who merely opens /admin.html.
-    if (body.token !== 'a4a-49010c3b149e53e25be43297') {
+    if (body.token !== 'a4a-write-bb77a492cb69cf78b5b48463d19ec3c7') {
       return ContentService.createTextOutput('forbidden');
     }
     switch (body.type) {
@@ -145,7 +145,7 @@ function handleIdea_(payload) {
 // public columns (filterRosterCols_ below) before returning — so even with the
 // token in hand, the raw roster (email/phone/payment) NEVER leaves this script.
 // The Cloudflare Function filters again on its side (defense in depth).
-var READ_TOKEN = 'a4a-read-9aff116498180a56dfd50efb4ec09a20'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
+var READ_TOKEN = 'a4a-read-0b72b1110680597da12bab59bde35be2'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
 var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches']; // '' = roster (first tab)
 
 function doGet(e) {
