@@ -69,6 +69,19 @@
 // public gviz, so nothing breaks before you flip it.
 // ==========================================================================
 
+// RUN THIS ONCE from the editor before deploying (pick `authorize` in the
+// function dropdown -> Run). It touches every scope the script needs —
+// Spreadsheet read/write AND sending email — so Google shows the consent
+// screen now (click Advanced -> "Go to ... (unsafe)" -> Allow). doPost/doGet
+// can't be Run directly (they need a request), and handleIdea_ exits before it
+// emails, so this is the only function that reliably triggers the MailApp
+// prompt. It sends nothing and changes nothing.
+function authorize() {
+  SpreadsheetApp.getActiveSpreadsheet().getName();   // Spreadsheet scope
+  MailApp.getRemainingDailyQuota();                  // send-email scope
+  return 'authorized';
+}
+
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
