@@ -537,12 +537,24 @@ const TABS = [
   { id: 'merch', label: 'Merch', icon: ShoppingBag, blurb: 'Tournament tees & gear' },
 ];
 
+// Deep-linkable tabs: friendly URL hash slugs (#brackets, #seeding, …) so the
+// admin can link straight to "what players see", and links are shareable. The
+// only non-obvious one is the "draws" tab, whose public label is "Brackets".
+const TAB_SLUGS = { draws: 'brackets' };
+const slugForTab = (id) => TAB_SLUGS[id] || id;
+const tabForSlug = (slug) => {
+  if (!slug) return null;
+  if (TABS.some(t => t.id === slug)) return slug;
+  const alias = Object.entries(TAB_SLUGS).find(([, s]) => s === slug);
+  return alias ? alias[0] : null;
+};
+
 // ==========================================
 // 3. MAIN APPLICATION
 // ==========================================
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => tabForSlug((typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')) || 'home');
   const [bracketEvent, setBracketEvent] = useState('doubles');
   const [seedingEvent, setSeedingEvent] = useState('Singles');
   // Randomize which photo set lands on the left vs. right on each visit.
@@ -670,6 +682,19 @@ export default function App() {
   // Keep the active tab centered in the sticky nav strip (esp. on mobile).
   useEffect(() => {
     navRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [activeTab]);
+
+  // Deep links: honor #brackets / #seeding / … on load + back/forward, and keep
+  // the URL hash in sync as tabs change (replaceState, so it doesn't pile up
+  // history). Lets the admin's "View live ↗" jump straight to the right view.
+  useEffect(() => {
+    const apply = () => { const id = tabForSlug(location.hash.replace(/^#/, '')); if (id) setActiveTab(id); };
+    window.addEventListener('hashchange', apply);
+    return () => window.removeEventListener('hashchange', apply);
+  }, []);
+  useEffect(() => {
+    const slug = slugForTab(activeTab);
+    if (location.hash.replace(/^#/, '') !== slug) history.replaceState(null, '', `#${slug}`);
   }, [activeTab]);
 
   // Financial tracking math. The "Config" sheet tab overrides these when set:

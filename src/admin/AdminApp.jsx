@@ -29,6 +29,17 @@ const TABS = [
   { id: 'scores', label: 'Scores & Courts', icon: Grid3x3 },
 ];
 
+// Where each admin section shows up on the public site — drives the contextual
+// "View live ↗" link (deep-links into the public app's hash router) so staff
+// can one-tap confirm "what I entered shows correctly."
+const PUBLIC_VIEW = {
+  registrations: { hash: 'home', label: 'public roster' },
+  checkins: { hash: 'home', label: 'public roster' },
+  payments: { hash: 'home', label: 'public roster' },
+  seeding: { hash: 'seeding', label: 'projected seeds' },
+  scores: { hash: 'brackets', label: 'live court board' },
+};
+
 export default function AdminApp() {
   const [unlocked, setUnlocked] = useState(isUnlocked);
 
@@ -91,6 +102,12 @@ function OpsConsole({ onLock }) {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <a href={`/#${PUBLIC_VIEW[tab].hash}`} target="_blank" rel="noopener noreferrer"
+              title={`Open the ${PUBLIC_VIEW[tab].label} on the public site`}
+              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 text-[10px] font-bold uppercase tracking-wider text-zinc-300 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 rounded-lg px-3 py-2 transition-colors">
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">View live</span>
+            </a>
             <button onClick={sync} disabled={spinning}
               className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 text-[10px] font-bold uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25 hover:bg-[#fbbf24]/20 rounded-lg px-3 py-2 transition-colors disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${spinning ? 'animate-spin' : ''}`} />
