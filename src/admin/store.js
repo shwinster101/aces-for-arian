@@ -5,7 +5,7 @@ import { SHEET_WRITE_URL } from '../lib/sheet';
 // in apps-script/ops-write-back.js. It ships in the public admin bundle, so it
 // only deters drive-by writes — not a determined actor. Rotate by changing it
 // here AND in the Apps Script, then redeploying the script (New version).
-const WRITE_TOKEN = 'a4a-write-bb77a492cb69cf78b5b48463d19ec3c7';
+const WRITE_TOKEN = 'a4a-49010c3b149e53e25be43297';
 
 // ==========================================
 // OPS DATA STORE — localStorage-backed overlay
