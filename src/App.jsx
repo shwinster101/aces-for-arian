@@ -1181,24 +1181,32 @@ export default function App() {
                 </div>
                 <span className="text-[10px] font-mono text-zinc-500">{courtFresh ? `Updated ${courtBoard.updated}` : courtBoard.live ? 'Reconnecting…' : 'Goes live tournament morning'}</span>
               </div>
-              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
-                Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {courtBoard.courts.map(c => (
-                  <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] uppercase tracking-wider text-emerald-400 w-11 shrink-0">On now</span>
-                      <span className="text-sm text-zinc-100 font-bold truncate">{c.now || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800/60">
-                      <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-11 shrink-0">Next</span>
-                      <span className="text-sm text-zinc-400 truncate">{c.next || '—'}</span>
-                    </div>
+              {courtBoard.live ? (
+                <>
+                  <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
+                    Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {courtBoard.courts.map(c => (
+                      <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] uppercase tracking-wider text-emerald-400 w-11 shrink-0">On now</span>
+                          <span className="text-sm text-zinc-100 font-bold truncate">{c.now || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800/60">
+                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-11 shrink-0">Next</span>
+                          <span className="text-sm text-zinc-400 truncate">{c.next || '—'}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl">
+                  The board lights up tournament morning — once play starts, find your match number here to see what's <span className="text-emerald-400/80 font-semibold">on now</span> and <span className="text-zinc-300 font-semibold">up next</span> across all 9 courts.
+                </p>
+              )}
             </div>
 
             {/* Live scores — only appears once ops has posted at least one match */}
