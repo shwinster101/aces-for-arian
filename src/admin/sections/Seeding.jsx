@@ -133,7 +133,10 @@ const STATUS_OPTIONS = [
 const STATUS_DOT = { scheduled: 'bg-zinc-600', live: 'bg-emerald-400 animate-pulse', final: 'bg-[#fbbf24]' };
 
 export function DrawEditor({ event, ops, namesInEvent }) {
-  const matches = ops.store.matches.filter(m => m.event === event);
+  // Sorted by match number = playing order (courts are assigned dynamically).
+  const matches = ops.store.matches
+    .filter(m => m.event === event)
+    .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
   const datalistId = `draw-names-${event}`;
 
   return (
@@ -161,6 +164,8 @@ export function DrawEditor({ event, ops, namesInEvent }) {
                 <Select value={m.court} onChange={(v) => ops.updateMatch(m.id, { court: v })} options={COURTS} placeholder="Court" />
                 <Select value={m.status} onChange={(v) => ops.updateMatch(m.id, { status: v })} options={STATUS_OPTIONS.map(s => s.value)} placeholder="Status" />
                 <span className="ml-auto" />
+                <IconButton icon={ChevronUp} label="Bump earlier in the order" onClick={() => ops.moveMatch(m.id, -1)} />
+                <IconButton icon={ChevronDown} label="Push later in the order" onClick={() => ops.moveMatch(m.id, 1)} />
                 <IconButton icon={Trash2} tone="danger" label="Remove match" onClick={() => ops.removeMatch(m.id)} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -174,6 +179,7 @@ export function DrawEditor({ event, ops, namesInEvent }) {
           ))}
         </div>
       )}
+      <p className="text-[10px] text-zinc-600 mt-3">Match # is the playing order — courts get assigned to whoever opens next, so teams may play on different courts through the day. Use ↑ / ↓ to bump a match earlier or later (e.g. someone needs to leave early).</p>
     </Card>
   );
 }

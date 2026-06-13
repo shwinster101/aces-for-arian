@@ -136,9 +136,15 @@ export function useOpsStore() {
   };
 
   const addMatch = (event) => {
-    const m = { id: nextId(), event, round: '', num: '', a: '', b: '', court: '', status: 'scheduled', score: '', winner: '' };
-    setStore(s => ({ ...s, matches: [...s.matches, m] }));
-    return m.id;
+    const id = nextId();
+    // Courts are assigned dynamically day-of, so the match number IS the play
+    // order — auto-assign the next slot so new matches land at the back of the
+    // queue. (See moveMatch to reorder.)
+    setStore(s => {
+      const n = s.matches.filter(m => m.event === event).length + 1;
+      return { ...s, matches: [...s.matches, { id, event, round: '', num: String(n), a: '', b: '', court: '', status: 'scheduled', score: '', winner: '' }] };
+    });
+    return id;
   };
   const updateMatch = (id, patch) => {
     setStore(s => ({ ...s, matches: s.matches.map(m => (m.id === id ? { ...m, ...patch } : m)) }));
@@ -149,6 +155,33 @@ export function useOpsStore() {
     // Mirror the delete so a match removed courtside doesn't linger as a ghost
     // on the public Live Scores board (the row is keyed by this same id).
     pushToSheet('match-delete', { id });
+  };
+  // Reorder the playing queue: move a match up/down within its event and
+  // renumber the event 1..N to the new order. The match number = play order, so
+  // bumping someone up lets a player who must leave early go sooner. Pushes
+  // every row whose number actually changed so the public queue follows.
+  const moveMatch = (id, dir) => {
+    let pushes = [];
+    setStore(s => {
+      const m = s.matches.find(x => x.id === id);
+      if (!m) return s;
+      const sibs = s.matches.filter(x => x.event === m.event)
+        .sort((x, y) => (Number(x.num) || 0) - (Number(y.num) || 0));
+      const idx = sibs.findIndex(x => x.id === id);
+      const j = idx + dir;
+      if (j < 0 || j >= sibs.length) return s;
+      [sibs[idx], sibs[j]] = [sibs[j], sibs[idx]];
+      const newNum = new Map(sibs.map((x, i) => [x.id, String(i + 1)]));
+      pushes = [];
+      const matches = s.matches.map(x => {
+        if (!newNum.has(x.id)) return x;
+        const n = newNum.get(x.id);
+        if (String(x.num) !== n) pushes.push({ id: x.id, num: n });
+        return { ...x, num: n };
+      });
+      return { ...s, matches };
+    });
+    pushes.forEach(p => pushToSheet('match', p));
   };
 
   const setCourtBoard = (courts) => {
@@ -164,7 +197,7 @@ export function useOpsStore() {
     getOverlay, setOverlay,
     addWalkUp, removeWalkUp,
     setSeeds,
-    addMatch, updateMatch, removeMatch,
+    addMatch, updateMatch, removeMatch, moveMatch,
     setCourtBoard,
     exportJSON,
   };

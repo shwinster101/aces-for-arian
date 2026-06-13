@@ -758,25 +758,17 @@ export default function App() {
   const courtFresh = courtBoard.live && courtBoard.lastOkAt && now - courtBoard.lastOkAt < FRESH_MS;
   const matchesFresh = matchesLive && matchesLastOkAt && now - matchesLastOkAt < FRESH_MS;
 
-  // Per-court "on now / next" derived from the posted matches, ordered by match
-  // number: on-now = a live match (else the earliest still-to-play), next = the
-  // one after it. Final matches drop off — so entering a score auto-advances the
-  // board to the next match by number. This is the source of truth for the
-  // public court board whenever matches have been posted (matchesLive); the
-  // manually-typed Courts tab is the fallback before any matches exist.
-  const courtsFromMatches = Array.from({ length: 9 }, (_, i) => {
-    const c = i + 1;
-    const list = matches
-      .filter(m => parseInt(String(m.court).replace(/\D/g, ''), 10) === c)
-      .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
-    const pending = list.filter(m => m.status !== 'final');
-    const onNow = pending.find(m => m.status === 'live') || pending[0] || null;
-    const nextUp = pending.find(m => m !== onNow) || null;
-    return { court: c, now: onNow, next: nextUp };
-  });
-  const matchLabel = (m) => m ? `${m.a || '?'} vs ${m.b || '?'}${m.status === 'live' && m.score ? ` (${m.score})` : ''}` : '';
-  const onNowSet = new Set(courtsFromMatches.map(c => c.now).filter(Boolean));
-  const nextUpSet = new Set(courtsFromMatches.map(c => c.next).filter(Boolean));
+  // Courts are assigned dynamically (the next match goes to whichever court
+  // opens first), so the stable structure is: matches currently ON a court
+  // (live), plus an ordered "up next" queue by play order (match number). Final
+  // matches drop off; entering a score advances the queue automatically.
+  const livePlaying = matches
+    .filter(m => m.status === 'live')
+    .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+  const upNextQueue = matches
+    .filter(m => m.status !== 'live' && m.status !== 'final')
+    .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+  const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
   // Board prefers match-derived data once matches are posted; else the manual
   // Courts tab; else nothing (placeholder).
@@ -784,9 +776,6 @@ export default function App() {
   const boardLive = useMatchBoard || courtBoard.live;
   const boardFresh = useMatchBoard ? matchesFresh : courtFresh;
   const boardUpdated = useMatchBoard ? matchesUpdated : courtBoard.updated;
-  const boardCourts = useMatchBoard
-    ? courtsFromMatches.map(c => ({ court: c.court, now: matchLabel(c.now), next: matchLabel(c.next) }))
-    : courtBoard.courts;
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
@@ -795,9 +784,9 @@ export default function App() {
   const matchWhere = (m) =>
     m.status === 'live' ? { label: `On Court ${m.court} now`, cls: 'text-emerald-400' }
     : m.status === 'final' ? { label: `Final${m.score ? ` · ${m.score}` : ''}`, cls: 'text-[#fbbf24]' }
-    : onNowSet.has(m) ? { label: `On deck · Court ${m.court}`, cls: 'text-emerald-400/80' }
-    : nextUpSet.has(m) ? { label: `Up next · Court ${m.court}`, cls: 'text-zinc-100' }
-    : { label: `Scheduled${m.court ? ` · Court ${m.court}` : ''}${m.num ? ` · Match ${m.num}` : ''}`, cls: 'text-zinc-400' };
+    : queuePos.get(m) === 1 ? { label: 'On deck · up next', cls: 'text-emerald-400/80' }
+    : queuePos.has(m) ? { label: `Up next · #${queuePos.get(m)} in line`, cls: 'text-zinc-100' }
+    : { label: 'Scheduled', cls: 'text-zinc-400' };
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] text-zinc-200 font-sans flex flex-col selection:bg-[#fbbf24] selection:text-[#5c1313]">
@@ -1285,24 +1274,66 @@ export default function App() {
                       )}
                     </div>
                   )}
-                  <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
-                    What's <span className="text-emerald-400 font-semibold">on now</span> and <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts — the board advances by match number as scores come in.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {boardCourts.map(c => (
-                      <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] uppercase tracking-wider text-emerald-400 w-11 shrink-0">On now</span>
-                          <span className="text-sm text-zinc-100 font-bold truncate">{c.now || '—'}</span>
+                  {useMatchBoard ? (
+                    <>
+                      <p className="text-sm text-zinc-400 mb-4 max-w-2xl leading-relaxed">
+                        Courts open up as matches finish, so the <span className="text-zinc-200 font-semibold">order</span> is what to watch — the next match goes to whichever court frees up first.
+                      </p>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">On court now</div>
+                      {livePlaying.length === 0 ? (
+                        <p className="text-xs text-zinc-500 mb-5">No match on a court yet — first up is in the queue below.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+                          {livePlaying.map((m, i) => (
+                            <div key={i} className="bg-[#111] border border-emerald-500/20 rounded-xl p-4">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">{m.court ? `Court ${m.court}` : 'On court'}</div>
+                              <div className="text-sm text-zinc-100 font-bold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</div>
+                              {m.score && <div className="text-xs text-zinc-400 font-mono mt-1">{m.score}</div>}
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800/60">
-                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-11 shrink-0">Next</span>
-                          <span className="text-sm text-zinc-400 truncate">{c.next || '—'}</span>
-                        </div>
+                      )}
+                      <div className="flex items-baseline justify-between gap-2 mb-2">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Up next</div>
+                        <div className="text-[10px] text-zinc-600">called to the next open court</div>
                       </div>
-                    ))}
-                  </div>
+                      {upNextQueue.length === 0 ? (
+                        <p className="text-xs text-zinc-500">Nothing queued — check back as rounds advance.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {upNextQueue.slice(0, 8).map((m, i) => (
+                            <div key={i} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                              <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black ${i === 0 ? 'bg-[#fbbf24] text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>{i + 1}</span>
+                              <span className="text-sm text-zinc-200 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
+                              {i === 0 && <span className="ml-auto shrink-0 text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
+                            </div>
+                          ))}
+                          {upNextQueue.length > 8 && <p className="text-[10px] text-zinc-600 pl-1 pt-1">+{upNextQueue.length - 8} more in the queue</p>}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
+                        Find your match number to see what's <span className="text-emerald-400 font-semibold">on now</span> and what's <span className="text-zinc-200 font-semibold">up next</span> across all 9 courts.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {courtBoard.courts.map(c => (
+                          <div key={c.court} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-2">Court {c.court}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] uppercase tracking-wider text-emerald-400 w-11 shrink-0">On now</span>
+                              <span className="text-sm text-zinc-100 font-bold truncate">{c.now || '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800/60">
+                              <span className="text-[9px] uppercase tracking-wider text-zinc-500 w-11 shrink-0">Next</span>
+                              <span className="text-sm text-zinc-400 truncate">{c.next || '—'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl">
