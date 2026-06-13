@@ -883,10 +883,9 @@ export default function App() {
   const boardFresh = matchesFresh;
   const boardUpdated = matchesUpdated;
 
-  // Live Ace Tracker: $5/ace toward the scholarship, capped at $500.
-  const aceDollars = Math.min(aces * 5, 500);
-  const aceCapped = aces * 5 >= 500;
-  const acePct = Math.min((aces * 5 / 500) * 100, 100);
+  // Live Ace Tracker shows the COUNT only on the public site; the dollar value
+  // ($5/ace, capped $500) is reckoned on the admin tracker and folded into the
+  // scholarship total by hand, so no $ figure is rendered publicly here.
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
@@ -940,7 +939,7 @@ export default function App() {
             {acesLive && (
               <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
                 <TennisBallIcon className="w-3.5 h-3.5 shrink-0" />
-                {aces} {aces === 1 ? 'Ace' : 'Aces'} · ${aceDollars} raised{aceCapped ? ' · cap hit' : ''}
+                {aces} {aces === 1 ? 'Ace' : 'Aces'} hit live
               </span>
             )}
 
@@ -1384,14 +1383,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex-1 w-full">
-                    <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                      <span className="text-xs text-zinc-400">$5 per ace, straight to the scholarship fund</span>
-                      <span className="text-sm font-black text-white">${aceDollars} <span className="text-zinc-500 font-normal text-xs">/ $500</span></span>
-                    </div>
-                    <div className="h-2.5 bg-black/50 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#fbbf24] rounded-full transition-all duration-500" style={{ width: `${acePct}%` }}></div>
-                    </div>
-                    {aceCapped && <p className="text-[10px] text-emerald-400 mt-1.5 font-bold uppercase tracking-wider">Cap reached — thanks for bringing the heat!</p>}
+                    <p className="text-sm text-zinc-400 leading-relaxed">Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</p>
                   </div>
                 </div>
               </div>

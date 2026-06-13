@@ -108,7 +108,7 @@ function AceTracker({ ops }) {
         <div className="flex-1 text-center">
           <div className="text-4xl font-black text-white tabular-nums">{count}</div>
           <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
-            Aces hit{capped ? ' · cap reached' : ` · $${dollars} raised`}
+            Aces hit · ${dollars} raised{capped ? ' · cap' : ''}
           </div>
         </div>
         <button onClick={ops.incrementAces} aria-label="Add an ace"
@@ -116,7 +116,7 @@ function AceTracker({ ops }) {
           +1 Ace
         </button>
       </div>
-      <p className="text-[10px] text-zinc-600 mt-3">Tap +1 every time someone hits an ace — the public Brackets tab follows within ~1 min.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">Tap +1 for each ace — the public count follows within ~1 min. The site shows the <span className="text-zinc-400">count only</span>; add the <span className="text-zinc-400 font-bold">${dollars}</span> to the scholarship total in the Config sheet yourself.</p>
     </Card>
   );
 }
