@@ -112,11 +112,11 @@ function CourtBoardEditor({ ops }) {
           <Save className="w-3.5 h-3.5" /> Publish
         </button>
       </div>
-      <p className="text-[11px] text-zinc-500 mb-3">
-        {updated ? `Last published ${updated}` : 'Not published yet'} ·{' '}
+      <p className="text-[11px] text-zinc-500 mb-3 leading-relaxed">
+        <span className="text-zinc-400">Once you post match scores below, the public court board fills in from them automatically</span> — by match number, advancing as scores land. This manual board only shows on the public site <span className="text-zinc-400">before any match is posted</span> (or as an override).{' '}
         {SHEET_WRITE_URL
-          ? 'Publish pushes straight to the public site’s live court board.'
-          : <>Saved on this device. To put it on the public site’s live board, deploy <code className="text-zinc-400">apps-script/ops-write-back.js</code> and set <code className="text-zinc-400">SHEET_WRITE_URL</code> in <code className="text-zinc-400">lib/sheet.js</code> — then Publish goes live automatically.</>}
+          ? (updated ? `Last published ${updated}.` : 'Not published yet.')
+          : <>Saved on this device — deploy <code className="text-zinc-400">apps-script/ops-write-back.js</code> + set <code className="text-zinc-400">SHEET_WRITE_URL</code> to push live.</>}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {draft.map(c => (
