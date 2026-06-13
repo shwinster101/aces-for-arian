@@ -112,7 +112,7 @@ function doPost(e) {
 // Public "got an idea?" box on the site -> emails the owner. Runs as the owner,
 // so MailApp can send. (First deploy with this will prompt for a new "send
 // email" permission — approve it.) Length-capped so it can't relay spam.
-var IDEA_EMAIL = 'ashwinyedavalli@gmail.com';
+var IDEA_EMAIL = 'acesforarian@gmail.com';
 function handleIdea_(payload) {
   var text = String((payload && payload.text) || '').slice(0, 4000).trim();
   if (!text) return;

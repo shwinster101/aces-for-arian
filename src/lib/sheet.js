@@ -80,7 +80,7 @@ export const MATCHES_CSV_URL     = sheetCsv("Matches"); // live scores (Event | 
 // it's deployed, every admin screen keeps working fully offline against
 // localStorage (and roster reads still come live from ROSTER_CSV_URL) — it
 // just doesn't write back to the spreadsheet yet.
-export const SHEET_WRITE_URL = "https://script.google.com/macros/s/AKfycbw1VE647EivpMDggivfPqDRoWTj2u7LMBCY5vNCKFd-1lPD4ERekRvZPq6UUUDwcyrtOA/exec";
+export const SHEET_WRITE_URL = "https://script.google.com/macros/s/AKfycby1CP-FQNwOoKYkDiiFEzoUbrEkg2427Iyt4x_GXwjeVsB9rlOPMYJOZQiygkI5fDbM7Q/exec";
 
 // Static fallback for the live court board — shown until COURT_BOARD_CSV_URL
 // resolves (or if the fetch ever fails). 9 empty courts; "live" flips to true
