@@ -6,6 +6,7 @@ import {
   PHOTOS_CSV_URL,
   MATCHES_CSV_URL,
   ACES_CSV_URL,
+  OPSSTATUS_CSV_URL,
   SHEET_WRITE_URL,
   MERCH_ITEMS,
   MERCH_PRICE,
@@ -17,6 +18,7 @@ import {
   mapGallery,
   mapMatches,
   mapAces,
+  mapOpsStatus,
 } from './lib/sheet';
 import {
   Trophy, 
@@ -645,8 +647,9 @@ export default function App() {
   const [heroSwap] = useState(() => Math.random() < 0.5);
   const heroLeft = heroSwap ? HERO_SET_B : HERO_SET_A;
   const heroRight = heroSwap ? HERO_SET_A : HERO_SET_B;
-  const [roster, setRoster] = useState(fallbackRoster);
+  const [rawRoster, setRawRoster] = useState(fallbackRoster);
   const [rosterLive, setRosterLive] = useState(false);
+  const [opsStatus, setOpsStatus] = useState({}); // OpsStatus tab: name -> Verified/Pending overlay
   const [config, setConfig] = useState({});        // from the "Config" tab
   const [seeds, setSeeds] = useState(topSeeds);     // from the sanitized "SeedBoardPublic" tab — never raw committee data
   const [gallery, setGallery] = useState(GALLERY);  // from the "Photos" tab
@@ -671,7 +674,7 @@ export default function App() {
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => {
         const players = mapRoster(parseCSV(text));
-        if (!cancelled && players.length) { setRoster(players); setRosterLive(true); }
+        if (!cancelled && players.length) { setRawRoster(players); setRosterLive(true); }
       })
       .catch(() => { /* keep fallbackRoster */ });
     return () => { cancelled = true; };
@@ -700,6 +703,13 @@ export default function App() {
     grab(PHOTOS_CSV_URL).then(rows => {
       const g = mapGallery(rows);
       if (!cancelled && g.length) setGallery(g);
+    }).catch(() => {});
+
+    // Admin reg-status overlay (Name|Status) — merged over the roster's own
+    // Status column below so an admin "Confirmed" shows as Verified publicly.
+    // Empty/missing tab just means no overrides (board uses the sheet's Status).
+    grab(OPSSTATUS_CSV_URL).then(rows => {
+      if (!cancelled) setOpsStatus(mapOpsStatus(rows));
     }).catch(() => {});
 
     return () => { cancelled = true; };
@@ -782,6 +792,17 @@ export default function App() {
     const slug = slugForTab(activeTab);
     if (location.hash.replace(/^#/, '') !== slug) history.replaceState(null, '', `#${slug}`);
   }, [activeTab]);
+
+  // Merge the admin's OpsStatus overlay over the sheet roster: a name the admin
+  // has set Confirmed/Pending wins, so the public badge follows the ops console
+  // (see mapOpsStatus in lib/sheet.js). No overlay rows -> the roster is used
+  // as-is. Cheap (tens of rows), so recomputing each render is fine.
+  const roster = Object.keys(opsStatus).length
+    ? rawRoster.map(p => {
+        const o = opsStatus[(p.name || '').trim().toLowerCase()];
+        return o ? { ...p, status: o } : p;
+      })
+    : rawRoster;
 
   // Financial tracking math. The "Config" sheet tab overrides these when set:
   //   raised -> calculatedFunding, goal -> scholarshipGoal, show bar -> showBar.
@@ -913,6 +934,15 @@ export default function App() {
               <Trophy className="w-3.5 h-3.5 shrink-0" />
               Five Years Hitting Aces for Arian
             </span>
+
+            {/* Bare-bones live ace count, twin of the Brackets-tab tracker.
+                Hidden until the admin's first +1 (acesLive). $5/ace, cap $500. */}
+            {acesLive && (
+              <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
+                <TennisBallIcon className="w-3.5 h-3.5 shrink-0" />
+                {aces} {aces === 1 ? 'Ace' : 'Aces'} · ${aceDollars} raised{aceCapped ? ' · cap hit' : ''}
+              </span>
+            )}
 
             <div className="flex items-center gap-4 md:gap-5 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
               {showScholarshipBar && (

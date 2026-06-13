@@ -97,7 +97,12 @@ function RegistrationRow({ p, ops }) {
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <RegStatusChip status={p.overlay.regStatus} onChange={(v) => ops.setOverlay(p.name, { regStatus: v })} />
+        <RegStatusChip status={p.overlay.regStatus} onChange={(v) => {
+          ops.setOverlay(p.name, { regStatus: v });
+          // Only sheet-sourced registrants have a public roster row to flip;
+          // walk-ups (source 'added') aren't public, so never push their names.
+          if (p.source === 'sheet') ops.pushPublicStatus(p.name, v === 'confirmed' ? 'Verified' : 'Pending');
+        }} />
         {p.source === 'added' && (
           <IconButton icon={Trash2} tone="danger" label="Remove walk-up" onClick={() => ops.removeWalkUp(p.addedId)} />
         )}

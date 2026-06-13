@@ -63,6 +63,7 @@ export const PHOTOS_CSV_URL  = sheetCsv("Photos");   // gallery / wheel images
 export const COURT_BOARD_CSV_URL = sheetCsv("Courts");  // live court board (Court | Now | Next)
 export const MATCHES_CSV_URL     = sheetCsv("Matches"); // live scores (Event | Round | Num | ...)
 export const ACES_CSV_URL        = sheetCsv("Aces");    // live ace counter (Count)
+export const OPSSTATUS_CSV_URL   = sheetCsv("OpsStatus"); // admin reg-status overlay (Name | Status)
 
 // --- WRITE-BACK ------------------------------------------------------------
 // Google's CSV export is read-only, so by itself the admin panel can only
@@ -344,6 +345,26 @@ export function mapAces(rows) {
   if (!rows || rows.length < 2) return null;
   const n = parseInt(String(rows[1][0] || "").replace(/[^0-9]/g, ""), 10);
   return { count: isNaN(n) ? 0 : n };
+}
+
+// --- OPSSTATUS TAB -> { "<lowercased name>": "Verified" | "Pending" } --------
+// Display-safe Name|Status overlay written by writeStatus_ in
+// apps-script/ops-write-back.js when the admin taps a registration-status chip
+// (src/admin/sections/Registrations.jsx). App.jsx merges it over the roster's
+// own Status column on read, so an admin "Confirmed" flips the public board to
+// Verified WITHOUT writing into the raw Form-responses tab — see the "WHY
+// participant ISN'T HANDLED" note in ops-write-back.js for why that tab is
+// off-limits. Only Name + Verified/Pending crosses the wire (no PII). Keyed by
+// lowercased/trimmed name for a case-insensitive match against the roster.
+export function mapOpsStatus(rows) {
+  const map = {};
+  if (!rows || rows.length < 2) return map;
+  for (let i = 1; i < rows.length; i++) {
+    const name = String(rows[i][0] || "").trim().toLowerCase();
+    const status = String(rows[i][1] || "").trim();
+    if (name) map[name] = /^verif/i.test(status) ? "Verified" : "Pending";
+  }
+  return map;
 }
 
 // --- MERCH (Gear Locker) -----------------------------------------------------

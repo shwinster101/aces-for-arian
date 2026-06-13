@@ -103,6 +103,7 @@ function doPost(e) {
       case 'match':        writeMatch_(body.payload); break;
       case 'match-delete': deleteMatch_(body.payload); break;
       case 'aces':         writeAces_(body.payload); break;
+      case 'status':       writeStatus_(body.payload); break;
       // 'participant' / 'walk-up': see the note at the bottom of this file.
     }
   } catch (err) {
@@ -150,7 +151,7 @@ function handleIdea_(payload) {
 // token in hand, the raw roster (email/phone/payment) NEVER leaves this script.
 // The Cloudflare Function filters again on its side (defense in depth).
 var READ_TOKEN = 'a4a-read-8db082a282da9e0b622178164cd9b202'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
-var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces']; // '' = roster (first tab)
+var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces', 'OpsStatus']; // '' = roster (first tab)
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
@@ -221,6 +222,7 @@ var SEED_HEADERS  = ['Name', 'Event', 'Rank'];
 var COURT_HEADERS = ['Court', 'Now', 'Next'];
 var MATCH_HEADERS = ['Event', 'Round', 'Num', 'Player A', 'Player B', 'Court', 'Status', 'Score', 'Winner', 'ID'];
 var ACES_HEADERS  = ['Count'];
+var OPSSTATUS_HEADERS = ['Name', 'Status'];
 
 // --------------------------------------------------------------------------
 // WHY SEEDS ARE SANITIZED HERE, NOT JUST CLIENT-SIDE
@@ -304,6 +306,28 @@ function writeAces_(payload) {
   var n = parseInt(payload && payload.count, 10);
   if (isNaN(n) || n < 0) n = 0;
   writeRows_(sheet, [[n]]);
+}
+
+// Registration-status overlay. The admin's "Confirmed/Pending/Waitlist" chip
+// pushes { name, status } here; we upsert a Name|Status row into a dedicated
+// OpsStatus tab that App.jsx merges over the roster's Status column on read.
+// This is the "separate Ops tab" the note at the bottom of this file calls for
+// — we deliberately do NOT write into the raw Form-responses sheet (column
+// drift + name-collision overwrites of PII rows). Only Verified/Pending is
+// stored (display-safe); nothing payment/check-in related ever lands here.
+function writeStatus_(payload) {
+  var name = payload && payload.name ? String(payload.name).trim() : '';
+  if (!name) return;
+  var status = /^verif/i.test(String(payload.status || '')) ? 'Verified' : 'Pending';
+  var sheet = sheetByName_('OpsStatus', OPSSTATUS_HEADERS);
+  var rows = readRows_(sheet);
+  var key = name.toLowerCase();
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === key) { idx = i; break; }
+  }
+  if (idx >= 0) rows[idx] = [name, status]; else rows.push([name, status]);
+  writeRows_(sheet, rows);
 }
 
 // Drop a match by its admin id when it's removed from the draw, so it stops

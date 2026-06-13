@@ -212,6 +212,13 @@ export function useOpsStore() {
     pushToSheet('aces', { count: next });
   };
 
+  // Push ONLY the display-safe registration flag (Verified/Pending) for a
+  // sheet-sourced registrant, so tapping the "Confirmed" chip flips the public
+  // board's badge. Intentionally separate from setOverlay (which stays local):
+  // payment/check-in/shirt data must never cross the wire — see the comment on
+  // setOverlay and [[pii-policy]]. Lands in the OpsStatus tab via writeStatus_.
+  const pushPublicStatus = (name, status) => pushToSheet('status', { name, status });
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
@@ -229,6 +236,7 @@ export function useOpsStore() {
     addMatch, updateMatch, removeMatch, moveMatch,
     setMerch,
     incrementAces, decrementAces,
+    pushPublicStatus,
     exportJSON, clearOps,
   };
 }

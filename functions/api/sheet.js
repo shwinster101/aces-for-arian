@@ -5,7 +5,7 @@
 const SHEET_ID = "1u94hz6xL-WbLEQAOW9HLgSvKJ9B1LoqFX7lW1JMnjNM";
 // "SeedBoardPublic" only — never the committee-side "Seeds"/notes data.
 // See the "PUBLIC / COMMITTEE DATA SEPARATION" note in src/lib/sheet.js.
-const ALLOWED = new Set(["", "Config", "SeedBoardPublic", "Photos", "Courts", "Matches", "Aces"]);
+const ALLOWED = new Set(["", "Config", "SeedBoardPublic", "Photos", "Courts", "Matches", "Aces", "OpsStatus"]);
 const TTL = 30; // seconds the edge holds a tab's CSV before re-fetching gviz
 
 // The roster tab is the raw Google Form responses sheet — it carries PII the
