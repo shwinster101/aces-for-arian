@@ -141,7 +141,13 @@ export function mapRoster(rows) {
   // Status: explicit Status/Verified/Confirm column only — NOT the form's
   // "Payment method" question (which isn't a confirmation of payment).
   const iStatus = col("status", "verif", "confirm");
-  const iBio = col("bio", "yearbook", "nickname", "about", "quote");
+  // Bio: a committee-curated exact "Bio" column WINS (lets ops clean up an
+  // inappropriate self-submitted nickname without touching Form Responses);
+  // otherwise fall back to the registrant's optional "yearbook line".
+  const iBioOverride = headers.indexOf("bio");
+  const iYearbook = col("yearbook", "nickname", "about", "quote");
+  // "Did they decline the optional line?" — drop junk like "not really" / "no".
+  const declined = v => /^(no|nope|nah|no thanks|not really|n\/?a|none|-+|\.+)$/i.test((v || "").trim());
   const iHide = col("hide", "hidden");
   const iPartner = col("partner");
   const iShirt = col("shirt");
@@ -177,7 +183,12 @@ export function mapRoster(rows) {
         events,
         partner,
         status: verified ? "Verified" : "Pending",
-        bio: iBio >= 0 ? (r[iBio] || "").trim() : "",
+        bio: (() => {
+          const curated = iBioOverride >= 0 ? (r[iBioOverride] || "").trim() : "";
+          const line = iYearbook >= 0 ? (r[iYearbook] || "").trim() : "";
+          const b = curated || line;
+          return declined(b) ? "" : b;
+        })(),
         shirtSize: iShirt >= 0 ? (r[iShirt] || "").trim() : "",
       };
     });
