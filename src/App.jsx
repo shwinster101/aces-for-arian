@@ -804,8 +804,8 @@ export default function App() {
       })
     : rawRoster;
 
-  // Financial tracking math. The "Config" sheet tab overrides these when set:
-  //   raised -> calculatedFunding, goal -> scholarshipGoal, show bar -> showBar.
+  // Financial tracking math. confirmedCount (Verified registrants) drives the
+  // $40-per-entry portion of the scholarship total computed below.
   const confirmedCount = roster.filter(p => p.status === 'Verified').length;
   // Event counts ("Singles & Doubles" players count in both) + the filtered view.
   const singlesCount = roster.filter(p => p.events.includes('Singles')).length;
@@ -853,9 +853,15 @@ export default function App() {
     const m = (cy || '').match(/\d{2,4}/);
     return m ? `'${m[0].slice(-2)}` : (cy || '').trim();
   };
-  // Meter is a manual pin ($550) for now; the Config tab's "raised" row overrides it live.
-  const scholarshipGoal = config.goal ?? 1500;
-  const calculatedFunding = config.raised ?? 550;
+  // Scholarship total is computed, not pinned:
+  //   $500 baseline + $40 per Verified entry (paid registrations) + capped ace
+  //   money ($5/ace, max $500) + manual external donations (Config "raised").
+  // The public ace tracker stays count-only; aceDollars only feeds this total.
+  // Config "goal"/"raised"/"showBar" override the defaults when those rows exist
+  // (raised is ADDITIVE external donations now, not the whole total).
+  const aceDollars = Math.min(aces * 5, 500);
+  const scholarshipGoal = config.goal ?? 1750;
+  const calculatedFunding = 500 + 40 * confirmedCount + aceDollars + (config.raised ?? 0);
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
   const showScholarshipBar = config.showBar ?? true;
 
@@ -882,10 +888,6 @@ export default function App() {
   const boardLive = useMatchBoard;
   const boardFresh = matchesFresh;
   const boardUpdated = matchesUpdated;
-
-  // Live Ace Tracker shows the COUNT only on the public site; the dollar value
-  // ($5/ace, capped $500) is reckoned on the admin tracker and folded into the
-  // scholarship total by hand, so no $ figure is rendered publicly here.
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
