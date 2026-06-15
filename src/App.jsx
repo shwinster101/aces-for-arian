@@ -942,30 +942,39 @@ export default function App() {
               </span>
             )}
 
-            <div className="flex items-center gap-4 md:gap-5 bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
-              {showScholarshipBar && (
-                <>
-                  <div>
-                    <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1">Scholarship Fund</span>
+            <div className="bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
+              <div className="flex items-center gap-4 md:gap-5">
+                {showScholarshipBar && (
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1 whitespace-nowrap">Scholarship Fund</span>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-lg font-black text-white">${calculatedFunding}</span>
                       <span className="text-[10px] text-zinc-300">/ ${scholarshipGoal}</span>
                     </div>
                   </div>
-                  <div className="w-16 md:w-24 h-2 bg-black/50 rounded-full overflow-hidden">
+                )}
+                {/* Inline bar on desktop; mobile gets a full-width bar below so it
+                    isn't squished into ~60px next to the label + donate button. */}
+                {showScholarshipBar && (
+                  <div className="hidden md:block w-24 h-2 bg-black/50 rounded-full overflow-hidden">
                     <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
                   </div>
-                </>
+                )}
+                <a
+                  href={DONATE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto shrink-0 flex items-center gap-1.5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <Heart className="w-3.5 h-3.5" />
+                  <span>Donate</span>
+                </a>
+              </div>
+              {showScholarshipBar && (
+                <div className="md:hidden mt-2.5 h-2 bg-black/50 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
+                </div>
               )}
-              <a
-                href={DONATE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 flex items-center gap-1.5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
-              >
-                <Heart className="w-3.5 h-3.5" />
-                <span>Donate</span>
-              </a>
             </div>
 
           </div>
