@@ -102,7 +102,7 @@ function OpsConsole({ onLock }) {
             <BrandLogo className="w-9 h-9 shrink-0" />
             <div className="min-w-0">
               <h1 className="text-sm font-black tracking-wide uppercase text-white truncate">Tournament Ops</h1>
-              <p className="text-[10px] text-[#fefcbf]/70 truncate">Aces for Arian · July 10–12 · Dunlap HS</p>
+              <p className="text-[10px] text-[#fefcbf]/70 truncate">Aces for Arian · July 11–12 · Dunlap HS</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">

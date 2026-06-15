@@ -24,9 +24,12 @@
 //   • Ace counter    -> writes a single running total into an "Aces" tab,
 //                       which the public "Live Ace Tracker" (Brackets tab)
 //                       reads live via ACES_CSV_URL + mapAces.
-//   • Registrations / check-ins / payments are intentionally NOT handled
-//     here — see the note at the bottom of this file for why, and what it
-//     would take to add them safely.
+//   • Registration status -> writes display-safe Name | Status rows to
+//                       "OpsStatus" so the public roster can show confirmed
+//                       entries without touching raw Form responses.
+//   • Check-ins / payments / walk-ups are intentionally NOT handled here —
+//                       see the note at the bottom of this file for why, and
+//                       what it would take to add them safely.
 //
 // All three target tabs are created automatically (with the right header
 // row) the first time the matching edit comes through, so you don't have to
@@ -314,7 +317,8 @@ function writeAces_(payload) {
 // This is the "separate Ops tab" the note at the bottom of this file calls for
 // — we deliberately do NOT write into the raw Form-responses sheet (column
 // drift + name-collision overwrites of PII rows). Only Verified/Pending is
-// stored (display-safe); nothing payment/check-in related ever lands here.
+// stored (display-safe confirmed-entry status); nothing payment/check-in related
+// ever lands here.
 function writeStatus_(payload) {
   var name = payload && payload.name ? String(payload.name).trim() : '';
   if (!name) return;
@@ -369,11 +373,10 @@ function writeRows_(sheet, rows) {
 }
 
 // --------------------------------------------------------------------------
-// WHY 'participant' / 'walk-up' AREN'T HANDLED HERE
+// WHY CHECK-IN / PAYMENT / WALK-UP DETAILS AREN'T HANDLED HERE
 // --------------------------------------------------------------------------
 // Those events carry per-player overlay data — checked-in, paid, shirt size,
-// registration status, walk-up entries — and on the public site that maps
-// onto the live roster's "Status" column (see mapRoster in lib/sheet.js).
+// and walk-up entries. They are operational/private, not public roster state.
 //
 // That roster tab is the raw Google Form responses sheet. Writing into it
 // from a script is riskier than the three tabs above:
@@ -383,7 +386,7 @@ function writeRows_(sheet, rows) {
 //   • Matching a write back to "the same person" by name alone is fragile
 //     with duplicate/changed names, and a bad match overwrites a stranger's
 //     row.
-//   • The admin's overlay model (regStatus/paid/shirt/checkedIn) doesn't
+//   • The admin's overlay model (paid/shirt/checkedIn/walk-ups) doesn't
 //     map 1:1 onto the sheet's single free-text Status column, so closing
 //     this loop cleanly really wants either (a) dedicated columns added to
 //     the form-responses sheet on purpose, or (b) the admin reading its
@@ -391,13 +394,9 @@ function writeRows_(sheet, rows) {
 //     which is a real architecture change (shared state + conflict handling
 //     across devices), not a quick write-back addition.
 //
-// Net effect: check-in / payment / regStatus changes stay local to each
-// admin device for now (as they always have), and the roster's "Verified"
-// badge on the public site keeps coming from whoever edits the sheet's
-// Status column by hand. If you want this closed too, the safest path is to
-// add explicit "Ops Status" / "Ops Paid" / "Ops Checked-in" columns to the
-// roster sheet by hand, point this script at those by header name (the same
-// flexible-header pattern mapRoster already uses), and have mapRoster read
-// them — that's a contained follow-up, not a rewrite, but it's a deliberate
-// decision about the sheet's shape that's best made with eyes open rather
-// than baked in here silently.
+// Net effect: check-in / payment / walk-up changes stay local to each admin
+// device for now. Public confirmed-entry status is the one deliberately shared
+// registration field, written to OpsStatus as Name | Status. If you want paid
+// or check-in state synced across devices too, the safest path is a dedicated
+// private Ops tab/backend with explicit columns and conflict rules — not the
+// raw Form-responses sheet.

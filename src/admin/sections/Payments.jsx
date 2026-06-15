@@ -37,6 +37,11 @@ export default function Payments({ participants, ops }) {
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Payments" subtitle="Track who's paid the $40 entry (and how) and who's collected their tournament tee. Order quantities live in the Merch tab." />
 
+      <p className="text-[10px] text-zinc-600 -mt-1">
+        Staff reference — accepted methods: <span className="text-zinc-400 font-bold">Venmo @acesforarian</span> (QR/link on the public site) and{' '}
+        <span className="text-zinc-400 font-bold">Zelle ashwinyedavalli@gmail.com</span> (Zelle is admin-only — not shown publicly).
+      </p>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <Stat label="Paid" value={`${stats.paid} / ${participants.length}`} tone="emerald" />
         <Stat label="Shirts given" value={`${stats.shirts} / ${participants.length}`} />

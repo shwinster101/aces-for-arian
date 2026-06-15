@@ -804,8 +804,8 @@ export default function App() {
       })
     : rawRoster;
 
-  // Financial tracking math. confirmedCount (Verified registrants) drives the
-  // $40-per-entry portion of the scholarship total computed below.
+  // Roster status math. "Verified" means the entry is confirmed for the public
+  // roster; actual payment confirmation lives in the admin Payments tab.
   const confirmedCount = roster.filter(p => p.status === 'Verified').length;
   // Event counts ("Singles & Doubles" players count in both) + the filtered view.
   const singlesCount = roster.filter(p => p.events.includes('Singles')).length;
@@ -853,15 +853,12 @@ export default function App() {
     const m = (cy || '').match(/\d{2,4}/);
     return m ? `'${m[0].slice(-2)}` : (cy || '').trim();
   };
-  // Scholarship total is computed, not pinned:
-  //   $500 baseline + $40 per Verified entry (paid registrations) + capped ace
-  //   money ($5/ace, max $500) + manual external donations (Config "raised").
-  // The public ace tracker stays count-only; aceDollars only feeds this total.
-  // Config "goal"/"raised"/"showBar" override the defaults when those rows exist
-  // (raised is ADDITIVE external donations now, not the whole total).
-  const aceDollars = Math.min(aces * 5, 500);
+  // Scholarship total is staff-controlled. Config "raised" is the authoritative
+  // public total; do not infer dollars from Verified entries because Verified
+  // means confirmed entry, not paid. The live ace chip is a teaser/count only;
+  // add ace pledge dollars to Config "raised" when they should affect the meter.
   const scholarshipGoal = config.goal ?? 1750;
-  const calculatedFunding = 500 + 40 * confirmedCount + aceDollars + (config.raised ?? 0);
+  const calculatedFunding = config.raised ?? 580;
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
   const showScholarshipBar = config.showBar ?? true;
 
@@ -1091,7 +1088,7 @@ export default function App() {
             {/* How to enter — register, then pay */}
             <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8">
               <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">How to Enter</h3>
-              <p className="text-xs text-zinc-400 mb-6 max-w-2xl leading-relaxed">Two steps and you're in. Once your payment clears you'll appear on the <span className="text-zinc-300 font-semibold">Roster</span> below as Verified — usually within 24 hours.</p>
+              <p className="text-xs text-zinc-400 mb-6 max-w-2xl leading-relaxed">Two steps and you're in. Once staff confirms your entry, you'll appear on the <span className="text-zinc-300 font-semibold">Roster</span> below as confirmed — usually within 24 hours. Payment is checked separately before play.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Step 1 — Register */}
@@ -1154,7 +1151,7 @@ export default function App() {
                       )}
                     </div>
                     <span className="shrink-0 text-[10px] font-mono font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-md text-emerald-400">
-                      {confirmedCount} paid
+                      {confirmedCount} confirmed
                     </span>
                   </div>
                   {/* Filter the roster by event — the chips double as live counts */}
@@ -1212,7 +1209,7 @@ export default function App() {
                             <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
                               player.status === 'Verified' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                             }`}>
-                              {player.status}
+                              {player.status === 'Verified' ? 'Confirmed' : player.status}
                             </span>
                           </td>
                         </tr>

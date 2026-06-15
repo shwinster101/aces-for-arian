@@ -128,7 +128,8 @@ export function parseCSV(text) {
 //
 // Optional columns that can be added to the form-responses sheet (to the right
 // of the auto-filled form columns) to control the public dashboard:
-//   • "Status"  -> put "Verified" once payment is confirmed.
+//   • "Status"  -> put "Verified" once the entry is confirmed for the public roster.
+//                  Actual payment confirmation is tracked in the admin Payments tab.
 //   • "Hide"    -> put "y" (or x/true/1) to hide that person from the dashboard.
 export function mapRoster(rows) {
   if (rows.length < 2) return [];
@@ -199,7 +200,8 @@ export function mapRoster(rows) {
 
 // --- CONFIG TAB -> { raised, goal, showBar } -------------------------------
 // Expects a two-column "Key | Value" tab. Recognized keys (case/spacing
-// insensitive): "raised" (current $), "goal" (target $), "show bar" (yes/no).
+// insensitive): "raised" (authoritative public scholarship total), "goal"
+// (target $), "show bar" (yes/no).
 // Returns only the keys it actually found, so unset keys keep their defaults.
 export function mapConfig(rows) {
   if (!rows || rows.length < 1) return {};
@@ -352,7 +354,7 @@ export function mapAces(rows) {
 // apps-script/ops-write-back.js when the admin taps a registration-status chip
 // (src/admin/sections/Registrations.jsx). App.jsx merges it over the roster's
 // own Status column on read, so an admin "Confirmed" flips the public board to
-// Verified WITHOUT writing into the raw Form-responses tab — see the "WHY
+// Verified/Confirmed WITHOUT writing into the raw Form-responses tab — see the "WHY
 // participant ISN'T HANDLED" note in ops-write-back.js for why that tab is
 // off-limits. Only Name + Verified/Pending crosses the wire (no PII). Keyed by
 // lowercased/trimmed name for a case-insensitive match against the roster.
