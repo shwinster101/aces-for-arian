@@ -219,6 +219,12 @@ export function useOpsStore() {
   // setOverlay and [[pii-policy]]. Lands in the OpsStatus tab via writeStatus_.
   const pushPublicStatus = (name, status) => pushToSheet('status', { name, status });
 
+  // Staff-set scholarship meter — writes raised/goal into the public Config tab
+  // (see writeConfig_ in apps-script/ops-write-back.js) so the admin can bump the
+  // public total from the console instead of hand-editing the sheet. Stateless:
+  // the live Config tab is the source of truth, read back fresh in the section.
+  const pushConfig = (patch) => pushToSheet('config', patch);
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
@@ -236,7 +242,7 @@ export function useOpsStore() {
     addMatch, updateMatch, removeMatch, moveMatch,
     setMerch,
     incrementAces, decrementAces,
-    pushPublicStatus,
+    pushPublicStatus, pushConfig,
     exportJSON, clearOps,
   };
 }

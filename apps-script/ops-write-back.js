@@ -107,6 +107,7 @@ function doPost(e) {
       case 'match-delete': deleteMatch_(body.payload); break;
       case 'aces':         writeAces_(body.payload); break;
       case 'status':       writeStatus_(body.payload); break;
+      case 'config':       writeConfig_(body.payload); break;
       // 'participant' / 'walk-up': see the note at the bottom of this file.
     }
   } catch (err) {
@@ -331,6 +332,31 @@ function writeStatus_(payload) {
     if (String(rows[i][0] || '').trim().toLowerCase() === key) { idx = i; break; }
   }
   if (idx >= 0) rows[idx] = [name, status]; else rows.push([name, status]);
+  writeRows_(sheet, rows);
+}
+
+// Staff-set scholarship meter — upserts raised/goal into the Config tab (Key |
+// Value) that the public meter reads via mapConfig (lib/sheet.js). Lets the
+// admin bump the public total from the ops console (phone-friendly, courtside)
+// instead of hand-editing the sheet, and auto-creates a correctly-formatted
+// Config tab so an empty/misnamed tab can't silently pin the meter to its
+// hardcoded fallback. Matches existing rows by the SAME fuzzy keys mapConfig
+// uses, so it won't create a duplicate next to a "Funding"/"Target" row.
+function writeConfig_(payload) {
+  if (!payload) return;
+  var sheet = sheetByName_('Config', ['Key', 'Value']);
+  var rows = readRows_(sheet);
+  var upsert = function (re, canonical, val) {
+    if (val === undefined || val === null || val === '') return;
+    var n = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+    if (isNaN(n) || n < 0) return;
+    for (var i = 0; i < rows.length; i++) {
+      if (re.test(String(rows[i][0] || '').trim().toLowerCase())) { rows[i] = [rows[i][0], n]; return; }
+    }
+    rows.push([canonical, n]);
+  };
+  upsert(/raised|funding|amount|current/, 'raised', payload.raised);
+  upsert(/goal|target/, 'goal', payload.goal);
   writeRows_(sheet, rows);
 }
 
