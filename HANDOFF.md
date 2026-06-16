@@ -4,8 +4,8 @@ Purpose: give a fresh session the current shape of the project without
 re-deriving it from memory. Memorial tennis tournament: **July 11-12, 2026**,
 Dunlap HS, Peoria IL.
 
-Last regenerated: 2026-06-14 PDT. Current HEAD: `a80243a` on `main`, in sync
-with `origin/main` before the local edits listed below.
+Last regenerated: 2026-06-15 23:44 PDT. Current HEAD: `1da0c34` on `main`,
+in sync with `origin/main`.
 
 ---
 
@@ -25,33 +25,57 @@ with `origin/main` before the local edits listed below.
 - **Ace chip:** visible as a public teaser even at `0 Aces hit live`.
 - **Scholarship meter:** staff-controlled by Config `raised` as the authoritative public
   total. Do **not** infer dollars from public `Verified` entries.
+- **Latest deployed admin asset checked:** `/assets/admin-BaWGGEeq.js`.
+- **Latest deployed OpsStatus check:** `/api/sheet?tab=OpsStatus` returns only
+  `Chethan Manika,Pending`; the previous `__verify_test__` row is scrubbed from
+  the public endpoint.
 
 ---
 
-## 1. Local Working Tree Notes
+## 1. Session Summary — 2026-06-15
 
-Current meaningful local edits at handoff time:
+Material changes now on `main`:
 
-- `src/App.jsx`
-  - Public roster count says `confirmed`, not `paid`.
-  - Roster badge renders `Confirmed` for internal `Verified`.
-  - Entry copy says staff confirms entry and payment is checked separately.
-  - Scholarship total is `config.raised ?? 580`, goal defaults to `1750`.
-  - Live ace chip remains visible/count-only.
+- `src/admin/sections/Registrations.jsx`
+  - Registration status is now a two-state admin flow: `confirmed` or `pending`.
+  - Waitlist was removed from filters, counts, copy, and active controls.
+  - The status chip now displays the same effective status used by counts:
+    sheet `Verified` rows display as `CONFIRMED` immediately, even before a local overlay exists.
+  - Copy now says confirmation can take up to a day, so pending is expected.
+- `src/admin/ui.jsx`
+  - `StatusBadge` displays internal `Verified` as `Confirmed`.
+  - `RegStatusChip` cycles only `confirmed <-> pending`.
+  - Legacy/unknown local values fall back to `pending`.
+- `src/admin/store.js`
+  - Match write-back now sends the full public match payload on each update/reorder.
+  - This prevents partial patch rows from losing `event`/`num` server-side and accidentally
+    rendering a Doubles match as Singles.
+- `functions/api/sheet.js`
+  - `OpsStatus` CSV is scrubbed at the Cloudflare read boundary: sentinel/test rows whose
+    names start with `__` are not returned publicly.
 - `src/lib/sheet.js`
-  - Comments updated: `Status`/`Verified` means confirmed public roster entry.
-  - Config `raised` documented as authoritative public scholarship total.
-- `src/admin/AdminApp.jsx`
-  - Header date corrected to `July 11-12`.
+  - `mapOpsStatus` also ignores sentinel/test names that start with `__`.
 - `apps-script/ops-write-back.js`
-  - Comment-only cleanup: `OpsStatus` is the one shared registration field;
-    payment/check-in/walk-up details stay local/private.
-- `src/admin/sections/Payments.jsx`
-  - Staff reference copy added: Venmo `@acesforarian`, Zelle admin-only.
-- `public/photo6.jpg`
-  - Compressed current image from `3024x4032`, ~5.1 MB to `1200x1600`, ~672 KB.
-- `AGENTS.md`, `CLAUDE.md`, `HANDOFF.md`
-  - Untracked local guidance/handoff files.
+  - Added matching `OpsStatus` sentinel-row filtering and rejects future sentinel status writes.
+  - This Apps Script logic is committed, but the script still needs a **New version -> Deploy**
+    if the deployed Apps Script should enforce the same rule before Cloudflare receives data.
+- `index.html`
+  - Added Open Graph + Twitter social-share preview tags.
+
+Verification completed:
+
+- `npm run lint` passed.
+- `npm run build` passed.
+- Local admin browser check passed: no waitlist text, confirmed fallback rows show confirmed chips.
+- Cloudflare function fixture test scrubbed `__verify_test__`.
+- Live `/api/sheet?tab=OpsStatus` returned `Name,Status` and `Chethan Manika,Pending`.
+- Live `/admin` served `admin-BaWGGEeq.js`.
+
+Current local-only/untracked files:
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `index.html.bak`
 
 Run before handing off or committing:
 
@@ -60,7 +84,7 @@ npm run lint
 npm run build
 ```
 
-Both passed after the semantic/status patch.
+Both passed after the latest admin/status patch.
 
 ---
 
@@ -138,6 +162,7 @@ Allowed/read tabs:
 - `Matches` -> live scores and queue-derived court board.
 - `Aces` -> live ace count.
 - `OpsStatus` -> display-safe public confirmed-entry overlay.
+  - Rows with names beginning `__` are treated as test/sentinel rows and scrubbed.
 
 Write-back event types:
 
@@ -199,7 +224,8 @@ Important behavior:
 
 - Registrations:
   - `confirmed` pushes public `Verified`/display `Confirmed` to `OpsStatus`.
-  - `pending` / `waitlist` push public `Pending`.
+  - `pending` pushes public `Pending`.
+  - There is no active waitlist state.
   - Walk-ups stay local and do not appear on public roster.
 - Payments:
   - Source of truth for whether a person has actually paid.
@@ -234,7 +260,11 @@ Apps Script:
 - For code changes, use **Deploy -> Manage deployments -> pencil -> New version -> Deploy**.
 - Do not create a New deployment unless you also update `SHEET_WRITE_URL`.
 - Comment-only changes do not require redeploy.
-- Logic changes to `doPost`, `doGet`, `READABLE`, or tokens require redeploy.
+- Logic changes to `doPost`, `doGet`, `READABLE`, tokens, or Apps Script-side
+  `OpsStatus` filtering require redeploy.
+- Current note: `apps-script/ops-write-back.js` has new sentinel-row filtering and
+  sentinel write rejection. Cloudflare already scrubs public `OpsStatus`, but redeploy
+  Apps Script to keep the upstream boundary aligned.
 
 Dry run checklist:
 
@@ -248,10 +278,10 @@ Dry run checklist:
 
 ## 8. Current Highest-Leverage Work
 
-1. Commit the current semantic cleanup once reviewed.
-2. Refresh/deploy Apps Script only if logic changed since the currently deployed version.
-3. Do a phone dry-run on `/admin.html` and `/#home`.
-4. Decide whether `OpsStatus` should poll periodically or remain reload-based.
+1. Redeploy Apps Script as a new version so `OpsStatus` sentinel filtering is enforced upstream.
+2. Do a phone dry-run on `/admin.html` and `/#home`.
+3. Decide whether `OpsStatus` should poll periodically or remain reload-based.
+4. Consider Cloudflare Access for `/admin`; current PIN/token are deterrents only.
 5. Keep `App.jsx` refactor on the radar: it is ~2k lines and should eventually split into
    public sections/components the way admin already is.
 
