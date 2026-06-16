@@ -364,6 +364,7 @@ export function mapOpsStatus(rows) {
   for (let i = 1; i < rows.length; i++) {
     const name = String(rows[i][0] || "").trim().toLowerCase();
     const status = String(rows[i][1] || "").trim();
+    if (name.startsWith("__")) continue;
     if (name) map[name] = /^verif/i.test(status) ? "Verified" : "Pending";
   }
   return map;

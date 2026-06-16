@@ -95,27 +95,26 @@ const STATUS_STYLES = {
   Verified: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   pending: 'bg-zinc-800 text-zinc-400 border-zinc-700',
   Pending: 'bg-zinc-800 text-zinc-400 border-zinc-700',
-  waitlist: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
 export function StatusBadge({ status }) {
+  const label = status === 'Verified' ? 'Confirmed' : (status || 'pending');
   return (
     <span className={`inline-block text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${STATUS_STYLES[status] || STATUS_STYLES.pending}`}>
-      {status || 'pending'}
+      {label}
     </span>
   );
 }
 
-// Cycles confirmed -> waitlist -> pending -> confirmed on tap; one big chip,
-// easy to hit on a phone mid-checkin-line.
-const REG_CYCLE = ['confirmed', 'waitlist', 'pending'];
+// Cycles confirmed <-> pending on tap; one big chip, easy to hit on a phone
+// mid-checkin-line.
+const REG_CYCLE = ['confirmed', 'pending'];
 const REG_STYLES = {
   confirmed: 'bg-emerald-500 text-black border-emerald-400',
-  waitlist: 'bg-amber-400 text-black border-amber-300',
   pending: 'bg-zinc-800 text-zinc-300 border-zinc-700',
 };
 export function RegStatusChip({ status, onChange }) {
-  const s = status || 'pending';
+  const s = REG_CYCLE.includes(status) ? status : 'pending';
   const next = () => onChange(REG_CYCLE[(REG_CYCLE.indexOf(s) + 1) % REG_CYCLE.length]);
   return (
     <button onClick={next} className={`min-h-11 text-[10px] font-mono font-black uppercase tracking-wider px-3.5 py-1.5 rounded-lg border transition active:scale-95 ${REG_STYLES[s]}`}>

@@ -6,7 +6,6 @@ const FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'pending', label: 'Pending' },
-  { value: 'waitlist', label: 'Waitlist' },
 ];
 
 const EVENTS_OPTIONS = ['Singles', 'Doubles', 'Singles & Doubles', 'Supporter'];
@@ -14,7 +13,7 @@ const EVENTS_OPTIONS = ['Singles', 'Doubles', 'Singles & Doubles', 'Supporter'];
 // Effective registration status: an explicit ops override wins; otherwise
 // derive a sensible default from the sheet's Verified/Pending status so every
 // registrant lands in a bucket without staff having to triage all of them.
-const effectiveStatus = (p) => p.overlay.regStatus || (p.status === 'Verified' ? 'confirmed' : 'pending');
+const effectiveStatus = (p) => p.overlay.regStatus === 'confirmed' || p.status === 'Verified' ? 'confirmed' : 'pending';
 
 export default function Registrations({ participants, ops }) {
   const [filter, setFilter] = useState('all');
@@ -22,7 +21,7 @@ export default function Registrations({ participants, ops }) {
   const [showAdd, setShowAdd] = useState(false);
 
   const counts = useMemo(() => {
-    const c = { all: participants.length, confirmed: 0, pending: 0, waitlist: 0 };
+    const c = { all: participants.length, confirmed: 0, pending: 0 };
     participants.forEach(p => { c[effectiveStatus(p)] = (c[effectiveStatus(p)] || 0) + 1; });
     return c;
   }, [participants]);
@@ -40,7 +39,7 @@ export default function Registrations({ participants, ops }) {
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title="Registrations"
-        subtitle="Live roster from the Google Sheet, plus any walk-ups added here. Tap a status chip to set confirmed / waitlist / pending for tournament ops purposes."
+        subtitle="Live roster from the Google Sheet, plus any walk-ups added here. Confirmation can take up to a day, so pending is expected until staff confirms the entry."
         right={
           <button onClick={() => setShowAdd(s => !s)}
             className="flex items-center justify-center gap-2 min-h-11 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-[11px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-colors">
@@ -50,10 +49,9 @@ export default function Registrations({ participants, ops }) {
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         <Stat label="Total" value={counts.all} />
         <Stat label="Confirmed" value={counts.confirmed} tone="emerald" />
-        <Stat label="Waitlist" value={counts.waitlist} tone="amber" />
         <Stat label="Pending" value={counts.pending} />
       </div>
 
@@ -80,6 +78,7 @@ export default function Registrations({ participants, ops }) {
 }
 
 function RegistrationRow({ p, ops }) {
+  const status = effectiveStatus(p);
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4 px-4 py-3.5 hover:bg-zinc-900/40 transition-colors">
       <div className="flex-1 min-w-0">
@@ -97,7 +96,7 @@ function RegistrationRow({ p, ops }) {
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <RegStatusChip status={p.overlay.regStatus} onChange={(v) => {
+        <RegStatusChip status={status} onChange={(v) => {
           ops.setOverlay(p.name, { regStatus: v });
           // Only sheet-sourced registrants have a public roster row to flip;
           // walk-ups (source 'added') aren't public, so never push their names.

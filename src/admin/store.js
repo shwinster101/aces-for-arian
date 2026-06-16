@@ -23,7 +23,7 @@ const STORAGE_KEY = 'a4a-ops-v1';
 const STORE_VERSION = 1;
 
 const emptyOverlay = () => ({
-  regStatus: '',        // 'confirmed' | 'pending' | 'waitlist' | ''  (blank = use sheet status)
+  regStatus: '',        // 'confirmed' | 'pending' | ''  (blank = use sheet status)
   checkedIn: false,
   checkedInAt: null,    // ISO timestamp
   paid: false,
@@ -48,6 +48,19 @@ const initialStore = () => ({
   courtBoard: emptyCourtBoard(),
   merch: {},                                 // inventory: key ('shirt:M' | 'sweatbands' | …) -> { order, stock }
   aces: 0,                                   // live "Ace Tracker" running total — see incrementAces/decrementAces
+});
+
+const publicMatchPayload = (m) => ({
+  id: m.id,
+  event: m.event,
+  round: m.round,
+  num: m.num,
+  a: m.a,
+  b: m.b,
+  court: m.court,
+  status: m.status,
+  score: m.score,
+  winner: m.winner,
 });
 
 function load() {
@@ -155,8 +168,17 @@ export function useOpsStore() {
     return id;
   };
   const updateMatch = (id, patch) => {
-    setStore(s => ({ ...s, matches: s.matches.map(m => (m.id === id ? { ...m, ...patch } : m)) }));
-    pushToSheet('match', { id, ...patch });
+    let nextForSheet = null;
+    setStore(s => {
+      const matches = s.matches.map(m => {
+        if (m.id !== id) return m;
+        const next = { ...m, ...patch };
+        nextForSheet = publicMatchPayload(next);
+        return next;
+      });
+      return { ...s, matches };
+    });
+    if (nextForSheet) pushToSheet('match', nextForSheet);
   };
   const removeMatch = (id) => {
     setStore(s => ({ ...s, matches: s.matches.filter(m => m.id !== id) }));
@@ -184,8 +206,9 @@ export function useOpsStore() {
       const matches = s.matches.map(x => {
         if (!newNum.has(x.id)) return x;
         const n = newNum.get(x.id);
-        if (String(x.num) !== n) pushes.push({ id: x.id, num: n });
-        return { ...x, num: n };
+        const next = { ...x, num: n };
+        if (String(x.num) !== n) pushes.push(publicMatchPayload(next));
+        return next;
       });
       return { ...s, matches };
     });

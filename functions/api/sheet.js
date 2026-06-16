@@ -77,6 +77,12 @@ function filterRoster(csv) {
   return toCSV(rows.map((r) => r.filter((_, i) => keep[i])));
 }
 
+function filterOpsStatus(csv) {
+  const rows = parseCSV(csv);
+  if (rows.length < 2) return csv;
+  return toCSV(rows.filter((r, i) => i === 0 || !String(r[0] || "").trim().startsWith("__")));
+}
+
 const gvizUrl = (tab) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv` +
   (tab ? `&sheet=${encodeURIComponent(tab)}` : "");
@@ -84,7 +90,13 @@ const gvizUrl = (tab) =>
 // Roster ('') → strip PII to the public columns; a named tab that came back
 // looking like the roster (gviz missing-tab fallback) → fail closed.
 const shape = (body, tab) =>
-  tab === "" ? filterRoster(body) : looksLikeRoster(body) ? "" : body;
+  tab === ""
+    ? filterRoster(body)
+    : looksLikeRoster(body)
+      ? ""
+      : tab === "OpsStatus"
+        ? filterOpsStatus(body)
+        : body;
 
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);

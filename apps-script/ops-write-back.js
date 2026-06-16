@@ -169,6 +169,7 @@ function doGet(e) {
   if (rows < 1 || cols < 1) return csvOut_('');
   var values = sheet.getRange(1, 1, rows, cols).getValues();
   if (tab === '') values = filterRosterCols_(values);       // strip PII from the raw roster
+  if (tab === 'OpsStatus') values = filterOpsStatusRows_(values);
   return csvOut_(rowsToCsv_(values));
 }
 
@@ -180,6 +181,13 @@ function filterRosterCols_(values) {
   var keep = values[0].map(function (h) { return isPublicRosterCol_(h); });
   return values.map(function (row) {
     return row.filter(function (_, i) { return keep[i]; });
+  });
+}
+
+function filterOpsStatusRows_(values) {
+  if (!values.length) return values;
+  return values.filter(function (r, i) {
+    return i === 0 || String(r[0] || '').trim().indexOf('__') !== 0;
   });
 }
 
@@ -312,7 +320,7 @@ function writeAces_(payload) {
   writeRows_(sheet, [[n]]);
 }
 
-// Registration-status overlay. The admin's "Confirmed/Pending/Waitlist" chip
+// Registration-status overlay. The admin's Confirmed/Pending chip
 // pushes { name, status } here; we upsert a Name|Status row into a dedicated
 // OpsStatus tab that App.jsx merges over the roster's Status column on read.
 // This is the "separate Ops tab" the note at the bottom of this file calls for
@@ -323,6 +331,7 @@ function writeAces_(payload) {
 function writeStatus_(payload) {
   var name = payload && payload.name ? String(payload.name).trim() : '';
   if (!name) return;
+  if (name.indexOf('__') === 0) return;
   var status = /^verif/i.test(String(payload.status || '')) ? 'Verified' : 'Pending';
   var sheet = sheetByName_('OpsStatus', OPSSTATUS_HEADERS);
   var rows = readRows_(sheet);
