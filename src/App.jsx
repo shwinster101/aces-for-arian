@@ -566,12 +566,12 @@ function ScholarsList({ showDonate = false }) {
 // the menu into a discovery tool, not just navigation.
 const TABS = [
   { id: 'home', label: 'Home', icon: Home, blurb: 'Register, roster & day-of basics' },
+  { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
   { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
   { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp, blurb: "Who's seeded — and who's on the bubble" },
-  { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
-  { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Tournament memories, 2020 to today' },
   { id: 'scholarship', label: 'Scholarship', icon: GraduationCap, blurb: 'Apply, recipients & the cause' },
   { id: 'legacy', label: 'Legacy', icon: Heart, blurb: "Arian's story, Hall of Fame & past results" },
+  { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Tournament memories, 2020 to today' },
   { id: 'merch', label: 'Merch', icon: ShoppingBag, blurb: 'Tournament tees & gear' },
 ];
 
@@ -1584,14 +1584,14 @@ export default function App() {
                     <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · 16 Teams</h3>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Every team is guaranteed multiple matches. A loss slides you to the next direction instead of sending you home.
+                    Every team is guaranteed multiple matches. If a round does not go your way, you rotate into a new direction with another path to compete.
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
                     {[
-                      ['East', 'Championship — all 16 teams', 'text-[#fbbf24]'],
-                      ['West', 'Round-of-16 East losers (8)', 'text-zinc-200'],
-                      ['North', 'Quarterfinal East losers (4)', 'text-zinc-200'],
-                      ['South', 'First-round West losers (4)', 'text-zinc-200'],
+                      ['East', 'Championship path — all 16 teams', 'text-[#fbbf24]'],
+                      ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
+                      ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-200'],
+                      ['South', 'Final placement path after opening West round (4)', 'text-zinc-200'],
                     ].map(([dir, desc, color]) => (
                       <div key={dir} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
                         <div className={`font-black uppercase tracking-wider ${color}`}>{dir}</div>
@@ -1630,7 +1630,7 @@ export default function App() {
                     <h3 className="text-base font-black text-white uppercase tracking-wider">Double Elimination · 32 Players</h3>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Two losses and you're out. First-round losers drop into the losers bracket and can battle all the way back to the Grand Final.
+                    Players get a two-match cushion. After a first setback, you move into the comeback bracket and can still battle all the way back to the Grand Final.
                   </p>
                 </div>
 
@@ -1640,10 +1640,10 @@ export default function App() {
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Losers Bracket</h4>
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Comeback Bracket</h4>
                   <Bracket
                     rounds={numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61])}
-                    names={['Losers R1', 'Losers R2', 'Losers R3', 'Losers R4', 'Losers R5', 'Losers R6', 'Losers R7', 'Losers Final']}
+                    names={['Comeback R1', 'Comeback R2', 'Comeback R3', 'Comeback R4', 'Comeback R5', 'Comeback R6', 'Comeback R7', 'Comeback Final']}
                   />
                 </div>
 
@@ -1652,10 +1652,10 @@ export default function App() {
                   <div className="flex items-center gap-5 flex-wrap">
                     <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
                       <div className="px-3 py-2 text-xs text-zinc-200">Winners Bracket Champion</div>
-                      <div className="px-3 py-2 text-xs text-zinc-200">Losers Bracket Champion</div>
+                      <div className="px-3 py-2 text-xs text-zinc-200">Comeback Bracket Champion</div>
                     </div>
                     <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-                      If the Losers Bracket Champion wins, a deciding "bracket reset" set is played — the Winners Champion hadn't lost yet.
+                      If the Comeback Bracket Champion wins, a deciding "bracket reset" set is played because the Winners Champion has not dropped a match yet.
                     </p>
                   </div>
                 </div>
@@ -1741,7 +1741,7 @@ export default function App() {
                 <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">Sunday Singles</h3>
                 <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 8:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
-                  <li><strong className="text-zinc-200">Format:</strong> Double elimination — two losses to be out.</li>
+                  <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
                   <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets.</li>
                   <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
