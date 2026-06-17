@@ -94,6 +94,10 @@ function doPost(e) {
     // Public idea/suggestion box — no token (anyone on the site can submit).
     // Emails the owner; capped + trimmed so it can't be abused as a relay.
     if (body.type === 'idea') { handleIdea_(body.payload); return ContentService.createTextOutput('ok'); }
+    // Public "notify me next year" capture — no token. Appends to a PRIVATE
+    // Subscribers tab that is intentionally absent from the public read allowlist
+    // (functions/api/sheet.js), so the emails are never served to the browser.
+    if (body.type === 'subscribe') { writeSubscribe_(body.payload); return ContentService.createTextOutput('ok'); }
     // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
     // Obfuscation only (the token ships in the public bundle), but it stops
     // drive-by writes from anyone who merely opens /admin.html.
@@ -131,6 +135,23 @@ function handleIdea_(payload) {
     'Aces for Arian — idea from the site' + (from ? ' (' + from + ')' : ''),
     [text, '', 'From: ' + (from || '(anonymous)'), 'Sent ' + new Date()].join('\n')
   );
+}
+
+// Public "notify me next year" capture -> appends to a PRIVATE Subscribers tab.
+// Never exposed: "Subscribers" is intentionally absent from the ALLOWED read set
+// in functions/api/sheet.js. Validated + length-capped + deduped to limit abuse.
+function writeSubscribe_(payload) {
+  var email = String((payload && payload.email) || '').slice(0, 500).trim();
+  if (!email || !/\S@\S/.test(email)) return;
+  var source = String((payload && payload.source) || '').slice(0, 100).trim();
+  var sheet = sheetByName_('Subscribers', ['Email', 'Source', 'Timestamp']);
+  var rows = readRows_(sheet);
+  var lower = email.toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === lower) return; // already subscribed
+  }
+  rows.push([email, source, new Date().toISOString()]);
+  writeRows_(sheet, rows);
 }
 
 // --------------------------------------------------------------------------

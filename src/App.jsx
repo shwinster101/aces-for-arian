@@ -37,7 +37,8 @@ import {
   GraduationCap,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Mail
 } from 'lucide-react';
 
 // ==========================================
@@ -635,6 +636,54 @@ function IdeaBox() {
   );
 }
 
+// Public "notify me about next year" capture — fire-and-forget POST to the Apps
+// Script (type 'subscribe'), which appends to a PRIVATE Subscribers tab (never in
+// the public read allowlist). no-cors means we can't read a response, so we
+// confirm optimistically. Mirrors IdeaBox. `source` tags where the signup came from.
+function NotifyMeBox({ source = 'site' }) {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  if (!SHEET_WRITE_URL) return null;
+  const valid = (s) => /\S@\S/.test(s.trim());
+  const submit = (e) => {
+    e.preventDefault();
+    const em = email.trim();
+    if (!valid(em)) return;
+    try {
+      fetch(SHEET_WRITE_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'subscribe', payload: { email: em.slice(0, 500), source } }),
+      }).catch(() => {});
+    } catch { /* fire and forget */ }
+    setEmail(''); setSent(true);
+  };
+  return (
+    <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-7">
+      <div className="flex items-center gap-2.5">
+        <Mail className="h-4 w-4 text-[#fbbf24] shrink-0" />
+        <h3 className="text-sm font-black text-white uppercase tracking-wider">Get next year's date + updates</h3>
+      </div>
+      <p className="text-xs text-zinc-400 mt-1 mb-4 max-w-2xl leading-relaxed">Drop your email and we'll send you the date, the registration link, and tournament news for next year — nothing else.</p>
+      {sent ? (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-sm text-emerald-300">
+          Thanks — we'll send you next year's date and updates. <button onClick={() => setSent(false)} className="text-emerald-400/80 hover:text-emerald-200 underline underline-offset-2 ml-1">Add another</button>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="flex flex-col sm:flex-row gap-2.5">
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={500}
+            placeholder="you@email.com"
+            className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+          <button type="submit" disabled={!valid(email)}
+            className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
+            Notify me
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // ==========================================
 // 3. MAIN APPLICATION
 // ==========================================
@@ -1093,6 +1142,8 @@ export default function App() {
               <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-60" />
             </div>
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
+
+            <NotifyMeBox source="home-hero" />
 
             {/* How to enter — register, then pay */}
             <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8">
@@ -1854,7 +1905,7 @@ export default function App() {
                   Arian's positivity radiates on and off the court. Graduating from DHS with a nearly perfect GPA, he took his talents to study Computer Science at <strong className="text-zinc-200">USC</strong> in Los Angeles. His diligence earned him an upcoming summer internship at <strong className="text-zinc-200">Facebook</strong> following his Junior year.
                 </p>
                 <p className="text-zinc-400 text-sm leading-relaxed md:text-base">
-                  Arian tragically lost his life in December 2021 as a pedestrian victim to senseless street racing in LA. Let us come together for the 7th straight year as a Dunlap community to enjoy some summer tennis as Arian would, playing to his heart's content on the court. After all, Arian was one of the first champions of this tournament in 2020 — formerly called the Eagle Classic!
+                  Arian tragically lost his life in December 2021 as a pedestrian victim to senseless street racing in LA. Let us come together for the 5th Annual Aces for Arian — our 7th straight summer of this tournament as a Dunlap community — to enjoy some summer tennis as Arian would, playing to his heart's content on the court. After all, Arian was one of the first champions back in 2020, when this tournament was the Eagle Classic!
                 </p>
                 <p className="text-xs text-zinc-500 leading-relaxed">
                   <a href="https://www.pjstar.com/story/news/2021/12/13/arian-rahbar-dunlop-illinois-killed-in-los-angeles/6491771001/" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">
@@ -1866,13 +1917,19 @@ export default function App() {
 
             <div className="relative z-10 mt-8 pt-6 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
-                <div className="text-sm font-black text-white uppercase tracking-wider">Support the Scholarship</div>
+                <div className="text-sm font-black text-white uppercase tracking-wider">Play in Arian's memory</div>
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% of entry fees and donations fund the Arian Rahbar Memorial Scholarship for Dunlap seniors pursuing higher education.</div>
               </div>
-              <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                <Heart className="w-4 h-4" />
-                <span>Donate to the Scholarship</span>
-              </a>
+              <div className="shrink-0 flex flex-col sm:flex-row gap-2.5">
+                <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                  <span>Register to Play — $40</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors">
+                  <Heart className="w-4 h-4" />
+                  <span>Donate</span>
+                </a>
+              </div>
             </div>
           </div>
 
@@ -1958,6 +2015,18 @@ export default function App() {
               <ScholarsList />
             </div>
 
+            {/* Register CTA — entry fees fund this scholarship; give cause-aligned visitors a way to act */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <div className="text-sm font-black text-white uppercase tracking-wider">Fund it by playing</div>
+                <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Every entry fee goes straight to this scholarship. Grab a spot in the July 11–12 tournament — singles, doubles, or both.</div>
+              </div>
+              <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                <span>Register to Play — $40</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+
             {/* Application link — kept low-key off-season; promote in spring */}
             <div className="text-center pt-1">
               <a href={SCHOLARSHIP_APPLY_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
@@ -1969,6 +2038,11 @@ export default function App() {
         )}
 
       </main>
+
+      {/* Universal email capture — renders under every tab, above the footer */}
+      <section className="max-w-7xl w-full mx-auto px-4 pb-10 sm:px-6 lg:px-8">
+        <NotifyMeBox source="footer" />
+      </section>
 
       {/* --- FOOTER --- */}
       <footer className="bg-black py-10 text-center text-xs text-zinc-600 border-t border-zinc-900 mt-auto">
