@@ -1145,7 +1145,7 @@ export default function App() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Aces for Arian 2026 tournament flyer — register for $40"
-                  className="group block w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-xl shadow-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] transition-transform hover:-translate-y-0.5"
+                  className="group block w-full max-w-sm md:max-w-[260px] mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-xl shadow-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] transition-transform hover:-translate-y-0.5"
                 >
                   <img
                     src="/flyer.jpg"
