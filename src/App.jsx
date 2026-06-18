@@ -259,6 +259,9 @@ const VENMO_URL = "https://venmo.com/code?user_id=4618810715800962447&created=17
 // Where the header "Donate" button sends people.
 const DONATE_URL = VENMO_URL;
 
+// The Google Form players register through — reused by every "Register" CTA.
+const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
+
 // Icons for the Gear Locker's standalone items — keyed by MERCH_ITEMS[].key
 // (see "MERCH (Gear Locker)" in lib/sheet.js), so admin + public always show
 // the same item set.
@@ -1121,7 +1124,7 @@ export default function App() {
                   Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community.
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
-                  <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
+                  <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
                     <span>Register — $40</span>
                     <ExternalLink className="h-4 w-4" />
@@ -1143,6 +1146,29 @@ export default function App() {
             </div>
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
 
+            {/* Tournament flyer — framed, clickable poster that opens the register form */}
+            <a
+              href={REGISTER_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Aces for Arian 2026 tournament flyer — register for $40"
+              className="group block mx-auto w-full max-w-md rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24]"
+            >
+              <div className="relative bg-[#151515] border border-zinc-800 rounded-3xl p-3 md:p-4 shadow-2xl shadow-black overflow-hidden transition-transform group-hover:-translate-y-0.5">
+                <img
+                  src="/flyer.jpg"
+                  alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12. Register by July 6."
+                  className="w-full rounded-2xl"
+                  loading="lazy"
+                />
+                {/* Unmistakable register affordance under the poster */}
+                <div className="mt-3 flex items-center justify-center gap-2 bg-[#fbbf24] group-hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
+                  <span>Register — $40</span>
+                  <ExternalLink className="h-4 w-4" />
+                </div>
+              </div>
+            </a>
+
             <NotifyMeBox source="home-hero" />
 
             {/* How to enter — register, then pay */}
@@ -1160,7 +1186,7 @@ export default function App() {
                     </div>
                     <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
                   </div>
-                  <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                  <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
                     <span>Open Form</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
@@ -1410,7 +1436,7 @@ export default function App() {
                 <h4 className="text-sm font-black text-white uppercase tracking-wider">Help us seed the draw</h4>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Submit your UTR, WTN, recent results, or tennis background so the committee can build the fairest bracket possible.</p>
               </div>
-              <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer"
+              <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
                 <span>Submit my info</span>
                 <ExternalLink className="h-4 w-4" />
@@ -1921,7 +1947,7 @@ export default function App() {
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% of entry fees and donations fund the Arian Rahbar Memorial Scholarship for Dunlap seniors pursuing higher education.</div>
               </div>
               <div className="shrink-0 flex flex-col sm:flex-row gap-2.5">
-                <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
                   <span>Register to Play — $40</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
@@ -2021,7 +2047,7 @@ export default function App() {
                 <div className="text-sm font-black text-white uppercase tracking-wider">Fund it by playing</div>
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Every entry fee goes straight to this scholarship. Grab a spot in the July 11–12 tournament — singles, doubles, or both.</div>
               </div>
-              <a href="https://forms.gle/rLnyakinZfkSePpv7" target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+              <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
                 <span>Register to Play — $40</span>
                 <ExternalLink className="h-4 w-4" />
               </a>
