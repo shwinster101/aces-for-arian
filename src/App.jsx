@@ -971,13 +971,6 @@ export default function App() {
                   Aces for Arian <span className="text-base md:text-lg font-light text-[#fefcbf]">2026</span>
                 </h1>
               </div>
-              {/* Mobile menu trigger — fills the empty banner space and makes the
-                  other 7 tabs discoverable beyond the home page. */}
-              <button onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-expanded={menuOpen}
-                className="md:hidden shrink-0 inline-flex items-center gap-1.5 text-[#fbbf24] border border-[#fbbf24]/40 hover:bg-[#fbbf24]/10 rounded-lg px-3 py-2 transition-colors">
-                <Menu className="w-5 h-5" />
-                <span className="text-xs font-black uppercase tracking-wider">Menu</span>
-              </button>
             </div>
 
             <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
@@ -1055,7 +1048,13 @@ export default function App() {
               );
             })}
           </nav>
-          <div className="pointer-events-none absolute right-0 inset-y-0 w-10 bg-gradient-to-l from-[#5c1313] to-transparent md:hidden"></div>
+          {/* Mobile-only "browse all" affordance pinned at the strip's edge — the
+              single discovery entry point now that the header hamburger is gone.
+              Doubles as the scroll fade so the strip visibly runs into it. */}
+          <button onClick={() => setMenuOpen(true)} aria-label="Browse all sections" aria-expanded={menuOpen}
+            className="md:hidden absolute right-0 inset-y-0 pl-9 pr-3 flex items-center text-[#fbbf24] bg-gradient-to-l from-[#5c1313] via-[#5c1313]/95 to-transparent">
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
@@ -1099,14 +1098,14 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
             
-            {/* Hero Section — twin slideshows flanking the register blurb */}
-            <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-wrap md:flex-nowrap items-center gap-5 md:gap-8 relative overflow-hidden shadow-2xl shadow-black">
+            {/* Hero Section — twin slideshows flanking the register blurb + flyer */}
+            <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-wrap md:flex-nowrap items-stretch gap-5 md:gap-8 relative overflow-hidden shadow-2xl shadow-black">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="w-full h-full border border-zinc-700 absolute top-1 left-1 right-1 bottom-1"></div>
               </div>
 
               {/* Left slideshow */}
-              <HeroCanvas images={heroLeft} className="relative z-10 order-2 md:order-1 w-[calc(50%-0.625rem)] md:w-60" />
+              <HeroCanvas images={heroLeft} className="relative z-10 order-2 md:order-1 w-[calc(50%-0.625rem)] md:w-72 md:aspect-auto md:self-stretch" />
 
               {/* Center blurb */}
               <div className="order-1 md:order-2 w-full md:w-auto md:flex-1 space-y-4 relative z-10 text-center md:text-left">
@@ -1139,37 +1138,30 @@ export default function App() {
                   <span className="text-zinc-700">·</span>
                   <span className="text-zinc-500">sign-ups close <strong className="text-zinc-300 font-semibold">{closeText}</strong> (July 6)</span>
                 </div>
+
+                {/* Flyer poster — sits beneath the blurb in the center column */}
+                <a
+                  href={REGISTER_FORM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Aces for Arian 2026 tournament flyer — register for $40"
+                  className="group block w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-xl shadow-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] transition-transform hover:-translate-y-0.5"
+                >
+                  <img
+                    src="/flyer.jpg"
+                    alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12. Register by July 6."
+                    className="w-full"
+                    loading="lazy"
+                  />
+                </a>
               </div>
 
               {/* Right slideshow */}
-              <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-60" />
+              <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-72 md:aspect-auto md:self-stretch" />
             </div>
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
 
-            {/* Tournament flyer — framed, clickable poster that opens the register form */}
-            <a
-              href={REGISTER_FORM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Aces for Arian 2026 tournament flyer — register for $40"
-              className="group block mx-auto w-full max-w-md rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24]"
-            >
-              <div className="relative bg-[#151515] border border-zinc-800 rounded-3xl p-3 md:p-4 shadow-2xl shadow-black overflow-hidden transition-transform group-hover:-translate-y-0.5">
-                <img
-                  src="/flyer.jpg"
-                  alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12. Register by July 6."
-                  className="w-full rounded-2xl"
-                  loading="lazy"
-                />
-                {/* Unmistakable register affordance under the poster */}
-                <div className="mt-3 flex items-center justify-center gap-2 bg-[#fbbf24] group-hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
-                  <span>Register — $40</span>
-                  <ExternalLink className="h-4 w-4" />
-                </div>
-              </div>
-            </a>
-
-            {/* Register helper + discreet payment note — travels with the flyer */}
+            {/* Register helper + discreet payment note */}
             <div className="mx-auto w-full max-w-md text-center space-y-2">
               <p className="text-xs text-zinc-400 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
               <p className="text-[10px] text-zinc-600">$40 entry — pay <a href={VENMO_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">{VENMO_HANDLE} on Venmo</a> or cash at sign-in.</p>
