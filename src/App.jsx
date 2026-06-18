@@ -1169,57 +1169,10 @@ export default function App() {
               </div>
             </a>
 
-            <NotifyMeBox source="home-hero" />
-
-            {/* How to enter — register, then pay */}
-            <div className="bg-[#151515] border border-zinc-800/60 rounded-3xl p-6 md:p-8">
-              <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">How to Enter</h3>
-              <p className="text-xs text-zinc-400 mb-6 max-w-2xl leading-relaxed">Two steps and you're in. Once staff confirms your entry, you'll appear on the <span className="text-zinc-300 font-semibold">Roster</span> below as confirmed — usually within 24 hours. Payment is checked separately before play.</p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Step 1 — Register */}
-                <div className="bg-[#111] border border-[#fbbf24]/30 rounded-2xl p-6 flex flex-col justify-between shadow-lg shadow-amber-500/5">
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-[#fbbf24]/10 text-[#fbbf24] flex items-center justify-center font-black shrink-0">1</div>
-                      <h4 className="text-base font-bold text-white">Register on the form</h4>
-                    </div>
-                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
-                  </div>
-                  <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="w-full bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
-                    <span>Open Form</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-
-                {/* Step 2 — Pay */}
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-800 text-white flex items-center justify-center font-black shrink-0">2</div>
-                    <h4 className="text-base font-bold text-white">Send the $40 entry fee</h4>
-                  </div>
-                  <div className="bg-black rounded-xl p-4 text-xs font-mono text-zinc-300 space-y-3 border border-zinc-800/50">
-                    <a
-                      href={VENMO_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex justify-between items-center -m-1 p-1 rounded-lg hover:bg-zinc-900/60 active:bg-zinc-900 transition-colors"
-                    >
-                      <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Venmo</span>
-                      <span className="flex items-center gap-1.5 text-[#fbbf24]">
-                        <strong className="text-sm">{VENMO_HANDLE}</strong>
-                        <ExternalLink className="h-3 w-3" />
-                      </span>
-                    </a>
-                    <div className="border-t border-zinc-800"></div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-zinc-500 uppercase tracking-widest font-bold text-[10px]">Cash</span>
-                      <strong className="text-white text-sm">In person</strong>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-zinc-600 mt-2">Tap Venmo above to pay @acesforarian directly — works great courtside on mobile.</p>
-                </div>
-              </div>
+            {/* Register helper + discreet payment note — travels with the flyer */}
+            <div className="mx-auto w-full max-w-md text-center space-y-2">
+              <p className="text-xs text-zinc-400 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
+              <p className="text-[10px] text-zinc-600">$40 entry — pay <a href={VENMO_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">{VENMO_HANDLE} on Venmo</a> or cash at sign-in.</p>
             </div>
 
             {/* Roster & Info Grid */}
@@ -1348,6 +1301,8 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            <NotifyMeBox source="home-hero" />
 
             <IdeaBox />
 
