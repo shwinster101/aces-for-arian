@@ -298,21 +298,6 @@ const DONATE_URL = VENMO_URL;
 // The Google Form players register through — reused by every "Register" CTA.
 const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
 
-// Icons for the Gear Locker's standalone items — keyed by MERCH_ITEMS[].key
-// (see "MERCH (Gear Locker)" in lib/sheet.js), so admin + public always show
-// the same item set.
-const MERCH_ICONS = {
-  hat: <path d="M50,110 C50,60 150,60 150,110 Z M40,112 Q100,105 160,112 C170,122 155,128 100,123 C45,128 30,122 40,112 Z" fill="#222" />,
-  wristbands: <rect x="60" y="70" width="80" height="60" rx="5" fill="#5c1313" />,
-  towel: (
-    <>
-      <rect x="45" y="35" width="110" height="130" rx="10" fill="#e8e8e8" />
-      <rect x="45" y="70" width="110" height="14" fill="#5c1313" />
-      <rect x="45" y="120" width="110" height="14" fill="#fbbf24" />
-    </>
-  ),
-};
-
 // Baseline seeding: prior A4A results first, then public UTR / WTN where players
 // have them, then committee + community refinement. result/utr/wtn are optional.
 const topSeeds = [
@@ -1836,10 +1821,8 @@ export default function App() {
 
             {/* Player tee — included with entry, spares for sale */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5">
-              <div className="bg-[#0a0a0a] rounded-2xl w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center border border-zinc-900 shadow-inner">
-                <svg viewBox="0 0 200 200" className="w-14 h-14 sm:w-16 sm:h-16 text-zinc-800">
-                  <path d="M40,50 L55,40 L70,48 L130,48 L145,40 L160,50 L150,85 L135,80 L135,170 L65,170 L65,80 L50,85 Z" fill="#c9b876" />
-                </svg>
+              <div className="bg-white rounded-2xl w-20 h-20 sm:w-24 sm:h-24 shrink-0 overflow-hidden border border-zinc-900 shadow-inner">
+                <img src="/merch-tee.jpg" alt="Vegas Gold player tee" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-2 mb-1 flex-wrap">
@@ -1863,8 +1846,8 @@ export default function App() {
                 {MERCH_ITEMS.map((item) => (
                   <div key={item.key} className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:border-zinc-700 transition">
                     <div>
-                      <div className="bg-[#0a0a0a] rounded-2xl aspect-square flex items-center justify-center mb-6 border border-zinc-900 shadow-inner">
-                        <svg viewBox="0 0 200 200" className="w-32 h-32 text-zinc-800">{MERCH_ICONS[item.key]}</svg>
+                      <div className="bg-white rounded-2xl aspect-square overflow-hidden mb-6 border border-zinc-900 shadow-inner">
+                        <img src={item.img} alt={item.label} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       </div>
                       <div className="flex justify-between items-baseline mb-2">
                         <h3 className="text-base font-bold text-white">{item.label}</h3>

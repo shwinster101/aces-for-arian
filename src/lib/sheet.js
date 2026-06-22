@@ -387,9 +387,9 @@ export function mapOpsStatus(rows) {
 // `key` is also the localStorage order/stock key in admin Merch, so keep keys
 // stable even when a label changes (sweatbands still keys off "wristbands").
 export const MERCH_ITEMS = [
-  { key: "hat", label: "AR Hat", price: 20, cost: 13, desc: "Embroidered AR cap — black (white AR) or gold (maroon AR)." },
-  { key: "wristbands", label: "Sweatbands", price: 10, cost: 6.25, desc: "Wrist pair — maroon, white, or black, each with the gold AR." },
-  { key: "towel", label: "Court Towel", price: 12, cost: 9, desc: "White sideline towel with a maroon or gold AR." },
+  { key: "hat", label: "AR Hat", price: 20, cost: 13, img: "/merch-hat.jpg", desc: "Embroidered AR cap — black (white AR) or gold (maroon AR)." },
+  { key: "wristbands", label: "Sweatbands", price: 10, cost: 6.25, img: "/merch-sweatbands.jpg", desc: "Wrist pair — maroon, white, or black, each with the gold AR." },
+  { key: "towel", label: "Court Towel", price: 12, cost: 9, img: "/merch-towel.jpg", desc: "White sideline towel with a maroon or gold AR." },
 ];
 
 // Extra Vegas Gold tees beyond the one included with each $40 entry. Sold to
