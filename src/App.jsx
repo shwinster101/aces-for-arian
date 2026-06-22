@@ -982,7 +982,7 @@ export default function App() {
           <div className="w-full h-1/2 border-b-2 border-[#fbbf24] absolute top-0"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 relative z-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
             
             <div className="flex items-center justify-between gap-4">
@@ -1009,13 +1009,13 @@ export default function App() {
               )}
             </div>
 
-            <div className="bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
+            <div className="bg-[#3a0a0a] px-4 py-2 rounded-xl border border-[#fbbf24]/30 shadow-lg">
               <div className="flex items-center gap-4 md:gap-5">
                 {showScholarshipBar && (
                   <div className="min-w-0">
-                    <span className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-1 whitespace-nowrap">Scholarship Fund</span>
+                    <span className="text-[9px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-0.5 whitespace-nowrap">Scholarship Fund</span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-lg font-black text-white">${calculatedFunding}</span>
+                      <span className="text-base font-black text-white">${calculatedFunding}</span>
                       <span className="text-[10px] text-zinc-300">/ ${scholarshipGoal}</span>
                     </div>
                   </div>
@@ -1038,7 +1038,7 @@ export default function App() {
                 </a>
               </div>
               {showScholarshipBar && (
-                <div className="md:hidden mt-2.5 h-2 bg-black/50 rounded-full overflow-hidden">
+                <div className="md:hidden mt-2 h-1.5 bg-black/50 rounded-full overflow-hidden">
                   <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
                 </div>
               )}
@@ -1053,8 +1053,8 @@ export default function App() {
           works. On mobile the tabs WRAP into rows so every section is visible at a
           glance (no hidden horizontal scroll); desktop keeps them on one row. */}
       <div className="sticky top-0 z-40 bg-[#5c1313]/95 backdrop-blur-sm border-b-2 border-[#fbbf24] shadow-lg shadow-black/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-start justify-between gap-3">
-          <nav ref={navRef} className="flex flex-wrap items-center gap-x-5 gap-y-1.5 py-2.5 md:flex-nowrap md:gap-x-8 md:py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-start gap-1">
+          <nav ref={navRef} className="flex-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 py-2.5 md:flex-nowrap md:justify-start md:gap-x-8 md:py-3">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -1073,12 +1073,11 @@ export default function App() {
             })}
           </nav>
           {/* Guide pinned top-right (mobile only) — opens the richer "Explore" view
-              with 1-line blurbs, and keeps the tab rows clean. Stays in the sticky
-              strip so it's reachable while scrolling. */}
+              with 1-line blurbs. Icon-only and narrow so the tab row centers cleanly
+              and stays at two rows. Stays in the sticky strip, reachable on scroll. */}
           <button onClick={() => setMenuOpen(true)} aria-label="Browse all sections with descriptions" aria-expanded={menuOpen}
-            className="md:hidden shrink-0 mt-2.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#fbbf24]/80 hover:text-[#fbbf24]">
-            <Menu className="h-4 w-4" />
-            <span>Guide</span>
+            className="md:hidden shrink-0 mt-2 p-1 text-[#fbbf24]/80 hover:text-[#fbbf24]">
+            <Menu className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -1124,7 +1123,7 @@ export default function App() {
           <div className="space-y-6 animate-fade-in">
             
             {/* Hero Section — twin slideshows flanking the register blurb + flyer */}
-            <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-wrap md:flex-nowrap items-stretch gap-5 md:gap-8 relative overflow-hidden shadow-2xl shadow-black">
+            <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-4 md:p-8 flex flex-wrap md:flex-nowrap items-stretch gap-4 md:gap-8 relative overflow-hidden shadow-2xl shadow-black">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="w-full h-full border border-zinc-700 absolute top-1 left-1 right-1 bottom-1"></div>
               </div>
@@ -1133,7 +1132,7 @@ export default function App() {
               <HeroCanvas images={heroLeft} className="relative z-10 order-2 md:order-1 w-[calc(50%-0.625rem)] md:w-72 md:aspect-auto md:self-stretch" />
 
               {/* Center blurb */}
-              <div className="order-1 md:order-2 w-full md:w-auto md:flex-1 space-y-4 relative z-10 text-center md:text-left">
+              <div className="order-1 md:order-2 w-full md:w-auto md:flex-1 space-y-3 relative z-10 text-center md:text-left">
                 <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit mx-auto md:mx-0 flex items-center gap-2 border border-zinc-800">
                     <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
                 </div>
@@ -1149,8 +1148,8 @@ export default function App() {
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                    <span>Register — $40</span>
+                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                    <span>Register Here!</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                   <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
