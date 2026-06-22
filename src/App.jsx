@@ -1144,7 +1144,7 @@ export default function App() {
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
                 <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of this tournament, counting its 2020 Eagle Classic roots.
+                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — 7 straight summers since Eagle Classic 2020!
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
