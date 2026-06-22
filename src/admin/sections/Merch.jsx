@@ -149,7 +149,40 @@ export default function Merch({ participants, ops }) {
           <Stat label="Net to fund" value={money(net)} tone={net >= 0 ? 'emerald' : 'rose'} />
           <Stat label="If rest sells" value={`+${money(fin.upside)}`} tone="emerald" />
         </div>
-        <p className="text-[10px] text-zinc-600 mt-3">"Sold" = ordered minus what's still in stock, so update "In stock" as Venmo sales clear. "Net to fund" subtracts the full cost of everything ordered; it climbs past break-even as units sell. Tees are included with entry and aren't counted here.</p>
+
+        {/* Per-item break-even tracker — how close each SKU is to covering its own order */}
+        <div className="mt-4">
+          {MERCH_ITEMS.map(item => {
+            const m = get(item.key);
+            const order = toInt(m.order), stock = toInt(m.stock);
+            const sold = Math.max(order - stock, 0);
+            const breakEven = order > 0 ? Math.ceil((item.cost * order) / item.price) : 0;
+            const itemNet = sold * item.price - order * item.cost;
+            const pct = breakEven > 0 ? Math.min(100, Math.round((sold / breakEven) * 100)) : 0;
+            return (
+              <div key={item.key} className="py-2 border-t border-zinc-800/60">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <div>
+                    <span className="font-bold text-zinc-200">{item.label}</span>
+                    <span className="text-zinc-600 ml-2 font-mono">{sold}/{order} sold</span>
+                  </div>
+                  <div className="text-right font-mono">
+                    {order === 0
+                      ? <span className="text-zinc-600">not ordered</span>
+                      : sold >= breakEven
+                        ? <span className="text-emerald-400">in the black · {money(itemNet)}</span>
+                        : <span className="text-amber-400/90">{breakEven - sold} more to break even</span>}
+                  </div>
+                </div>
+                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${sold >= breakEven && order > 0 ? 'bg-emerald-500' : 'bg-[#fbbf24]'}`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="text-[10px] text-zinc-600 mt-3">"Sold" = ordered minus what's still in stock, so update "In stock" as Venmo sales clear. Each bar fills to break-even (units needed to cover that item's order); after that, every sale is net margin to the fund. Tees are included with entry and aren't counted here.</p>
       </Card>
     </div>
   );

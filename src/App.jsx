@@ -95,8 +95,25 @@ function HallOfFame() {
     { label: '2023 Results', url: '/archive/aces-for-arian-2023-results.pdf' },
     { label: '2022 Results', url: '/archive/aces-for-arian-2022-results.pdf' },
   ];
+  // Dunlap Eagles' IHSA Class 1A boys tennis state hardware. The 2017 title is
+  // Arian's — he was part of that championship team (see "Remembering Arian").
+  const stateHonors = [
+    { year: '2017', place: 'State Champions', accent: true, note: "Arian's championship team." },
+    { year: '2024', place: 'State Runner-Up', note: 'Class 1A boys tennis.' },
+    { year: '2022', place: 'State Third Place', note: 'Class 1A boys tennis.' },
+  ];
   return (
     <>
+      {/* The champion's trophy — every A4A division winner takes one home */}
+      <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-5 md:p-6 flex items-center gap-4">
+        <Trophy className="w-9 h-9 text-[#fbbf24] shrink-0" />
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-[#fbbf24]">The hardware</div>
+          <div className="text-sm font-black text-white">Every Aces for Arian division winner takes home the flame trophy</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Tennis-ball-and-racquet award, engraved "Aces for Arian" with the year and division.</div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {champs2025.map(champ => (
           <div key={champ.label} className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
@@ -130,6 +147,24 @@ function HallOfFame() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Dunlap's IHSA state honors — program legacy, anchored by Arian's 2017 title */}
+      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">Dunlap Tennis · IHSA State Honors</h4>
+        <p className="text-[11px] text-zinc-500 mb-4">The Eagles' Class 1A boys tennis state hardware — anchored by the 2017 championship Arian helped bring home.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {stateHonors.map(h => (
+            <div key={h.year} className={`rounded-2xl p-4 border ${h.accent ? 'bg-gradient-to-br from-[#1c1408] to-[#151515] border-[#fbbf24]/30' : 'bg-[#111] border-zinc-800'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className={`w-6 h-6 shrink-0 ${h.accent ? 'text-[#fbbf24]' : 'text-zinc-500'}`} />
+                <span className={`text-lg font-black leading-none ${h.accent ? 'text-[#fbbf24]' : 'text-zinc-300'}`}>{h.year}</span>
+              </div>
+              <div className="text-sm font-black text-white uppercase tracking-wide">{h.place}</div>
+              <div className="text-[11px] text-zinc-500 mt-1">{h.note}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
