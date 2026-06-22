@@ -376,8 +376,13 @@ export function mapOpsStatus(rows) {
 // order/stock planner (src/admin/sections/Merch.jsx) so the two never drift —
 // the public site can't sell something the gear-locker table isn't tracking.
 export const MERCH_PRICE = 20;
+// Labels/descriptions mirror the final placed order (Vegas Gold tees + these
+// three extras). Colorways: hats = black or gold/maroon; towels = white with a
+// maroon or gold logo; sweatbands = maroon/gold, black/white, or white/gold.
+// `key` is also the localStorage order/stock key in admin Merch, so keep keys
+// stable even when a label changes (sweatbands still keys off "wristbands").
 export const MERCH_ITEMS = [
-  { key: "hat", label: "Dad Hat", desc: "Embroidered cardinal/gold on black cap." },
-  { key: "wristbands", label: "Wristbands", desc: "Thick cardinal red bands with gold trim." },
-  { key: "towel", label: "Court Towel", desc: "Cardinal & gold sideline towel." },
+  { key: "hat", label: "Dad Hat", desc: "Embroidered AR cap — black, or gold/maroon." },
+  { key: "wristbands", label: "Sweatbands", desc: "Maroon/gold, black/white, or white/gold." },
+  { key: "towel", label: "Court Towel", desc: "White sideline towel with a maroon or gold logo." },
 ];
