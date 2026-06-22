@@ -982,8 +982,8 @@ export default function App() {
           <div className="w-full h-1/2 border-b-2 border-[#fbbf24] absolute top-0"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
             
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -996,7 +996,7 @@ export default function App() {
 
             {/* Both badges share one row so the header reads as a single tidy strip.
                 Live ace count is hidden until the admin's first +1 (acesLive). $5/ace, cap $500. */}
-            <div className="flex flex-wrap items-center justify-center gap-2 self-start md:self-center">
+            <div className="flex flex-wrap items-center justify-start gap-2 self-start md:self-center">
               <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
                 <Trophy className="w-3.5 h-3.5 shrink-0" />
                 5 Years of Aces for Arian
@@ -1031,7 +1031,7 @@ export default function App() {
                   href={DONATE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto shrink-0 flex items-center gap-1.5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+                  className="ml-auto shrink-0 flex items-center gap-1.5 bg-transparent border border-[#fbbf24]/60 hover:border-[#fbbf24] hover:bg-[#fbbf24]/10 text-[#fbbf24] font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
                 >
                   <Heart className="w-3.5 h-3.5" />
                   <span>Donate</span>
@@ -1053,7 +1053,7 @@ export default function App() {
           works. On mobile the tabs WRAP into rows so every section is visible at a
           glance (no hidden horizontal scroll); desktop keeps them on one row. */}
       <div className="sticky top-0 z-40 bg-[#5c1313]/95 backdrop-blur-sm border-b-2 border-[#fbbf24] shadow-lg shadow-black/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-start justify-between gap-3">
           <nav ref={navRef} className="flex flex-wrap items-center gap-x-5 gap-y-1.5 py-2.5 md:flex-nowrap md:gap-x-8 md:py-3">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
@@ -1071,13 +1071,15 @@ export default function App() {
                 </button>
               );
             })}
-            {/* Mobile-only: the richer "Explore" view with 1-line blurbs for new visitors. */}
-            <button onClick={() => setMenuOpen(true)} aria-label="Browse all sections with descriptions" aria-expanded={menuOpen}
-              className="md:hidden flex items-center gap-1.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-[#fbbf24]/80 hover:text-[#fbbf24]">
-              <Menu className="h-3.5 w-3.5" />
-              <span>Guide</span>
-            </button>
           </nav>
+          {/* Guide pinned top-right (mobile only) — opens the richer "Explore" view
+              with 1-line blurbs, and keeps the tab rows clean. Stays in the sticky
+              strip so it's reachable while scrolling. */}
+          <button onClick={() => setMenuOpen(true)} aria-label="Browse all sections with descriptions" aria-expanded={menuOpen}
+            className="md:hidden shrink-0 mt-2.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#fbbf24]/80 hover:text-[#fbbf24]">
+            <Menu className="h-4 w-4" />
+            <span>Guide</span>
+          </button>
         </div>
       </div>
 
