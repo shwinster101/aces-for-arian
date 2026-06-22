@@ -1048,10 +1048,12 @@ export default function App() {
 
       </header>
 
-      {/* Sticky tab nav — lifted out of the overflow-hidden header so position:sticky works */}
+      {/* Sticky tab nav — lifted out of the overflow-hidden header so position:sticky
+          works. On mobile the tabs WRAP into rows so every section is visible at a
+          glance (no hidden horizontal scroll); desktop keeps them on one row. */}
       <div className="sticky top-0 z-40 bg-[#5c1313]/95 backdrop-blur-sm border-b-2 border-[#fbbf24] shadow-lg shadow-black/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <nav ref={navRef} className="flex space-x-6 md:space-x-8 py-3 overflow-x-auto no-scrollbar">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav ref={navRef} className="flex flex-wrap items-center gap-x-5 gap-y-1.5 py-2.5 md:flex-nowrap md:gap-x-8 md:py-3">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -1059,7 +1061,7 @@ export default function App() {
                   key={tab.id}
                   data-active={active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 pb-1 text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 pb-1 text-[11px] md:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                     active ? 'text-[#fbbf24] border-b-2 border-[#fbbf24]' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -1068,14 +1070,13 @@ export default function App() {
                 </button>
               );
             })}
+            {/* Mobile-only: the richer "Explore" view with 1-line blurbs for new visitors. */}
+            <button onClick={() => setMenuOpen(true)} aria-label="Browse all sections with descriptions" aria-expanded={menuOpen}
+              className="md:hidden flex items-center gap-1.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-[#fbbf24]/80 hover:text-[#fbbf24]">
+              <Menu className="h-3.5 w-3.5" />
+              <span>Guide</span>
+            </button>
           </nav>
-          {/* Mobile-only "browse all" affordance pinned at the strip's edge — the
-              single discovery entry point now that the header hamburger is gone.
-              Doubles as the scroll fade so the strip visibly runs into it. */}
-          <button onClick={() => setMenuOpen(true)} aria-label="Browse all sections" aria-expanded={menuOpen}
-            className="md:hidden absolute right-0 inset-y-0 pl-9 pr-3 flex items-center text-[#fbbf24] bg-gradient-to-l from-[#5c1313] via-[#5c1313]/95 to-transparent">
-            <Menu className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
@@ -1815,7 +1816,7 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="text-center md:text-left">
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">2026 Gear Locker</h2>
-                <p className="text-xs text-zinc-400 mt-1">Your tournament tee is included with entry. Grab extra gear below, paid via Venmo — every dollar over cost goes to the scholarship.</p>
+                <p className="text-xs text-zinc-400 mt-1">Your tournament tee is included with entry. Order extra gear below to back the scholarship — you keep the gear as a thank-you, and every dollar over cost goes straight to the fund. Paid via Venmo.</p>
               </div>
             </div>
 
@@ -1834,14 +1835,14 @@ export default function App() {
               </div>
               <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Buy a tee — ${TEE_PRICE}</span>
+                <Heart className="w-3.5 h-3.5" />
+                <span>Order a Tee — ${TEE_PRICE}</span>
               </a>
             </div>
 
             {/* Extra gear — per-item price, Buy via Venmo */}
             <div>
-              <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Extra Gear</h3>
+              <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Extra Gear — Every Order Funds the Scholarship</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {MERCH_ITEMS.map((item) => (
                   <div key={item.key} className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:border-zinc-700 transition">
@@ -1857,8 +1858,8 @@ export default function App() {
                     </div>
                     <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
                       className="w-full inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-colors">
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Buy — ${item.price}</span>
+                      <Heart className="w-3.5 h-3.5" />
+                      <span>Order — ${item.price}</span>
                     </a>
                     <p className="text-[10px] text-zinc-600 mt-2 text-center">Add "{item.label}" (and color) to your Venmo note so we know what to bring.</p>
                   </div>
@@ -1880,13 +1881,13 @@ export default function App() {
                 <div className="text-2xl font-black text-[#fbbf24] font-mono leading-none">${MERCH_BUNDLE.price}</div>
                 <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
                   className="mt-2 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Buy bundle</span>
+                  <Heart className="w-3.5 h-3.5" />
+                  <span>Order the Bundle</span>
                 </a>
               </div>
             </div>
 
-            <p className="text-[10px] text-zinc-600 text-center">Pay via Venmo {VENMO_HANDLE} — gear is handed out at the locker once payment clears.</p>
+            <p className="text-[10px] text-zinc-600 text-center">Every order is a donation to the scholarship — pay via Venmo {VENMO_HANDLE}, and pick up your gear at the locker once it clears.</p>
           </div>
         )}
 
