@@ -1138,12 +1138,12 @@ export default function App() {
                 </div>
                 <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-[1.05]">Play in the 5th Annual <span className="whitespace-nowrap">Aces for Arian</span></h3>
                 <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }}
-                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#fbbf24]/90 hover:text-[#fbbf24] transition-colors">
-                  <Heart className="w-3.5 h-3.5 shrink-0" />
+                  className="group inline-flex items-center gap-1 text-[10px] md:text-xs font-semibold tracking-tight text-[#fbbf24]/90 hover:text-[#fbbf24] transition-colors">
+                  <Heart className="w-3 h-3 shrink-0" />
                   <span>In memory of Arian Rahbar — every dollar goes toward his scholarship</span>
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
-                <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
+                <p className="text-[13px] text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
                   Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — 7 straight summers since Eagle Classic 2020!
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
