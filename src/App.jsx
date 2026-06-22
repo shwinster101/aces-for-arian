@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ROSTER_CSV_URL,
   CONFIG_CSV_URL,
@@ -39,7 +39,8 @@ import {
   Menu,
   X,
   ChevronRight,
-  Mail
+  Mail,
+  Share2
 } from 'lucide-react';
 
 // ==========================================
@@ -81,6 +82,61 @@ function TennisBallIcon({ className = "w-12 h-12" }) {
       <path d="M10,28 C32,44 32,56 10,72" stroke="#5c1313" strokeWidth="6" fill="none" strokeLinecap="round" />
       <path d="M90,28 C68,44 68,56 90,72" stroke="#5c1313" strokeWidth="6" fill="none" strokeLinecap="round" />
     </svg>
+  );
+}
+
+// "Add to calendar" — builds a self-hosted .ics on the fly (no third-party
+// widget/tracker) so it imports into Apple/Google/Outlook alike. Times are
+// tentative: first serve ~9 AM Sat (Central); the event spans both days.
+function AddToCalendarButton({ className = "" }) {
+  const href = useMemo(() => {
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Aces for Arian//Tournament//EN',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      'UID:aces-for-arian-2026@aces-for-arian.pages.dev',
+      'DTSTAMP:20260101T000000Z',
+      'DTSTART:20260711T140000Z', // Sat Jul 11, ~9:00 AM CDT
+      'DTEND:20260712T220000Z',   // Sun Jul 12, ~5:00 PM CDT
+      'SUMMARY:Aces for Arian 2026 — Memorial Tennis Tournament',
+      'LOCATION:Dunlap High School\\, Dunlap\\, IL',
+      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11\\, Singles Sun July 12. First serve tentatively 9 AM Saturday (start times vary by final counts). Register: https://aces-for-arian.pages.dev/',
+      'URL:https://aces-for-arian.pages.dev/',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    return URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  }, []);
+  return (
+    <a href={href} download="aces-for-arian-2026.ics" className={className}>
+      <Calendar className="w-3.5 h-3.5" /> Add to calendar
+    </a>
+  );
+}
+
+// "Share / invite" — native share sheet on mobile (Web Share API), clipboard
+// copy as the desktop fallback. Feeds the field-momentum loop on the Home tab.
+function ShareInvite({ className = "" }) {
+  const [copied, setCopied] = useState(false);
+  const url = 'https://aces-for-arian.pages.dev/';
+  const text = 'Play in the 5th Annual Aces for Arian — July 11–12 at Dunlap. Singles, doubles, or both:';
+  const onShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try { await navigator.share({ title: 'Aces for Arian 2026', text, url }); return; }
+      catch (e) { if (e?.name === 'AbortError') return; }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked — no-op */ }
+  };
+  return (
+    <button onClick={onShare} className={className}>
+      <Share2 className="w-3.5 h-3.5" /> {copied ? 'Link copied!' : 'Share / invite'}
+    </button>
   );
 }
 
@@ -1185,9 +1241,22 @@ export default function App() {
             </div>
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
 
-            {/* Register helper + discreet payment note */}
-            <div className="mx-auto w-full max-w-md text-center space-y-2">
+            {/* Next steps: reassurance, quick actions, discreet payment note */}
+            <div className="mx-auto w-full max-w-xl text-center space-y-3">
               <p className="text-xs text-zinc-400 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
+
+              {/* Format reassurance — defuses the "what if I lose round 1?" hesitation for new players */}
+              <p className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300 bg-zinc-900/60 border border-zinc-800 rounded-full px-3 py-1.5 leading-snug">
+                <Award className="w-3.5 h-3.5 text-[#fbbf24] shrink-0" />
+                <span>Compass draw — every entrant is guaranteed <strong className="text-white font-bold">3+ matches</strong>, win or lose.</span>
+              </p>
+
+              {/* Quick actions — secondary to Register, styled as ghost buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <AddToCalendarButton className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] rounded-lg px-3 py-2 transition-colors" />
+                <ShareInvite className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] rounded-lg px-3 py-2 transition-colors" />
+              </div>
+
               <p className="text-[10px] text-zinc-600">$40 entry — pay <a href={VENMO_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">{VENMO_HANDLE} on Venmo</a> or cash at sign-in.</p>
             </div>
 
