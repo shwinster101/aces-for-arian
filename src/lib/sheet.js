@@ -371,13 +371,40 @@ export function mapOpsStatus(rows) {
 }
 
 // --- MERCH (Gear Locker) -----------------------------------------------------
-// Standalone items sold for $20 flat via Venmo (see VENMO_URL in App.jsx).
-// Shared between the public Gear Locker cards and the admin's "Other gear"
-// order/stock planner (src/admin/sections/Merch.jsx) so the two never drift —
-// the public site can't sell something the gear-locker table isn't tracking.
-export const MERCH_PRICE = 20;
+// Standalone items sold via Venmo (see VENMO_URL in App.jsx). Each item carries
+// its own `price` (public sale price) and `cost` (contract unit cost) so the
+// admin can show live margin / scholarship contribution. Shared between the
+// public Gear Locker cards and the admin's "Other gear" order/stock planner
+// (src/admin/sections/Merch.jsx) so the two never drift — the public site can't
+// sell something the gear-locker table isn't tracking.
+//
+// Pricing is cost-aware "accessible" tier: clean Venmo-friendly numbers that
+// clear cost comfortably while still selling through. Labels/descriptions and
+// colorways mirror the final placed order + product art:
+//   hats = black (white AR) or gold (maroon AR)
+//   towels = white with a maroon or gold AR
+//   sweatbands = maroon, white, or black wrist pair, each with the gold AR
+// `key` is also the localStorage order/stock key in admin Merch, so keep keys
+// stable even when a label changes (sweatbands still keys off "wristbands").
 export const MERCH_ITEMS = [
-  { key: "hat", label: "Dad Hat", desc: "Embroidered cardinal/gold on black cap." },
-  { key: "wristbands", label: "Wristbands", desc: "Thick cardinal red bands with gold trim." },
-  { key: "towel", label: "Court Towel", desc: "Cardinal & gold sideline towel." },
+  { key: "hat", label: "Dad Hat", price: 20, cost: 13, desc: "Embroidered AR cap — black (white AR) or gold (maroon AR)." },
+  { key: "wristbands", label: "Sweatbands", price: 10, cost: 6.25, desc: "Wrist pair — maroon, white, or black, each with the gold AR." },
+  { key: "towel", label: "Court Towel", price: 12, cost: 9, desc: "White sideline towel with a maroon or gold AR." },
 ];
+
+// Extra Vegas Gold tees beyond the one included with each $40 entry. Sold to
+// non-players / anyone wanting a spare; buyers put their size in the Venmo note.
+// Cost mirrors the contract sheet ($11.75); inventory is the leftover order tracked
+// per-size in the admin shirt planner.
+export const TEE_PRICE = 20;
+export const TEE_COST = 11.75;
+
+// "Locker Bundle" — all three extras in one Venmo note for a small discount,
+// to lift multi-item sales and clear the lower-velocity towels/sweatbands.
+// `keys` reference MERCH_ITEMS so the bundle can never list an untracked item.
+export const MERCH_BUNDLE = {
+  label: "Locker Bundle",
+  price: 36, // hat $20 + towel $12 + sweatbands $10 = $42, save $6
+  keys: ["hat", "towel", "wristbands"],
+  desc: "Dad hat + court towel + sweatbands — one Venmo note, save $6.",
+};
