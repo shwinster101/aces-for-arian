@@ -1140,7 +1140,7 @@ export default function App() {
                 <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }}
                   className="group inline-flex items-center gap-1 text-[10px] md:text-xs font-semibold tracking-tight text-[#fbbf24]/90 hover:text-[#fbbf24] transition-colors">
                   <Heart className="w-3 h-3 shrink-0" />
-                  <span>In memory of Arian Rahbar — every dollar goes toward his scholarship</span>
+                  <span>In memory of Arian Rahbar — every dollar funds his scholarship</span>
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
                 <p className="text-[13px] text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
