@@ -592,7 +592,7 @@ const TABS = [
   { id: 'home', label: 'Home', icon: Home, blurb: 'Register, roster & day-of basics' },
   { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
   { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
-  { id: 'seeding', label: 'Projected Seeds', icon: TrendingUp, blurb: "Who's seeded — and who's on the bubble" },
+  { id: 'seeding', label: 'Seeds', icon: TrendingUp, blurb: "Who's seeded — and who's on the bubble" },
   { id: 'scholarship', label: 'Scholarship', icon: GraduationCap, blurb: 'Apply, recipients & the cause' },
   { id: 'legacy', label: 'Legacy', icon: Heart, blurb: "Arian's story, Hall of Fame & past results" },
   { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Tournament memories, 2020 to today' },
@@ -994,19 +994,20 @@ export default function App() {
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
-              <Trophy className="w-3.5 h-3.5 shrink-0" />
-              Five Years Hitting Aces for Arian
-            </span>
-
-            {/* Bare-bones live ace count, twin of the Brackets-tab tracker.
-                Hidden until the admin's first +1 (acesLive). $5/ace, cap $500. */}
-            {acesLive && (
-              <span className="inline-flex items-center gap-1.5 self-start md:self-center text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5">
-                <TennisBallIcon className="w-3.5 h-3.5 shrink-0" />
-                {aces} {aces === 1 ? 'Ace' : 'Aces'} hit live
+            {/* Both badges share one row so the header reads as a single tidy strip.
+                Live ace count is hidden until the admin's first +1 (acesLive). $5/ace, cap $500. */}
+            <div className="flex flex-wrap items-center justify-center gap-2 self-start md:self-center">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
+                <Trophy className="w-3.5 h-3.5 shrink-0" />
+                5 Years of Aces for Arian
               </span>
-            )}
+              {acesLive && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
+                  <TennisBallIcon className="w-3.5 h-3.5 shrink-0" />
+                  {aces} {aces === 1 ? 'Ace' : 'Aces'} hit live
+                </span>
+              )}
+            </div>
 
             <div className="bg-[#3a0a0a] px-5 py-3 rounded-xl border border-[#fbbf24]/30 shadow-lg">
               <div className="flex items-center gap-4 md:gap-5">
@@ -1142,7 +1143,7 @@ export default function App() {
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
                 <p className="text-sm text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community.
+                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of this tournament, counting its 2020 Eagle Classic roots.
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
