@@ -9,7 +9,8 @@ import {
   OPSSTATUS_CSV_URL,
   SHEET_WRITE_URL,
   MERCH_ITEMS,
-  MERCH_PRICE,
+  MERCH_BUNDLE,
+  TEE_PRICE,
   fallbackRoster,
   parseCSV,
   mapRoster,
@@ -1794,29 +1795,35 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="text-center md:text-left">
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">2026 Gear Locker</h2>
-                <p className="text-xs text-zinc-400 mt-1">Your tournament tee is included with entry. Grab extra gear below for ${MERCH_PRICE} flat, paid via Venmo.</p>
+                <p className="text-xs text-zinc-400 mt-1">Your tournament tee is included with entry. Grab extra gear below, paid via Venmo — every dollar over cost goes to the scholarship.</p>
               </div>
             </div>
 
-            {/* Included with entry */}
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex items-center gap-5">
+            {/* Player tee — included with entry, spares for sale */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5">
               <div className="bg-[#0a0a0a] rounded-2xl w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center border border-zinc-900 shadow-inner">
                 <svg viewBox="0 0 200 200" className="w-14 h-14 sm:w-16 sm:h-16 text-zinc-800">
                   <path d="M40,50 L55,40 L70,48 L130,48 L145,40 L160,50 L150,85 L135,80 L135,170 L65,170 L65,80 L50,85 Z" fill="#c9b876" />
                 </svg>
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2 mb-1 flex-wrap">
                   <h3 className="text-base font-bold text-white">Player Tee</h3>
                   <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">Included with entry</span>
                 </div>
                 <p className="text-xs text-zinc-500">Vegas Gold, in the size you picked at registration — pick it up day-of at the gear locker.</p>
+                <p className="text-[11px] text-zinc-500 mt-2">Want a spare, or not playing? Extra tees are <span className="text-[#fbbf24] font-bold">${TEE_PRICE}</span> while they last — put your size (S/M/L/XL) in the Venmo note.</p>
               </div>
+              <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Buy a tee — ${TEE_PRICE}</span>
+              </a>
             </div>
 
-            {/* Extra gear — flat-priced, Buy via Venmo */}
+            {/* Extra gear — per-item price, Buy via Venmo */}
             <div>
-              <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Extra Gear — ${MERCH_PRICE} each</h3>
+              <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Extra Gear</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {MERCH_ITEMS.map((item) => (
                   <div key={item.key} className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:border-zinc-700 transition">
@@ -1826,18 +1833,38 @@ export default function App() {
                       </div>
                       <div className="flex justify-between items-baseline mb-2">
                         <h3 className="text-base font-bold text-white">{item.label}</h3>
-                        <span className="text-[#fbbf24] font-mono font-bold text-sm">${MERCH_PRICE}</span>
+                        <span className="text-[#fbbf24] font-mono font-bold text-sm">${item.price}</span>
                       </div>
                       <p className="text-xs text-zinc-500 mb-4">{item.desc}</p>
                     </div>
                     <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
                       className="w-full inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-colors">
                       <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Buy — ${MERCH_PRICE}</span>
+                      <span>Buy — ${item.price}</span>
                     </a>
-                    <p className="text-[10px] text-zinc-600 mt-2 text-center">Add "{item.label}" to your Venmo note so we know what to bring.</p>
+                    <p className="text-[10px] text-zinc-600 mt-2 text-center">Add "{item.label}" (and color) to your Venmo note so we know what to bring.</p>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Locker bundle — all three extras, small discount */}
+            <div className="bg-gradient-to-br from-[#1a1710] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5">
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2 mb-1 flex-wrap">
+                  <h3 className="text-base font-black text-white uppercase tracking-wide">{MERCH_BUNDLE.label}</h3>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-2 py-0.5">Save ${MERCH_BUNDLE.keys.reduce((s, k) => s + (MERCH_ITEMS.find((i) => i.key === k)?.price || 0), 0) - MERCH_BUNDLE.price}</span>
+                </div>
+                <p className="text-xs text-zinc-400">{MERCH_BUNDLE.desc}</p>
+                <p className="text-[10px] text-zinc-600 mt-1">Add "Bundle" + your hat & sweatband colors to the Venmo note.</p>
+              </div>
+              <div className="text-center shrink-0">
+                <div className="text-2xl font-black text-[#fbbf24] font-mono leading-none">${MERCH_BUNDLE.price}</div>
+                <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Buy bundle</span>
+                </a>
               </div>
             </div>
 

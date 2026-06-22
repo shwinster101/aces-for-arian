@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { Shirt, Package } from 'lucide-react';
 import { Card, PageHeader, Stat } from '../ui';
-import { MERCH_ITEMS, MERCH_PRICE } from '../../lib/sheet';
+import { MERCH_ITEMS } from '../../lib/sheet';
+
+const money = (n) => `$${(Math.round(n * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 // Canonical adult shirt sizes; any other value a registrant typed gets appended.
 const SHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -38,13 +40,27 @@ export default function Merch({ participants, ops }) {
   const totalRequested = Object.values(demand).reduce((a, b) => a + b, 0);
   const shirtsOrdered = sizes.reduce((a, s) => a + toInt(get(`shirt:${s}`).order), 0);
 
+  // Live scholarship math for the extras: "sold" is inferred as ordered minus
+  // what's still in the locker, so keeping "In stock" current keeps this honest.
+  // net = revenue on sold units minus the sunk cost of everything ordered.
+  const fin = MERCH_ITEMS.reduce((acc, item) => {
+    const m = get(item.key);
+    const order = toInt(m.order), stock = toInt(m.stock);
+    const sold = Math.max(order - stock, 0);
+    acc.revenue += sold * item.price;
+    acc.cost += order * item.cost;
+    acc.upside += stock * item.price;
+    return acc;
+  }, { revenue: 0, cost: 0, upside: 0 });
+  const net = fin.revenue - fin.cost;
+
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Merch & Inventory"
         subtitle="Shirt sizes requested at registration drive the order count. Track how many of each item you've ordered and what's left in the gear locker." />
 
       <p className="text-[10px] text-zinc-600 -mt-1">
-        Extra gear (below) sells for <span className="text-zinc-400 font-bold">${MERCH_PRICE} flat via Venmo @acesforarian</span> on the public Merch tab — buyers are asked to put the item name in their Venmo note. Check Venmo activity/notifications to match payments to orders and keep "In stock" current.
+        Extra gear (below) is sold <span className="text-zinc-400 font-bold">per item via Venmo @acesforarian</span> on the public Merch tab — buyers are asked to put the item name in their Venmo note. Check Venmo activity/notifications to match payments to orders and keep "In stock" current; the scholarship totals update from it.
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -93,12 +109,14 @@ export default function Merch({ participants, ops }) {
 
       {/* Other gear — no per-person size, just order + stock */}
       <Card className="p-4 sm:p-5">
-        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Package className="w-4 h-4 text-[#fbbf24]" /> Other gear — ${MERCH_PRICE} each</h3>
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Package className="w-4 h-4 text-[#fbbf24]" /> Other gear</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
                 <th className="pb-2 pl-1">Item</th>
+                <th className="pb-2 text-center">Price</th>
+                <th className="pb-2 text-center">Margin</th>
                 <th className="pb-2 text-center">To order</th>
                 <th className="pb-2 text-center pr-1">In stock</th>
               </tr>
@@ -109,6 +127,8 @@ export default function Merch({ participants, ops }) {
                 return (
                   <tr key={item.key}>
                     <td className="py-2 pl-1 text-sm font-bold text-zinc-200">{item.label}</td>
+                    <td className="py-2 text-center text-xs font-mono text-zinc-300">{money(item.price)}</td>
+                    <td className="py-2 text-center text-xs font-mono text-emerald-400/80">+{money(item.price - item.cost)}</td>
                     <td className="py-2 text-center"><NumCell value={toInt(m.order)} onChange={(v) => ops.setMerch(item.key, { order: v })} /></td>
                     <td className="py-2 text-center pr-1"><NumCell value={toInt(m.stock)} onChange={(v) => ops.setMerch(item.key, { stock: v })} /></td>
                   </tr>
@@ -117,7 +137,19 @@ export default function Merch({ participants, ops }) {
             </tbody>
           </table>
         </div>
-        <p className="text-[10px] text-zinc-600 mt-3">Inventory is saved on this device (the gear-locker laptop).</p>
+        <p className="text-[10px] text-zinc-600 mt-3">Price/margin are set in <span className="text-zinc-400 font-mono">lib/sheet.js</span> (cost from the contract sheet). Inventory is saved on this device (the gear-locker laptop).</p>
+      </Card>
+
+      {/* Live scholarship contribution from extras — sold is inferred from order − stock */}
+      <Card className="p-4 sm:p-5">
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Package className="w-4 h-4 text-emerald-400" /> Scholarship from merch</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <Stat label="Sold (revenue)" value={money(fin.revenue)} tone="amber" />
+          <Stat label="Inventory cost" value={money(fin.cost)} />
+          <Stat label="Net to fund" value={money(net)} tone={net >= 0 ? 'emerald' : 'rose'} />
+          <Stat label="If rest sells" value={`+${money(fin.upside)}`} tone="emerald" />
+        </div>
+        <p className="text-[10px] text-zinc-600 mt-3">"Sold" = ordered minus what's still in stock, so update "In stock" as Venmo sales clear. "Net to fund" subtracts the full cost of everything ordered; it climbs past break-even as units sell. Tees are included with entry and aren't counted here.</p>
       </Card>
     </div>
   );
