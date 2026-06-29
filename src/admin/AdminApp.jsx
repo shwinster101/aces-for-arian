@@ -61,19 +61,31 @@ function OpsConsole({ onLock }) {
   // async callbacks, mirroring the roster-sync effect in App.jsx.
   const [spinning, setSpinning] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  // Why the roster isn't live (or is live but degraded), surfaced in the banner
+  // so an operator can self-diagnose on their phone instead of guessing.
+  const [syncMsg, setSyncMsg] = useState('');
   const ops = useOpsStore();
 
   useEffect(() => {
     let cancelled = false;
     fetch(ROSTER_CSV_URL)
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-      .then(text => {
+      .then(async r => {
+        if (!r.ok) throw new Error(`sheet read failed (HTTP ${r.status}) — check the sheet's sharing/read path`);
+        const onGvizFallback = !!r.headers.get('X-Fallback'); // Function couldn't use the authed read
+        const players = mapRoster(parseCSV(await r.text()));
         if (cancelled) return;
-        const players = mapRoster(parseCSV(text));
-        if (players.length) { setRoster(players); setRosterLive(true); }
+        if (players.length) {
+          setRoster(players);
+          setRosterLive(true);
+          setSyncMsg(onGvizFallback ? 'live via gviz fallback — authed read (Apps Script) is down' : '');
+        } else {
+          // HTTP-OK but no rows: sheet reachable, data shape is wrong.
+          setRosterLive(false);
+          setSyncMsg('sheet reached but 0 roster rows — confirm Form Responses is the first tab with a Name column');
+        }
         setSyncedAt(new Date());
       })
-      .catch(() => { /* keep last-known roster */ })
+      .catch(err => { if (!cancelled) setSyncMsg(err.message || 'roster fetch failed'); })
       .finally(() => { if (!cancelled) setSpinning(false); });
     return () => { cancelled = true; };
   }, [refreshKey]);
@@ -131,6 +143,7 @@ function OpsConsole({ onLock }) {
             <span className="text-zinc-400">
               {rosterLive ? 'Live roster from Google Sheet' : 'Showing fallback roster'}
               {syncedAt && <span className="text-zinc-600"> · synced {syncedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>}
+              {syncMsg && <span className="text-amber-400/80"> · {syncMsg}</span>}
             </span>
             <span className="text-zinc-700">·</span>
             <span className="text-zinc-500">
