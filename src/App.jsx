@@ -2105,16 +2105,22 @@ export default function App() {
               <ScholarsList />
             </div>
 
-            {/* Register CTA — entry fees fund this scholarship; give cause-aligned visitors a way to act */}
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <div className="text-sm font-black text-white uppercase tracking-wider">Fund it by playing</div>
-                <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Every entry fee goes straight to this scholarship. Grab a spot in the July 11–12 tournament — singles, doubles, or both.</div>
+            {/* Two ways to fund it — the cause page serves both audiences as first-class
+                paths: players register, and the larger non-playing donor pool (alumni,
+                parents, family) gets a direct give CTA instead of hunting for the header chip. */}
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+              <div className="text-sm font-black text-white uppercase tracking-wider">Two ways to fund it</div>
+              <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% goes straight to the scholarship. Play in the July 11–12 tournament, or give directly if you can't make it to the courts.</div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-4">
+                <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                  <span>Register to Play — $40</span>
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-transparent border border-[#fbbf24]/60 hover:border-[#fbbf24] hover:bg-[#fbbf24]/10 text-[#fbbf24] font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors">
+                  <Heart className="h-4 w-4" />
+                  <span>Donate Directly</span>
+                </a>
               </div>
-              <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                <span>Register to Play — $40</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
             </div>
 
             {/* Application link — kept low-key off-season; promote in spring */}
