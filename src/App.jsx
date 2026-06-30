@@ -40,7 +40,8 @@ import {
   X,
   ChevronRight,
   Mail,
-  Share2
+  Share2,
+  MapPin
 } from 'lucide-react';
 
 // ==========================================
@@ -353,6 +354,11 @@ const DONATE_URL = VENMO_URL;
 
 // The Google Form players register through — reused by every "Register" CTA.
 const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
+
+// Venue — tap-to-navigate for players deciding to register and spectators on
+// the day. The ICS carries a LOCATION too; this is the on-page directions link.
+const VENUE_MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" +
+  encodeURIComponent("Dunlap High School Tennis Courts, Dunlap, IL");
 
 // Baseline seeding: prior A4A results first, then public UTR / WTN where players
 // have them, then committee + community refinement. result/utr/wtn are optional.
@@ -944,6 +950,12 @@ export default function App() {
   const doublesTeams = Math.ceil(doublesCount / 2);
   const daysLeft = Math.ceil((new Date('2026-07-06T23:59:59') - now) / 86400000);
   const closeText = daysLeft > 1 ? `in ${daysLeft} days` : daysLeft === 1 ? 'tomorrow' : daysLeft === 0 ? 'today' : 'closed';
+  // After sign-ups close, the deadline cue must not read "sign-ups close closed."
+  // Pivot it to a first-serve countdown so the final week (peak traffic) keeps
+  // its urgency through event weekend instead of going stale.
+  const regOpen = daysLeft >= 0;
+  const daysToEvent = Math.ceil((new Date('2026-07-11T09:00:00') - now) / 86400000);
+  const firstServeText = daysToEvent > 1 ? `first serve in ${daysToEvent} days` : daysToEvent === 1 ? 'first serve tomorrow' : daysToEvent === 0 ? 'first serve today!' : 'live now — follow the brackets';
   const filteredRoster =
     ledgerFilter === 'singles' ? roster.filter(p => p.events.includes('Singles'))
     : ledgerFilter === 'doubles' ? roster.filter(p => p.events.includes('Doubles'))
@@ -1190,7 +1202,10 @@ export default function App() {
               {/* Center blurb */}
               <div className="order-1 md:order-2 w-full md:w-auto md:flex-1 space-y-3 relative z-10 text-center md:text-left">
                 <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit mx-auto md:mx-0 flex items-center gap-2 border border-zinc-800">
-                    <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
+                    <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 •
+                    <a href={VENUE_MAPS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-zinc-300 hover:text-[#fbbf24] underline underline-offset-2 decoration-zinc-600 hover:decoration-[#fbbf24] transition-colors">
+                      <MapPin className="w-3 h-3 shrink-0" />Dunlap High Courts
+                    </a>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-[1.05]">Play in the 5th Annual <span className="whitespace-nowrap">Aces for Arian</span></h3>
                 <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }}
@@ -1216,7 +1231,9 @@ export default function App() {
                   <span className="text-zinc-700">·</span>
                   <span><strong className="text-[#fbbf24] font-bold">{singlesCount}</strong><span className="text-zinc-600">/32</span> singles</span>
                   <span className="text-zinc-700">·</span>
-                  <span className="text-zinc-500">sign-ups close <strong className="text-zinc-300 font-semibold">{closeText}</strong> (July 6)</span>
+                  {regOpen
+                    ? <span className="text-zinc-500">sign-ups close <strong className="text-zinc-300 font-semibold">{closeText}</strong> (July 6)</span>
+                    : <span className="text-zinc-500">sign-ups closed · <strong className="text-zinc-300 font-semibold">{firstServeText}</strong></span>}
                 </div>
 
                 {/* Flyer poster — sits beneath the blurb in the center column */}
@@ -1822,7 +1839,7 @@ export default function App() {
               </div>
               <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                 <li>Pay the <strong className="text-zinc-200">$40</strong> at sign-in before your first match — and grab your t-shirt.</li>
-                <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong>.</li>
+                <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong> — <a href={VENUE_MAPS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors"><MapPin className="w-3.5 h-3.5 shrink-0" />get directions</a>.</li>
                 <li><strong className="text-zinc-200">Arrive early and sign in.</strong> More than 15 minutes past match time is a default.</li>
                 <li>Schedule conflict? Tell a coordinator <strong className="text-zinc-200">ASAP</strong>.</li>
               </ul>
