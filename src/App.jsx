@@ -1339,9 +1339,11 @@ export default function App() {
                                 </button>
                               )}
                             </div>
-                            {player.partner
+                            {/* Doubles pairing is meaningless in the Singles view — only
+                                show "w/ partner" in the All and Doubles filters. */}
+                            {ledgerFilter !== 'singles' && (player.partner
                               ? <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner.split(/\s+/)[0]}</div>
-                              : player.events.includes('Doubles') && <div className="text-[11px] text-sky-400/90 font-medium mt-0.5">looking for a partner</div>}
+                              : player.events.includes('Doubles') && <div className="text-[11px] text-sky-400/90 font-medium mt-0.5">looking for a partner</div>)}
                             {player.bio && <div className="text-[11px] text-zinc-500 font-normal italic mt-0.5 max-w-[15rem] truncate sm:whitespace-normal" title={player.bio}>{player.bio}</div>}
                           </td>
                           <td className="py-4 text-zinc-400 text-xs">{classTag(player.classYear)}</td>
@@ -1366,9 +1368,11 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-zinc-600 mt-3 px-1 leading-relaxed">
-                  Registered as a pair? You'll show as <span className="text-[#fbbf24]/70 font-medium">"w/ [partner]"</span> here once both you and your partner are confirmed — until then, doubles entries read <span className="text-sky-400/70">"looking for a partner."</span>
-                </p>
+                {ledgerFilter !== 'singles' && (
+                  <p className="text-[11px] text-zinc-600 mt-3 px-1 leading-relaxed">
+                    Registered as a pair? You'll show as <span className="text-[#fbbf24]/70 font-medium">"w/ [partner]"</span> here once both you and your partner are confirmed — until then, doubles entries read <span className="text-sky-400/70">"looking for a partner."</span>
+                  </p>
+                )}
               </div>
 
               <div className="space-y-6">
