@@ -956,6 +956,22 @@ export default function App() {
   const regOpen = daysLeft >= 0;
   const daysToEvent = Math.ceil((new Date('2026-07-11T09:00:00') - now) / 86400000);
   const firstServeText = daysToEvent > 1 ? `first serve in ${daysToEvent} days` : daysToEvent === 1 ? 'first serve tomorrow' : daysToEvent === 0 ? 'first serve today!' : 'live now — follow the brackets';
+  const goToBrackets = () => { setActiveTab('draws'); window.scrollTo({ top: 0 }); };
+  // Primary "Register" CTA. The Google Form is closed manually on July 6, so
+  // once sign-ups close the same button pivots to "Follow the Live Brackets"
+  // (in-app nav) instead of dead-ending on a closed form. Identical styling.
+  const registerCta = (className, label = 'Register to Play — $40') =>
+    regOpen ? (
+      <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className={className}>
+        <span>{label}</span>
+        <ExternalLink className="h-4 w-4" />
+      </a>
+    ) : (
+      <button type="button" onClick={goToBrackets} className={className}>
+        <span>Follow the Live Brackets</span>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    );
   const filteredRoster =
     ledgerFilter === 'singles' ? roster.filter(p => p.events.includes('Singles'))
     : ledgerFilter === 'doubles' ? roster.filter(p => p.events.includes('Doubles'))
@@ -1218,11 +1234,7 @@ export default function App() {
                   Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — 7 straight summers since Eagle Classic 2020!
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
-                  <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                    <span>Register Here!</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  {registerCta("inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10", "Register Here!")}
                   <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
                 </div>
                 {/* Field-filling momentum — social proof + scarcity off the live roster */}
@@ -1236,21 +1248,33 @@ export default function App() {
                     : <span className="text-zinc-500">sign-ups closed · <strong className="text-zinc-300 font-semibold">{firstServeText}</strong></span>}
                 </div>
 
-                {/* Flyer poster — sits beneath the blurb in the center column */}
-                <a
-                  href={REGISTER_FORM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Aces for Arian 2026 tournament flyer — register for $40"
-                  className="group block w-full max-w-sm md:max-w-[260px] mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-xl shadow-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] transition-transform hover:-translate-y-0.5"
-                >
-                  <img
-                    src="/flyer.jpg"
-                    alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12. Register by July 6."
-                    className="w-full"
-                    loading="lazy"
-                  />
-                </a>
+                {/* Flyer poster — sits beneath the blurb in the center column.
+                    Opens the form while sign-ups are live; jumps to the live
+                    brackets once the form is closed (July 6). */}
+                {(() => {
+                  const flyerClass = "group block w-full max-w-sm md:max-w-[260px] mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-xl shadow-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] transition-transform hover:-translate-y-0.5";
+                  const flyerImg = (
+                    <img
+                      src="/flyer.jpg"
+                      alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12. Register by July 6."
+                      className="w-full"
+                      loading="lazy"
+                    />
+                  );
+                  return regOpen ? (
+                    <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
+                      aria-label="Aces for Arian 2026 tournament flyer — register for $40"
+                      className={flyerClass}>
+                      {flyerImg}
+                    </a>
+                  ) : (
+                    <button type="button" onClick={goToBrackets}
+                      aria-label="Aces for Arian 2026 tournament flyer — follow the live brackets"
+                      className={flyerClass}>
+                      {flyerImg}
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* Right slideshow */}
@@ -1491,7 +1515,9 @@ export default function App() {
               </div>
             )}
 
-            {/* Crowdsource CTA */}
+            {/* Crowdsource CTA — only while sign-ups are open; once the form
+                closes (July 6) the draw is set and seeding input is moot. */}
+            {regOpen && (
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
                 <h4 className="text-sm font-black text-white uppercase tracking-wider">Help us seed the draw</h4>
@@ -1503,6 +1529,7 @@ export default function App() {
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
+            )}
           </div>
         )}
 
@@ -2032,10 +2059,7 @@ export default function App() {
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% of entry fees and donations fund the Arian Rahbar Memorial Scholarship for Dunlap seniors pursuing higher education.</div>
               </div>
               <div className="shrink-0 flex flex-col sm:flex-row gap-2.5">
-                <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                  <span>Register to Play — $40</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                {registerCta("inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10")}
                 <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors">
                   <Heart className="w-4 h-4" />
                   <span>Donate</span>
@@ -2131,12 +2155,11 @@ export default function App() {
                 parents, family) gets a direct give CTA instead of hunting for the header chip. */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
               <div className="text-sm font-black text-white uppercase tracking-wider">Two ways to fund it</div>
-              <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% goes straight to the scholarship. Play in the July 11–12 tournament, or give directly if you can't make it to the courts.</div>
+              <div className="text-xs text-zinc-400 mt-1 leading-relaxed">{regOpen
+                ? '100% goes straight to the scholarship. Play in the July 11–12 tournament, or give directly if you can\'t make it to the courts.'
+                : '100% goes straight to the scholarship. Give directly, or follow the live brackets July 11–12 and cheer the players on.'}</div>
               <div className="grid sm:grid-cols-2 gap-3 mt-4">
-                <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                  <span>Register to Play — $40</span>
-                  <ExternalLink className="h-4 w-4" />
-                </a>
+                {registerCta("inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10")}
                 <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-transparent border border-[#fbbf24]/60 hover:border-[#fbbf24] hover:bg-[#fbbf24]/10 text-[#fbbf24] font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors">
                   <Heart className="h-4 w-4" />
                   <span>Donate Directly</span>
