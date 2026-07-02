@@ -186,6 +186,25 @@ export function useOpsStore() {
     // on the public Live Scores board (the row is keyed by this same id).
     pushToSheet('match-delete', { id });
   };
+  // Bulk-replace one event's draw — used by "Build Round 1 from seeds" in
+  // Seeding. Rows are built (with ids) BEFORE setStore so StrictMode's
+  // double-invoked updater can't mint different ids than the ones pushed.
+  // Old matches are mirror-deleted so the public Live Scores board doesn't
+  // keep ghost rows from a previous draw.
+  const setEventMatches = (event, rows) => {
+    const created = rows.map(r => ({
+      id: nextId(), event, round: r.round || '', num: String(r.num ?? ''),
+      a: r.a || '', b: r.b || '', court: '', status: 'scheduled', score: '', winner: '',
+    }));
+    let removedIds = [];
+    setStore(s => {
+      removedIds = s.matches.filter(m => m.event === event).map(m => m.id);
+      return { ...s, matches: [...s.matches.filter(m => m.event !== event), ...created] };
+    });
+    removedIds.forEach(id => pushToSheet('match-delete', { id }));
+    created.forEach(m => pushToSheet('match', publicMatchPayload(m)));
+  };
+
   // Reorder the playing queue: move a match up/down within its event and
   // renumber the event 1..N to the new order. The match number = play order, so
   // bumping someone up lets a player who must leave early go sooner. Pushes
@@ -262,7 +281,7 @@ export function useOpsStore() {
     getOverlay, setOverlay,
     addWalkUp, removeWalkUp,
     setSeeds,
-    addMatch, updateMatch, removeMatch, moveMatch,
+    addMatch, updateMatch, removeMatch, moveMatch, setEventMatches,
     setMerch,
     incrementAces, decrementAces,
     pushPublicStatus, pushConfig,

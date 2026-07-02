@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2 } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, ListChecks, Wand2 } from 'lucide-react';
 import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState } from '../ui';
 import { nextId } from '../store';
 
@@ -11,24 +11,175 @@ const EVENTS = [
 const ROUND_PRESETS = ['R1', 'R2', 'R3', 'QF', 'SF', 'F', 'L1', 'L2', 'L3'];
 const COURTS = Array.from({ length: 9 }, (_, i) => String(i + 1));
 
+const norm = (s) => (s || '').trim().toLowerCase();
+
+// Order-insensitive matching key so a hand-typed "B & A" seed row still counts
+// the derived "A & B" team as seeded (tolerates "and" / "/" / "+" separators).
+const entryKey = (name) => norm(name).split(/\s*(?:&|\/|\+|\band\b)\s*/).filter(Boolean).sort().join(' & ');
+
+// Same effective-status rule as Registrations so "confirmed" counts agree
+// across tabs: an explicit ops confirm OR the sheet's Verified flag.
+const isConfirmed = (p) => p.overlay.regStatus === 'confirmed' || p.status === 'Verified';
+
+// Derive doubles TEAMS from who actually signed up: pair each doubles entrant
+// with their form-submitted partner (or the ops override from the partner
+// card). Flags surface exactly what needs chasing before seeds can lock:
+//   mutual      — both players named each other
+//   unconfirmed — one-way pick; the partner is signed up but didn't name them back
+//   missing     — named partner isn't on the signup list (yet)
+// Players with no partner (or whose partner is already taken) land in
+// `unpaired` so nobody silently falls out of the draw.
+function deriveDoublesTeams(participants) {
+  const players = participants.filter(p => p.events.includes('Doubles'));
+  const byName = new Map(players.map(p => [norm(p.name), p]));
+  const partnerOf = (p) => (p.overlay.partner || p.partner || '').trim();
+  const used = new Set();
+  const teams = [];
+  const unpaired = [];
+  players.forEach(p => {
+    const key = norm(p.name);
+    if (used.has(key)) return;
+    used.add(key);
+    const partner = partnerOf(p);
+    const pk = norm(partner);
+    if (!pk) { unpaired.push({ player: p, reason: 'no partner listed' }); return; }
+    const mate = byName.get(pk);
+    if (!mate) { teams.push({ name: `${p.name} & ${partner}`, members: [p], flag: 'missing' }); return; }
+    if (used.has(pk)) { unpaired.push({ player: p, reason: `${mate.name} is already on another team` }); return; }
+    used.add(pk);
+    const mutual = norm(partnerOf(mate)) === key;
+    teams.push({ name: `${p.name} & ${mate.name}`, members: [p, mate], flag: mutual ? 'mutual' : 'unconfirmed' });
+  });
+  return { teams, unpaired };
+}
+
 export default function Seeding({ participants, ops }) {
   const [event, setEvent] = useState('Singles');
 
+  const doubles = useMemo(() => deriveDoublesTeams(participants), [participants]);
+
+  // The seedable field for the selected event, straight from signups:
+  // Singles -> entrants; Doubles -> derived TEAMS (seeded as one unit).
+  const entries = useMemo(() => {
+    if (event === 'Doubles') {
+      return doubles.teams.map(t => ({
+        key: entryKey(t.name),
+        name: t.name,
+        flag: t.flag,
+        confirmed: t.flag !== 'missing' && t.members.every(isConfirmed),
+      }));
+    }
+    const seen = new Map();
+    participants.filter(p => p.events.includes('Singles')).forEach(p => {
+      const key = entryKey(p.name);
+      if (key && !seen.has(key)) seen.set(key, { key, name: p.name, flag: null, confirmed: isConfirmed(p) });
+    });
+    return Array.from(seen.values());
+  }, [participants, doubles, event]);
+
   const namesInEvent = useMemo(() => {
     const list = participants.filter(p => p.events.includes(event)).map(p => p.name);
-    return Array.from(new Set(list)).sort();
-  }, [participants, event]);
+    const teamNames = event === 'Doubles' ? doubles.teams.map(t => t.name).sort() : [];
+    return Array.from(new Set([...teamNames, ...Array.from(new Set(list)).sort()]));
+  }, [participants, doubles, event]);
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Seeding & Draws" subtitle="Set the seed order, assign doubles partners, and post or update the bracket matchups as the field locks in." />
+      <PageHeader title="Seeding & Draws" subtitle="The field builds itself from signups — pair doubles teams, tap names into the seed order, then generate Round 1 straight from the seeds." />
 
       <Pills value={event} onChange={setEvent} options={EVENTS} />
 
-      <SeedList event={event} ops={ops} namesInEvent={namesInEvent} />
+      <SignupPool event={event} ops={ops} entries={entries} unpaired={event === 'Doubles' ? doubles.unpaired : []} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
+      <SeedList event={event} ops={ops} namesInEvent={namesInEvent} />
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
     </div>
+  );
+}
+
+// ------------------------------------------------------------- Signup pool
+// Who's signed up for this event vs who's in the seed list — the working
+// surface for seeding day: tap "Seed" to append an entrant/team at the next
+// rank, then fine-tune order in the seed list below.
+const FLAG_CHIP = {
+  unconfirmed: { label: '1-way pick', cls: 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/25' },
+  missing: { label: 'partner not signed up', cls: 'text-rose-400 bg-rose-500/10 border-rose-500/25' },
+};
+
+function SignupPool({ event, ops, entries, unpaired }) {
+  const seeds = ops.store.seeds[event];
+  const seededRank = useMemo(() => {
+    const m = new Map();
+    seeds.forEach((r, i) => { const k = entryKey(r.name); if (k && !m.has(k)) m.set(k, i + 1); });
+    return m;
+  }, [seeds]);
+
+  const unseeded = entries.filter(e => !seededRank.has(e.key));
+  const addToSeeds = (names) => ops.setSeeds(event, prev => [
+    ...prev,
+    ...names.map((name, i) => ({ id: nextId(), rank: prev.length + i + 1, name, notes: '' })),
+  ]);
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+          <ListChecks className="w-4 h-4 text-[#fbbf24]" /> Signed up — {event}
+          <span className="text-zinc-500 normal-case tracking-normal font-bold">{entries.length - unseeded.length}/{entries.length} seeded</span>
+        </h3>
+        {unseeded.length > 0 && (
+          <button onClick={() => addToSeeds(unseeded.map(e => e.name))}
+            className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Seed all {unseeded.length}
+          </button>
+        )}
+      </div>
+
+      {entries.length === 0 ? (
+        <EmptyState title={`No ${event.toLowerCase()} signups yet`}
+          hint={event === 'Doubles' ? 'Teams appear here once doubles entrants (and their partners) come in from the form or walk-ups.' : 'Entrants appear here as registrations come in from the form or walk-ups.'} />
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-2">
+          {entries.map(e => {
+            const rank = seededRank.get(e.key);
+            const chip = e.flag && FLAG_CHIP[e.flag];
+            return (
+              <div key={e.key} className="flex items-center gap-2.5 bg-[#111] border border-zinc-800 rounded-xl px-3 py-2 min-h-14">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-zinc-200 truncate">{e.name}</div>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    {!e.confirmed && <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border text-zinc-400 bg-zinc-800 border-zinc-700">pending</span>}
+                    {chip && <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${chip.cls}`}>{chip.label}</span>}
+                  </div>
+                </div>
+                {rank ? (
+                  <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded-lg px-2.5 py-1.5">Seed {rank}</span>
+                ) : (
+                  <button onClick={() => addToSeeds([e.name])}
+                    className="shrink-0 flex items-center gap-1 min-h-11 text-[10px] font-black uppercase tracking-wider text-zinc-300 hover:text-black bg-zinc-800 hover:bg-[#fbbf24] border border-zinc-700 hover:border-[#fbbf24] rounded-lg px-3 py-1.5 transition-colors active:scale-95">
+                    <Plus className="w-3.5 h-3.5" /> Seed
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {unpaired.length > 0 && (
+        <div className="mt-3 border-t border-zinc-800 pt-3">
+          <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1.5">Needs a partner ({unpaired.length})</div>
+          <div className="flex flex-wrap gap-1.5">
+            {unpaired.map(({ player, reason }) => (
+              <span key={player.name} title={reason} className="text-[11px] font-bold text-zinc-300 bg-[#111] border border-zinc-800 rounded-lg px-2.5 py-1.5">
+                {player.name} <span className="text-zinc-600 font-normal">— {reason}</span>
+              </span>
+            ))}
+          </div>
+          <p className="text-[10px] text-zinc-600 mt-2">Assign partners in the card below — they'll turn into a seedable team here.</p>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -65,7 +216,7 @@ function SeedList({ event, ops, namesInEvent }) {
       </datalist>
 
       {list.length === 0 ? (
-        <EmptyState title="No seeds set yet" hint={`Add the projected seeds for ${event.toLowerCase()} — order doubles as "Player A & Player B".`} />
+        <EmptyState title="No seeds set yet" hint={`Tap "Seed" on the signed-up ${event === 'Doubles' ? 'teams' : 'players'} above to build the list, then reorder — or add rows by hand here.`} />
       ) : (
         <div className="space-y-2">
           {list.map((row, i) => (
@@ -100,7 +251,7 @@ function PartnerAssignments({ participants, ops }) {
   return (
     <Card className="p-4 sm:p-5">
       <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-1"><Users2 className="w-4 h-4 text-[#fbbf24]" /> Doubles partners</h3>
-      <p className="text-[11px] text-zinc-500 mb-3">Pulled from the registration form by default — override here for last-minute swaps or unpaired entrants.</p>
+      <p className="text-[11px] text-zinc-500 mb-3">Pulled from the registration form by default — override here for last-minute swaps or unpaired entrants. Teams above update as you pair.</p>
       <datalist id="doubles-names">
         {allNames.map(n => <option key={n} value={n} />)}
       </datalist>
@@ -132,6 +283,18 @@ const STATUS_OPTIONS = [
 ];
 const STATUS_DOT = { scheduled: 'bg-zinc-600', live: 'bg-emerald-400 animate-pulse', final: 'bg-[#fbbf24]' };
 
+// Standard bracket placement for a power-of-two draw: returns seed positions
+// in slot order so adjacent pairs are the R1 matches (1 v N, then the seed-2
+// half, etc). Positions beyond the entry count are byes for the top seeds.
+function bracketSlots(size) {
+  let slots = [1];
+  while (slots.length < size) {
+    const m = slots.length * 2 + 1;
+    slots = slots.flatMap(s => [s, m - s]);
+  }
+  return slots;
+}
+
 export function DrawEditor({ event, ops, namesInEvent }) {
   // Sorted by match number = playing order (courts are assigned dynamically).
   const matches = ops.store.matches
@@ -139,20 +302,54 @@ export function DrawEditor({ event, ops, namesInEvent }) {
     .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
   const datalistId = `draw-names-${event}`;
 
+  // One-tap bracket creation: turn the seed list into Round 1, standard
+  // placement, byes to the top seeds when the field isn't a power of two.
+  const buildR1 = () => {
+    const seedNames = ops.store.seeds[event].map(s => s.name.trim()).filter(Boolean);
+    if (seedNames.length < 2) {
+      window.alert(`Seed at least 2 ${event === 'Doubles' ? 'teams' : 'players'} first — Round 1 is built straight from the seed order above.`);
+      return;
+    }
+    let size = 1;
+    while (size < seedNames.length) size *= 2;
+    const slots = bracketSlots(size);
+    const rows = [];
+    const byes = [];
+    for (let i = 0; i < slots.length; i += 2) {
+      const a = seedNames[slots[i] - 1];
+      const b = seedNames[slots[i + 1] - 1];
+      if (a && b) rows.push({ round: 'R1', num: rows.length + 1, a, b });
+      else if (a || b) byes.push(a || b);
+    }
+    const ok = window.confirm(
+      `Build Round 1 for ${event} from the ${seedNames.length} seeds?\n\n` +
+      `• ${size}-draw, ${rows.length} R1 match${rows.length === 1 ? '' : 'es'}\n` +
+      (byes.length ? `• Byes straight to R2: ${byes.join(', ')}\n` : '') +
+      (matches.length ? `\nThis replaces all ${matches.length} ${event} match${matches.length === 1 ? '' : 'es'} currently posted.` : '')
+    );
+    if (!ok) return;
+    ops.setEventMatches(event, rows);
+  };
+
   return (
     <Card className="p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Swords className="w-4 h-4 text-[#fbbf24]" /> Match order — {event}</h3>
-        <button onClick={() => ops.addMatch(event)} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
-          <Plus className="w-3.5 h-3.5" /> Add match
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={buildR1} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-black bg-[#fbbf24] hover:bg-amber-400 rounded-lg px-3 py-1.5 transition-colors">
+            <Wand2 className="w-3.5 h-3.5" /> Build R1 from seeds
+          </button>
+          <button onClick={() => ops.addMatch(event)} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add match
+          </button>
+        </div>
       </div>
       <datalist id={datalistId}>
         {namesInEvent.map(n => <option key={n} value={n} />)}
       </datalist>
 
       {matches.length === 0 ? (
-        <EmptyState title="No matches posted yet" hint={`Add R1 matchups as seeds lock in — staff and players will see updates reflected here in real time as you edit them.`} />
+        <EmptyState title="No matches posted yet" hint={`Tap "Build R1 from seeds" to generate the opening round from the seed order, or add matchups by hand — staff and players see updates in real time.`} />
       ) : (
         <div className="space-y-2">
           {matches.map(m => (
