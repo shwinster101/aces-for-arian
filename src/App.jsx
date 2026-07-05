@@ -352,7 +352,7 @@ const VENMO_URL = "https://venmo.com/code?user_id=4618810715800962447&created=17
 const DONATE_URL = VENMO_URL;
 
 // The Google Form players register through — reused by every "Register" CTA.
-const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
+const REGISTER_FORM_URL = "https://forms.gle/nxVMoRbcBArwVpp29";
 
 // Baseline seeding: prior A4A results first, then public UTR / WTN where players
 // have them, then committee + community refinement. result/utr/wtn are optional.
