@@ -93,6 +93,10 @@ export function pushToSheet(type, payload) {
     fetch(SHEET_WRITE_URL, {
       method: 'POST',
       mode: 'no-cors',
+      // keepalive lets a push issued right before the tab closes (e.g. the
+      // debounced seeds flush on pagehide) still be delivered. Payloads here
+      // are far below the keepalive 64KB cap.
+      keepalive: true,
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ type, payload, ts: Date.now(), token: WRITE_TOKEN }),
     }).catch(() => {});
@@ -146,8 +150,10 @@ export function useOpsStore() {
   // Push seed changes AFTER they commit (not inline in setSeeds): React only
   // runs the updater above when it renders, so reading its result back inside
   // setSeeds crashes whenever the eager-evaluation fast path is skipped (e.g.
-  // another update is already queued in the same tap). Diffing committed
-  // state here also coalesces rapid edits into one POST per event.
+  // another update is already queued in the same tap). The push is debounced
+  // so typing in a seed row's name/notes field sends ONE POST after the
+  // burst, not one per keystroke; a pagehide flush (+ keepalive in
+  // pushToSheet) still delivers a pending push if the tab closes first.
   //
   // SANITIZE AT THE SOURCE: the full committee list (with `notes` — free-text
   // committee commentary) is the source of truth for THIS device only and
@@ -161,11 +167,19 @@ export function useOpsStore() {
   // DATA SEPARATION" note in lib/sheet.js for the full rationale.
   const pushedSeeds = useRef(store.seeds);
   useEffect(() => {
-    for (const event of Object.keys(store.seeds)) {
-      if (store.seeds[event] === pushedSeeds.current[event]) continue;
-      pushToSheet('seeds', { event, list: store.seeds[event].map(({ name }) => ({ name })) });
-    }
-    pushedSeeds.current = store.seeds;
+    const changed = Object.keys(store.seeds).filter(ev => store.seeds[ev] !== pushedSeeds.current[ev]);
+    if (changed.length === 0) return undefined;
+    let sent = false;
+    const send = () => {
+      if (sent) return;
+      sent = true;
+      changed.forEach(ev => pushToSheet('seeds', { event: ev, list: store.seeds[ev].map(({ name }) => ({ name })) }));
+      pushedSeeds.current = { ...pushedSeeds.current, ...Object.fromEntries(changed.map(ev => [ev, store.seeds[ev]])) };
+    };
+    const t = setTimeout(send, 400);
+    const flush = () => { clearTimeout(t); send(); };
+    window.addEventListener('pagehide', flush);
+    return () => { clearTimeout(t); window.removeEventListener('pagehide', flush); };
   }, [store.seeds]);
 
   const addMatch = (event) => {
@@ -264,9 +278,15 @@ export function useOpsStore() {
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
   // seeds, matches, merch) — for post-tournament cleanup. Irreversible.
+  // DEVICE-LOCAL ONLY: mark the fresh (empty) seed lists as already-pushed
+  // BEFORE committing, so the seeds effect above doesn't see the reset as an
+  // edit and blank the public SeedBoardPublic tab — the confirm dialog
+  // promises the sheet is unaffected.
   const clearOps = () => {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-    setStore(initialStore());
+    const fresh = initialStore();
+    pushedSeeds.current = fresh.seeds;
+    setStore(fresh);
   };
 
   return {

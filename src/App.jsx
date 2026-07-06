@@ -21,6 +21,7 @@ import {
   mapAces,
   mapOpsStatus,
 } from './lib/sheet';
+import { bandLabel, DRAW_CAP, SEED_CUT } from './lib/entrants';
 import {
   Trophy, 
   Award, 
@@ -464,10 +465,10 @@ function numberSeq(rounds, start) {
 const roundLabel = (matches) =>
   ({ 1: 'Final', 2: 'Semifinals', 4: 'Quarterfinals', 8: 'Round of 16', 16: 'Round of 32' }[matches] || `Round of ${matches * 2}`);
 
-// Seed badge: exact number (gold) for the 8 true seeds; band label (zinc)
-// for the grouped rest of the field — 9–16, then 17–32 in the singles draw.
-const bandLabel = (seed) => (seed <= 8 ? null : seed <= 16 ? '9–16' : '17–32');
-
+// Seed badge: exact number (gold) for the true seeds (1..SEED_CUT); band
+// label (zinc) for the grouped rest of the field — 9–16, then 17–32 in the
+// singles draw. bandLabel/SEED_CUT/DRAW_CAP live in lib/entrants.js so the
+// admin seed list and these brackets share one definition of the structure.
 function Slot({ slot }) {
   const bye = !!(slot && slot.bye);
   const band = slot && slot.seed != null ? bandLabel(slot.seed) : null;
@@ -803,6 +804,7 @@ export default function App() {
   const [opsStatus, setOpsStatus] = useState({}); // OpsStatus tab: name -> Verified/Pending overlay
   const [config, setConfig] = useState({});        // from the "Config" tab
   const [seeds, setSeeds] = useState(topSeeds);     // from the sanitized "SeedBoardPublic" tab — never raw committee data
+  const [seedsLive, setSeedsLive] = useState(false); // true once real SeedBoardPublic rows loaded (vs topSeeds fallback)
   const [gallery, setGallery] = useState(GALLERY);  // from the "Photos" tab
   const [matches, setMatches] = useState([]);       // live scores, from the "Matches" tab
   const [matchesLive, setMatchesLive] = useState(false);
@@ -819,8 +821,12 @@ export default function App() {
   // Field-lock lifecycle: the Config tab's "Seeds Final" row (set from the
   // ops console or by hand in the sheet) overrides the SEEDS_FINAL constant.
   // Locked = seeds badge flips to "Final Seeds" and the brackets show BYEs
-  // for unfilled first-round slots instead of TBD.
+  // for unfilled first-round slots instead of TBD. Byes additionally require
+  // seedsLive: config and the seed board load independently, so without this
+  // gate a locked flag + failed/slow seed fetch would draw authoritative-
+  // looking BYEs against the hardcoded fallback names.
   const seedsFinal = config.seedsFinal ?? SEEDS_FINAL;
+  const showByes = seedsFinal && seedsLive;
 
   // Auto-sync the roster from the published Google Sheet; fails over silently
   // to fallbackRoster so the dashboard never breaks.
@@ -854,7 +860,7 @@ export default function App() {
     // Never point this at committee-side seed data.
     grab(SEED_BOARD_PUBLIC_CSV_URL).then(rows => {
       const s = mapSeeds(rows);
-      if (!cancelled && s.length) setSeeds(s);
+      if (!cancelled && s.length) { setSeeds(s); setSeedsLive(true); }
     }).catch(() => {});
 
     grab(PHOTOS_CSV_URL).then(rows => {
@@ -1455,12 +1461,13 @@ export default function App() {
                   placement but they aren't ranked against each other. */}
               {(() => {
                 const list = seeds.filter(item => item.type === seedingEvent);
-                const cap = seedingEvent === 'Doubles' ? 16 : 32;
+                const cap = DRAW_CAP[seedingEvent] ?? 32;
                 const unit = seedingEvent === 'Doubles' ? 'team' : 'player';
+                const groupHint = 'bracket group — placed in the draw together, not individually ranked';
                 const bands = [
-                  ['Seeds 1–8', 'individually seeded', (r) => r <= 8],
-                  ['9–16', 'bracket group — placed in the draw together, not individually ranked', (r) => r > 8 && r <= 16],
-                  ...(cap > 16 ? [['17–32', 'bracket group — placed in the draw together, not individually ranked', (r) => r > 16 && r <= 32]] : []),
+                  [`Seeds 1–${SEED_CUT}`, 'individually seeded', (r) => r <= SEED_CUT],
+                  ['9–16', groupHint, (r) => r > SEED_CUT && r <= 16],
+                  ...(cap > 16 ? [['17–32', groupHint, (r) => r > 16 && r <= 32]] : []),
                   ['Alternates', `beyond the ${cap}-${unit} draw — first in on a withdrawal`, (r) => r > cap],
                 ];
                 return bands.map(([label, hint, inBand]) => {
@@ -1478,7 +1485,7 @@ export default function App() {
                   return (
                     <div key={idx} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4.5 rounded-2xl border ${isTop3 ? 'bg-[#111] border-[#fbbf24]/30' : 'bg-[#111] border-zinc-800/50'}`}>
                       <div className="flex items-center gap-5 w-full">
-                        <div className={`w-12 h-12 flex items-center justify-center rounded-xl shrink-0 ${isTop3 ? 'bg-[#fbbf24] text-black shadow-inner font-black text-xl' : candidate.rank <= 8 ? 'bg-zinc-900 text-zinc-400 border border-zinc-800 font-black text-xl' : 'bg-zinc-900/60 text-zinc-600 border border-zinc-800/60 font-bold text-sm'}`}>
+                        <div className={`w-12 h-12 flex items-center justify-center rounded-xl shrink-0 ${isTop3 ? 'bg-[#fbbf24] text-black shadow-inner font-black text-xl' : candidate.rank <= SEED_CUT ? 'bg-zinc-900 text-zinc-400 border border-zinc-800 font-black text-xl' : 'bg-zinc-900/60 text-zinc-600 border border-zinc-800/60 font-bold text-sm'}`}>
                           {candidate.rank}
                         </div>
                         <div className="flex-1">
@@ -1726,7 +1733,7 @@ export default function App() {
                 {(() => {
                   let next = 1;
                   return [
-                    ['East — Championship Draw', singleElim(16, true, seedNamesFrom(seeds, 'Doubles'), seedsFinal)],
+                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, seedNamesFrom(seeds, 'Doubles'), showByes)],
                     ['West Draw', singleElim(8, false)],
                     ['North Draw', singleElim(4, false)],
                     ['South Draw', singleElim(4, false)],
@@ -1758,7 +1765,7 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={numberRounds(singleElim(32, true, seedNamesFrom(seeds, 'Singles'), seedsFinal), [1, 25, 41, 53, 59])} />
+                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">

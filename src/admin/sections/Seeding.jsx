@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox, Toggle } from '../ui';
 import { nextId } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
-import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys } from '../../lib/entrants';
+import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -51,12 +51,14 @@ const CHIP_TONES = {
   zinc: 'text-zinc-400 bg-zinc-800/60 border-zinc-700',
 };
 
-function Chip({ tone = 'zinc', title, children }) {
-  return (
-    <span title={title} className={`inline-flex items-center whitespace-nowrap text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${CHIP_TONES[tone]}`}>
-      {children}
-    </span>
-  );
+// Renders a button when onClick is given (e.g. the tap-to-remove duplicate
+// badge) so the one chip style can't drift between the two forms.
+function Chip({ tone = 'zinc', title, onClick, children }) {
+  const cls = `inline-flex items-center whitespace-nowrap text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${CHIP_TONES[tone]}`;
+  if (onClick) {
+    return <button onClick={onClick} title={title} className={`${cls} transition-colors hover:bg-rose-500/25`}>{children}</button>;
+  }
+  return <span title={title} className={cls}>{children}</span>;
 }
 
 function EntrantChips({ entrant }) {
@@ -221,14 +223,15 @@ function SeedList({ event, ops, namesInEvent, entrants }) {
   );
 }
 
-// Bands in the seed order: 1–8 are the true seeds; 9–16 / 17–32 place in the
-// bracket as groups; anything past the draw size is an alternate. Mirrors
-// bandLabel/singleElim on the public site (src/App.jsx).
+// Bands in the seed order: 1..SEED_CUT are the true seeds; 9–16 / 17–32
+// place in the bracket as groups; anything past DRAW_CAP is an alternate.
+// SEED_CUT/DRAW_CAP come from lib/entrants.js — the same constants the
+// public brackets build from — so these dividers can't drift from the draw.
 function bandDividerFor(event, i) {
-  const cap = event === 'Doubles' ? 16 : 32;
-  if (i === 8) return '9–16 · bracket group';
-  if (i === 16) return cap === 16 ? 'Alternates — beyond the 16-team draw' : '17–32 · bracket group';
-  if (i === 32 && cap === 32) return 'Alternates — beyond the 32-player draw';
+  const cap = DRAW_CAP[event] ?? 32;
+  if (i === SEED_CUT) return '9–16 · bracket group';
+  if (i === 16) return cap === 16 ? `Alternates — beyond the ${cap}-team draw` : '17–32 · bracket group';
+  if (i === cap && cap === 32) return `Alternates — beyond the ${cap}-player draw`;
   return null;
 }
 
@@ -254,7 +257,7 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
         className="touch-none cursor-grab active:cursor-grabbing min-h-11 -my-1 px-0.5 flex items-center text-zinc-600 hover:text-zinc-300 transition-colors shrink-0">
         <GripVertical className="w-4 h-4" />
       </button>
-      <span className={`w-7 h-7 shrink-0 rounded-lg border flex items-center justify-center text-xs font-black ${index < 8 ? 'bg-[#fbbf24]/10 border-[#fbbf24]/20 text-[#fbbf24]' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>{index + 1}</span>
+      <span className={`w-7 h-7 shrink-0 rounded-lg border flex items-center justify-center text-xs font-black ${index < SEED_CUT ? 'bg-[#fbbf24]/10 border-[#fbbf24]/20 text-[#fbbf24]' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>{index + 1}</span>
       <div className="flex-1 min-w-0">
         <input list={datalistId} value={row.name} onChange={(e) => patchRow(row.id, { name: e.target.value })}
           placeholder="Player / team"
@@ -262,11 +265,10 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
         {hasIssue && (
           <div className="flex flex-wrap gap-1 mt-1">
             {issue.duplicateOf !== undefined && (
-              <button onClick={() => removeRow(row.id)}
-                title="Same player/team as an earlier seed (partner order doesn't matter) — tap to remove this row"
-                className={`inline-flex items-center whitespace-nowrap text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border transition-colors hover:bg-rose-500/25 ${CHIP_TONES.rose}`}>
+              <Chip tone="rose" onClick={() => removeRow(row.id)}
+                title="Same player/team as an earlier seed (partner order doesn't matter) — tap to remove this row">
                 duplicate of #{issue.duplicateOf + 1} — tap to remove
-              </button>
+              </Chip>
             )}
             {issue.unknown && (
               <Chip tone="amber" title="Doesn't match any registered entrant — typo, or they haven't signed up">not in the field</Chip>

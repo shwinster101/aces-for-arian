@@ -12,6 +12,17 @@
 export const normName = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 export const firstName = (s) => normName(s).split(' ')[0] || '';
 
+// --- DRAW STRUCTURE (single source of truth) --------------------------------
+// Shared by the public brackets/seed board (src/App.jsx) and the admin seed
+// list (src/admin/sections/Seeding.jsx) so band boundaries, draw sizes, and
+// bye placement can never disagree. Positions 1..SEED_CUT are individually
+// seeded; the rest of the field places in the draw as groups.
+export const SEED_CUT = 8;
+export const DRAW_CAP = { Singles: 32, Doubles: 16 };
+// Bracket badge for a draw position: exact number for true seeds, band label
+// ("9–16" / "17–32") for the grouped rest of the field.
+export const bandLabel = (seed) => (seed <= SEED_CUT ? null : seed <= 16 ? '9–16' : '17–32');
+
 // Title-case a free-text partner name the same way mapRoster does.
 const titleCase = (s) => (s || '').trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -21,19 +32,25 @@ export function splitTeamName(s) {
   return parts.length >= 2 ? [parts[0], parts.slice(1).join(' & ')] : null;
 }
 
-// Canonical keys for a seed-row name. `key` is order-independent for teams —
-// "Ashwin & Ati" and "Ati & Ashwin" collide — and `loose` matches on first
-// names only, so a hand-typed "Ashwin & Ati" still matches the full-name
-// entrant "Ashwin Yedavalli & Atishay Kandukuri".
+// Canonical keys — the ONLY place the key format lives (deriveEntrants and
+// the seed-list checks all build keys through these two helpers, so the
+// format can't drift between producers and consumers). `key` is
+// order-independent for teams — "Ashwin & Atishay" and "Atishay & Ashwin"
+// collide — and `loose` matches on first names only, so a hand-typed
+// "Ashwin & Atishay" still matches the full-name entrant "Ashwin Yedavalli &
+// Atishay Kandukuri". Loose matching is first-TOKEN only: a nickname like
+// "Ati" does NOT match "Atishay" — those rows get flagged "not in the field"
+// rather than silently guessed.
+export const playerKeys = (name) => ({ key: 'p:' + normName(name), loose: 'p~' + firstName(name) });
+export const teamKeys = (a, b) => ({
+  key: 't:' + [a, b].map(normName).sort().join('|'),
+  loose: 't~' + [a, b].map(firstName).sort().join('|'),
+});
+
+// Canonical keys for a seed-row name (splits "A & B" style team strings).
 export function rowKeys(name) {
   const team = splitTeamName(name);
-  if (team) {
-    return {
-      key: 't:' + team.map(normName).sort().join('|'),
-      loose: 't~' + team.map(firstName).sort().join('|'),
-    };
-  }
-  return { key: 'p:' + normName(name), loose: 'p~' + firstName(name) };
+  return team ? teamKeys(team[0], team[1]) : playerKeys(name);
 }
 
 // Both canonical keys of every non-blank row in a seed list — used to hide
@@ -121,13 +138,10 @@ export function deriveEntrants(participants, event) {
 
   if (event !== 'Doubles') {
     return dedupeByName(participants.filter(p => (p.events || '').includes(event)))
-      .map(p => ({
-        kind: 'player',
-        key: 'p:' + normName(p.name),
-        looseKey: 'p~' + firstName(p.name),
-        display: p.name,
-        mergedCount: p.count,
-      }))
+      .map(p => {
+        const k = playerKeys(p.name);
+        return { kind: 'player', key: k.key, looseKey: k.loose, display: p.name, mergedCount: p.count };
+      })
       .sort(byDisplay);
   }
 
@@ -137,21 +151,21 @@ export function deriveEntrants(participants, event) {
   for (const f of flags.values()) {
     if (f.unpaired) continue;
     const partnerName = f.resolvedName || titleCase(f.raw);
-    const key = 't:' + [f.player.name, partnerName].map(normName).sort().join('|');
-    let t = teams.get(key);
+    const k = teamKeys(f.player.name, partnerName);
+    let t = teams.get(k.key);
     if (!t) {
       const pair = [f.player.name, partnerName].sort((a, b) => a.localeCompare(b));
       t = {
         kind: 'team',
-        key,
-        looseKey: 't~' + pair.map(firstName).sort().join('|'),
+        key: k.key,
+        looseKey: k.loose,
         display: `${pair[0]} & ${pair[1]}`,
         memberNames: pair,
         mergedCount: 0,
         partnerMissing: false,
         conflict: false,
       };
-      teams.set(key, t);
+      teams.set(k.key, t);
     }
     t.mergedCount += 1;
     if (f.missing) t.partnerMissing = true;
@@ -177,14 +191,10 @@ export function deriveEntrants(participants, event) {
 
   const solos = [...flags.values()]
     .filter(f => f.unpaired && !claimed.has(normName(f.player.name)))
-    .map(f => ({
-      kind: 'player',
-      key: 'p:' + normName(f.player.name),
-      looseKey: 'p~' + firstName(f.player.name),
-      display: f.player.name,
-      mergedCount: f.count,
-      unpaired: true,
-    }));
+    .map(f => {
+      const k = playerKeys(f.player.name);
+      return { kind: 'player', key: k.key, looseKey: k.loose, display: f.player.name, mergedCount: f.count, unpaired: true };
+    });
 
   return [...[...teams.values()].sort(byDisplay), ...solos.sort(byDisplay)];
 }
