@@ -136,6 +136,12 @@ function OpsConsole({ onLock }) {
             <span className="text-zinc-500">
               {SHEET_WRITE_URL ? 'Edits sync to the sheet + this device' : 'Edits saved on this device (set SHEET_WRITE_URL in lib/sheet.js to push to Sheets)'}
             </span>
+            {ops.lastPushAt > 0 && (
+              <>
+                <span className="text-zinc-700">·</span>
+                <span className="text-emerald-400/80">last push sent {new Date(ops.lastPushAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+              </>
+            )}
           </div>
         </div>
       </header>
