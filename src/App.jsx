@@ -408,8 +408,12 @@ function seedOrder(n) {
 
 // Build the rounds of a single-elimination draw of n entrants.
 // Round 1 optionally shows seed lines (1..n); later rounds are TBD advancers.
-// Seed names for an event, ordered by rank (seed 1 first) — drives bracket auto-seeding.
-const seededNames = (type) => topSeeds.filter(s => s.type === type).sort((a, b) => a.rank - b.rank).map(s => s.name);
+// Seed names for an event, ordered by rank (seed 1 first) — drives bracket
+// auto-seeding. Reads from a seed list (live `seeds` state in App, which the
+// admin-published SeedBoardPublic tab replaces on every page load — so a
+// refresh repopulates the brackets in the committee's latest order).
+const seedNamesFrom = (seedList, type) =>
+  seedList.filter(s => s.type === type).sort((a, b) => a.rank - b.rank).map(s => s.name);
 
 function singleElim(n, seeded = true, names = []) {
   const order = seedOrder(n);
@@ -1670,7 +1674,7 @@ export default function App() {
                 {(() => {
                   let next = 1;
                   return [
-                    ['East — Championship Draw', singleElim(16, true, seededNames('Doubles'))],
+                    ['East — Championship Draw', singleElim(16, true, seedNamesFrom(seeds, 'Doubles'))],
                     ['West Draw', singleElim(8, false)],
                     ['North Draw', singleElim(4, false)],
                     ['South Draw', singleElim(4, false)],
@@ -1702,7 +1706,7 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={numberRounds(singleElim(32, true, seededNames('Singles')), [1, 25, 41, 53, 59])} />
+                  <Bracket rounds={numberRounds(singleElim(32, true, seedNamesFrom(seeds, 'Singles')), [1, 25, 41, 53, 59])} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL } from '../lib/sheet';
 
 // Shared-secret gate for the write-back endpoint. Must match the token checked
@@ -137,24 +137,36 @@ export function useOpsStore() {
   // "Add seed" clicks before a re-render, which would otherwise clobber
   // each other and silently drop a row).
   const setSeeds = (event, listOrUpdater) => {
-    let resolved;
     setStore(s => {
       const prev = s.seeds[event];
-      resolved = typeof listOrUpdater === 'function' ? listOrUpdater(prev) : listOrUpdater;
+      const resolved = typeof listOrUpdater === 'function' ? listOrUpdater(prev) : listOrUpdater;
       return { ...s, seeds: { ...s.seeds, [event]: resolved } };
     });
-    // SANITIZE AT THE SOURCE: the full committee list (with `notes` — free-text
-    // committee commentary) is the source of truth for THIS device only and
-    // never leaves it. Only display-safe `name` crosses the wire — rank is
-    // derived from list order server-side (see writeSeeds_ in
-    // apps-script/ops-write-back.js, the actual write boundary into the
-    // public, link-viewable sheet — it persists Name/Event/Rank and nothing
-    // else regardless of what a payload contains). This is what keeps the
-    // public "SeedBoardPublic" tab — and therefore the live site — free of
-    // committee notes/votes/internal comments. See the "PUBLIC / COMMITTEE
-    // DATA SEPARATION" note in lib/sheet.js for the full rationale.
-    pushToSheet('seeds', { event, list: resolved.map(({ name }) => ({ name })) });
   };
+  // Push seed changes AFTER they commit (not inline in setSeeds): React only
+  // runs the updater above when it renders, so reading its result back inside
+  // setSeeds crashes whenever the eager-evaluation fast path is skipped (e.g.
+  // another update is already queued in the same tap). Diffing committed
+  // state here also coalesces rapid edits into one POST per event.
+  //
+  // SANITIZE AT THE SOURCE: the full committee list (with `notes` — free-text
+  // committee commentary) is the source of truth for THIS device only and
+  // never leaves it. Only display-safe `name` crosses the wire — rank is
+  // derived from list order server-side (see writeSeeds_ in
+  // apps-script/ops-write-back.js, the actual write boundary into the
+  // public, link-viewable sheet — it persists Name/Event/Rank and nothing
+  // else regardless of what a payload contains). This is what keeps the
+  // public "SeedBoardPublic" tab — and therefore the live site — free of
+  // committee notes/votes/internal comments. See the "PUBLIC / COMMITTEE
+  // DATA SEPARATION" note in lib/sheet.js for the full rationale.
+  const pushedSeeds = useRef(store.seeds);
+  useEffect(() => {
+    for (const event of Object.keys(store.seeds)) {
+      if (store.seeds[event] === pushedSeeds.current[event]) continue;
+      pushToSheet('seeds', { event, list: store.seeds[event].map(({ name }) => ({ name })) });
+    }
+    pushedSeeds.current = store.seeds;
+  }, [store.seeds]);
 
   const addMatch = (event) => {
     const id = nextId();

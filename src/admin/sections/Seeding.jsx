@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2 } from 'lucide-react';
-import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState } from '../ui';
+import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks } from 'lucide-react';
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox } from '../ui';
 import { nextId } from '../store';
+import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName } from '../../lib/entrants';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -19,23 +23,131 @@ export default function Seeding({ participants, ops }) {
     return Array.from(new Set(list)).sort();
   }, [participants, event]);
 
+  // The canonical field: one entrant per singles player / doubles team, with
+  // reciprocal duplicate registrations already merged and partner problems
+  // flagged. Drives the picker, the seed-row issue badges, and partner flags.
+  const entrants = useMemo(() => deriveEntrants(participants, event), [participants, event]);
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Seeding & Draws" subtitle="Set the seed order, assign doubles partners, and post or update the bracket matchups as the field locks in." />
+      <PageHeader title="Seeding & Draws" subtitle="Tap entrants into the seed order, drag to rank them, and post or update the bracket matchups as the field locks in." />
 
       <Pills value={event} onChange={setEvent} options={EVENTS} />
 
-      <SeedList event={event} ops={ops} namesInEvent={namesInEvent} />
+      <FieldPicker event={event} ops={ops} entrants={entrants} />
+      <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
     </div>
   );
 }
 
+// ------------------------------------------------------------- Issue chips
+const CHIP_TONES = {
+  amber: 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/25',
+  rose: 'text-rose-400 bg-rose-500/10 border-rose-500/25',
+  zinc: 'text-zinc-400 bg-zinc-800/60 border-zinc-700',
+};
+
+function Chip({ tone = 'zinc', title, children }) {
+  return (
+    <span title={title} className={`inline-flex items-center whitespace-nowrap text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${CHIP_TONES[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function EntrantChips({ entrant }) {
+  return (
+    <>
+      {entrant.mergedCount > 1 && (
+        <Chip tone="zinc" title={`${entrant.mergedCount} registrations merged into one entry (duplicate removed)`}>×{entrant.mergedCount} merged</Chip>
+      )}
+      {entrant.partnerMissing && (
+        <Chip tone="amber" title="Their listed partner hasn't signed up yet">partner not signed up</Chip>
+      )}
+      {entrant.conflict && (
+        <Chip tone="rose" title="Conflicting pairings — a player is claimed by more than one team">pairing conflict</Chip>
+      )}
+      {entrant.unpaired && (
+        <Chip tone="zinc" title="Registered for doubles without naming a partner">needs partner</Chip>
+      )}
+    </>
+  );
+}
+
+// -------------------------------------------------------------- Field picker
+// Every registered singles player / canonical doubles team not yet in the
+// seed list — one tap adds it. Reversed-partner duplicate registrations are
+// already collapsed by deriveEntrants, so the "Ati & Ashwin" second copy
+// simply never shows up here.
+function FieldPicker({ event, ops, entrants }) {
+  const list = ops.store.seeds[event];
+  const [query, setQuery] = useState('');
+
+  const seededKeys = useMemo(() => seedKeySet(list), [list]);
+  const remaining = entrants.filter(e => !seededKeys.has(e.key) && !seededKeys.has(e.looseKey));
+  const q = query.trim().toLowerCase();
+  const shown = q ? remaining.filter(e => e.display.toLowerCase().includes(q)) : remaining;
+
+  const seedRow = (e, rank) => ({ id: nextId(), rank, name: e.display, notes: '' });
+  const addEntrant = (entrant) => ops.setSeeds(event, prev => {
+    const keys = seedKeySet(prev);
+    if (keys.has(entrant.key) || keys.has(entrant.looseKey)) return prev;
+    return [...prev, seedRow(entrant, prev.length + 1)];
+  });
+  const addAll = () => ops.setSeeds(event, prev => {
+    const keys = seedKeySet(prev);
+    const rest = entrants.filter(e => !keys.has(e.key) && !keys.has(e.looseKey));
+    return [...prev, ...rest.map((e, i) => seedRow(e, prev.length + i + 1))];
+  });
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><ListChecks className="w-4 h-4 text-[#fbbf24]" /> Field — {event}</h3>
+        {remaining.length > 0 && (
+          <button onClick={addAll} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Seed all {remaining.length}
+          </button>
+        )}
+      </div>
+      <p className="text-[11px] text-zinc-500 mb-3">
+        {entrants.length} in the field · {remaining.length} not seeded yet. Duplicate registrations (both partner orderings of a team) are merged automatically — tap an entry to add it to the seed order.
+      </p>
+
+      {entrants.length > 8 && (
+        <div className="mb-3"><SearchBox value={query} onChange={setQuery} placeholder="Filter the field…" /></div>
+      )}
+
+      {entrants.length === 0 ? (
+        <EmptyState title={`No ${event.toLowerCase()} entrants yet`} hint="Registered players show up here automatically as the roster syncs." />
+      ) : remaining.length === 0 ? (
+        <EmptyState title="Everyone is seeded" hint="The whole field is in the seed order below — drag rows to rank them." />
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-2">
+          {shown.map(e => (
+            <button key={e.key} onClick={() => addEntrant(e)}
+              className="flex items-center gap-2 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 rounded-xl px-3 py-2.5 min-h-11 text-left transition-colors group">
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold text-zinc-200 truncate">{e.display}</span>
+                <span className="flex flex-wrap gap-1 mt-0.5 empty:hidden"><EntrantChips entrant={e} /></span>
+              </span>
+              <Plus className="w-4 h-4 shrink-0 text-zinc-600 group-hover:text-[#fbbf24] transition-colors" />
+            </button>
+          ))}
+          {shown.length === 0 && <p className="text-xs text-zinc-600 px-1 py-2 sm:col-span-2">No unseeded entrants match “{query}”.</p>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ---------------------------------------------------------------- Seed list
-function SeedList({ event, ops, namesInEvent }) {
+function SeedList({ event, ops, namesInEvent, entrants }) {
   const list = ops.store.seeds[event];
   const datalistId = `seed-names-${event}`;
+  const issues = useMemo(() => seedListIssues(list, entrants), [list, entrants]);
 
   // Each mutation derives "next" from the updater's own `prev`, not the
   // `list` snapshot from this render — keeps rapid taps (e.g. rows reordered
@@ -51,6 +163,20 @@ function SeedList({ event, ops, namesInEvent }) {
     return next;
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const onDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    ops.setSeeds(event, prev => {
+      const from = prev.findIndex(r => r.id === active.id);
+      const to = prev.findIndex(r => r.id === over.id);
+      if (from < 0 || to < 0) return prev;
+      return arrayMove(prev, from, to);
+    });
+  };
+
   return (
     <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -65,27 +191,63 @@ function SeedList({ event, ops, namesInEvent }) {
       </datalist>
 
       {list.length === 0 ? (
-        <EmptyState title="No seeds set yet" hint={`Add the projected seeds for ${event.toLowerCase()} — order doubles as "Player A & Player B".`} />
+        <EmptyState title="No seeds set yet" hint={`Tap entrants in the Field card above to build the ${event.toLowerCase()} seed order.`} />
       ) : (
-        <div className="space-y-2">
-          {list.map((row, i) => (
-            <div key={row.id} className="flex items-center gap-2 bg-[#111] border border-zinc-800 rounded-xl p-2.5">
-              <span className="w-7 h-7 shrink-0 rounded-lg bg-[#fbbf24]/10 border border-[#fbbf24]/20 text-[#fbbf24] flex items-center justify-center text-xs font-black">{i + 1}</span>
-              <input list={datalistId} value={row.name} onChange={(e) => patchRow(row.id, { name: e.target.value })}
-                placeholder={event === 'Doubles' ? 'Player A & Player B' : 'Player name'}
-                className="flex-1 min-w-0 bg-transparent outline-none text-sm font-bold text-zinc-100 placeholder:text-zinc-600 placeholder:font-normal" />
-              <TextInput value={row.notes} onChange={(v) => patchRow(row.id, { notes: v })} placeholder="Note (optional)" className="hidden sm:block w-44" />
-              <div className="flex items-center gap-0.5 shrink-0">
-                <IconButton icon={ChevronUp} label="Move up" onClick={() => move(i, -1)} />
-                <IconButton icon={ChevronDown} label="Move down" onClick={() => move(i, 1)} />
-                <IconButton icon={Trash2} tone="danger" label="Remove seed" onClick={() => removeRow(row.id)} />
-              </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={list.map(r => r.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {list.map((row, i) => (
+                <SortableSeedRow key={row.id} row={row} index={i} issue={issues[i] || {}} event={event}
+                  datalistId={datalistId} patchRow={patchRow} removeRow={removeRow} move={move} />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = seed rank. Drag isn't needed on mobile — use the up/down arrows to reorder.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = seed rank. Drag the grip to reorder, or use the up/down arrows.</p>
     </Card>
+  );
+}
+
+function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, move }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const hasIssue = issue.duplicateOf !== undefined || issue.unknown;
+
+  return (
+    <div ref={setNodeRef} style={style}
+      className={`flex items-center gap-2 bg-[#111] border rounded-xl p-2.5 ${isDragging ? 'relative z-10 border-[#fbbf24]/50 shadow-lg shadow-black/50' : 'border-zinc-800'}`}>
+      <button {...attributes} {...listeners} aria-label="Drag to reorder"
+        className="touch-none cursor-grab active:cursor-grabbing min-h-11 -my-1 px-0.5 flex items-center text-zinc-600 hover:text-zinc-300 transition-colors shrink-0">
+        <GripVertical className="w-4 h-4" />
+      </button>
+      <span className="w-7 h-7 shrink-0 rounded-lg bg-[#fbbf24]/10 border border-[#fbbf24]/20 text-[#fbbf24] flex items-center justify-center text-xs font-black">{index + 1}</span>
+      <div className="flex-1 min-w-0">
+        <input list={datalistId} value={row.name} onChange={(e) => patchRow(row.id, { name: e.target.value })}
+          placeholder="Player / team"
+          className="w-full bg-transparent outline-none text-sm font-bold text-zinc-100 placeholder:text-zinc-600 placeholder:font-normal" />
+        {hasIssue && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {issue.duplicateOf !== undefined && (
+              <button onClick={() => removeRow(row.id)}
+                title="Same player/team as an earlier seed (partner order doesn't matter) — tap to remove this row"
+                className={`inline-flex items-center whitespace-nowrap text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border transition-colors hover:bg-rose-500/25 ${CHIP_TONES.rose}`}>
+                duplicate of #{issue.duplicateOf + 1} — tap to remove
+              </button>
+            )}
+            {issue.unknown && (
+              <Chip tone="amber" title="Doesn't match any registered entrant — typo, or they haven't signed up">not in the field</Chip>
+            )}
+          </div>
+        )}
+      </div>
+      <TextInput value={row.notes} onChange={(v) => patchRow(row.id, { notes: v })} placeholder="Note (optional)" className="hidden sm:block w-44" />
+      <div className="flex items-center gap-0.5 shrink-0">
+        <IconButton icon={ChevronUp} label="Move up" onClick={() => move(index, -1)} />
+        <IconButton icon={ChevronDown} label="Move down" onClick={() => move(index, 1)} />
+        <IconButton icon={Trash2} tone="danger" label="Remove seed" onClick={() => removeRow(row.id)} />
+      </div>
+    </div>
   );
 }
 
@@ -96,11 +258,22 @@ function PartnerAssignments({ participants, ops }) {
     [participants]
   );
   const allNames = useMemo(() => doublesPlayers.map(p => p.name), [doublesPlayers]);
+  const flags = useMemo(() => doublesPartnerFlags(participants), [participants]);
+  // Who lists this (partner-less) player as THEIR partner — so "no partner"
+  // rows that are actually covered by the other half's registration read as
+  // paired instead of missing.
+  const claimedBy = useMemo(() => {
+    const m = new Map();
+    for (const f of flags.values()) {
+      if (f.resolvedName) m.set(normName(f.resolvedName), f.player.name);
+    }
+    return m;
+  }, [flags]);
 
   return (
     <Card className="p-4 sm:p-5">
       <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-1"><Users2 className="w-4 h-4 text-[#fbbf24]" /> Doubles partners</h3>
-      <p className="text-[11px] text-zinc-500 mb-3">Pulled from the registration form by default — override here for last-minute swaps or unpaired entrants.</p>
+      <p className="text-[11px] text-zinc-500 mb-3">Pulled from the registration form by default — override here for last-minute swaps or unpaired entrants. Amber = the listed partner hasn't signed up themselves yet.</p>
       <datalist id="doubles-names">
         {allNames.map(n => <option key={n} value={n} />)}
       </datalist>
@@ -108,16 +281,31 @@ function PartnerAssignments({ participants, ops }) {
         <EmptyState title="No doubles entrants yet" />
       ) : (
         <div className="grid sm:grid-cols-2 gap-2">
-          {doublesPlayers.map(p => (
-            <div key={p.name} className="flex items-center gap-2.5 bg-[#111] border border-zinc-800 rounded-xl px-3 py-2.5">
-              <span className="text-sm font-bold text-zinc-200 truncate flex-1">{p.name}</span>
-              <span className="text-zinc-600 text-xs shrink-0">w/</span>
-              <input list="doubles-names" value={p.overlay.partner || p.partner || ''}
-                onChange={(e) => ops.setOverlay(p.name, { partner: e.target.value })}
-                placeholder="assign partner"
-                className="bg-black border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-[#fbbf24] outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-700 w-36 shrink-0" />
-            </div>
-          ))}
+          {doublesPlayers.map(p => {
+            const f = flags.get(normName(p.name));
+            const listedBy = f?.unpaired ? claimedBy.get(normName(p.name)) : undefined;
+            return (
+              <div key={p.name} className="bg-[#111] border border-zinc-800 rounded-xl px-3 py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm font-bold text-zinc-200 truncate flex-1">{p.name}</span>
+                  <span className="text-zinc-600 text-xs shrink-0">w/</span>
+                  <input list="doubles-names" value={p.overlay.partner || p.partner || ''}
+                    onChange={(e) => ops.setOverlay(p.name, { partner: e.target.value })}
+                    placeholder="assign partner"
+                    className="bg-black border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-[#fbbf24] outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-700 w-36 shrink-0" />
+                </div>
+                {f && (f.missing || f.conflict || f.unpaired) && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {f.missing && <Chip tone="amber" title={`"${f.raw}" doesn't match any registered doubles player`}>partner not signed up</Chip>}
+                    {f.conflict && <Chip tone="rose" title={`${f.resolvedName} lists a different partner`}>pairing conflict</Chip>}
+                    {f.unpaired && (listedBy
+                      ? <Chip tone="zinc" title={`${listedBy} named them as partner — confirm and assign it here`}>listed by {listedBy}</Chip>
+                      : <Chip tone="zinc" title="No partner given on the form">no partner yet</Chip>)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </Card>
