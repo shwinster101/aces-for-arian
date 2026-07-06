@@ -21,11 +21,10 @@ import {
   mapAces,
   mapOpsStatus,
 } from './lib/sheet';
-import { bandLabel, DRAW_CAP, SEED_CUT } from './lib/entrants';
+import { DRAW_CAP, SEED_CUT } from './lib/entrants';
 import {
   Trophy, 
   Award, 
-  TrendingUp, 
   ShoppingBag, 
   ExternalLink,
   Heart,
@@ -374,21 +373,9 @@ const topSeeds = [
   { name: "Atishay & Ashwin", type: "Doubles", rank: 4, notes: "DUPR don't lie" }
 ];
 
-// Players in the mix for a seed but not locked in yet — the bubble.
-const BUBBLE = [
-  // Singles
-  { name: "Cheython Manika", type: "Singles", notes: "Inventor of the 360° forehand" },
-  { name: "Josh Han", type: "Singles", notes: "Wish this was FIFA" },
-  { name: "Victor Spolidorio", type: "Singles", notes: "Decent record and oh yeah, state champ" },
-  { name: "Coach Gornik", type: "Singles", notes: "Coach can play?" },
-  // Doubles
-  { name: "Alex & Noah", type: "Doubles", notes: "In da club (team)" },
-  { name: "Victor & Krishiv", type: "Doubles", notes: "Where'd they go" },
-  { name: "Shikha & Sophie", type: "Doubles", notes: "Lady Eagles represent" },
-];
-
-// Seeding lifecycle: Bubble → Projected Seed → Final Seed.
-// Flip to true once the committee locks the field at the entry cutoff.
+// Seeding lifecycle: Projected Seed → Final Seed. Flip to true once the
+// committee locks the field at the entry cutoff (or set the Config tab's
+// "Seeds Final" row, which overrides this constant).
 const SEEDS_FINAL = false;
 
 // ==========================================
@@ -465,21 +452,20 @@ function numberSeq(rounds, start) {
 const roundLabel = (matches) =>
   ({ 1: 'Final', 2: 'Semifinals', 4: 'Quarterfinals', 8: 'Round of 16', 16: 'Round of 32' }[matches] || `Round of ${matches * 2}`);
 
-// Seed badge: exact number (gold) for the true seeds (1..SEED_CUT); band
-// label (zinc) for the grouped rest of the field — 9–16, then 17–32 in the
-// singles draw. bandLabel/SEED_CUT/DRAW_CAP live in lib/entrants.js so the
-// admin seed list and these brackets share one definition of the structure.
+// Seed badge: shown ONLY for the true seeds (1..SEED_CUT). Positions 9+ are
+// deliberately unlabeled — publicly they read the same as unseeded entrants,
+// so nobody sees themselves ranked near the bottom of the draw. SEED_CUT/
+// DRAW_CAP live in lib/entrants.js, shared with the admin seed list.
 function Slot({ slot }) {
   const bye = !!(slot && slot.bye);
-  const band = slot && slot.seed != null ? bandLabel(slot.seed) : null;
   return (
     <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
       <span className={`text-[11px] truncate ${slot && slot.name ? 'text-zinc-200' : bye ? 'text-zinc-500 italic' : 'text-zinc-600'}`}>
         {slot && slot.name ? slot.name : bye ? 'BYE' : 'TBD'}
       </span>
-      {slot && slot.seed != null && !bye && (
-        <span className={`shrink-0 text-[9px] font-mono font-bold rounded px-1.5 border ${band ? 'text-zinc-500 bg-zinc-900 border-zinc-800' : 'text-[#fbbf24]/90 bg-[#fbbf24]/10 border-[#fbbf24]/20'}`}>
-          {band ?? slot.seed}
+      {slot && slot.seed != null && slot.seed <= SEED_CUT && !bye && (
+        <span className="shrink-0 text-[9px] font-mono font-bold rounded px-1.5 border text-[#fbbf24]/90 bg-[#fbbf24]/10 border-[#fbbf24]/20">
+          {slot.seed}
         </span>
       )}
     </div>
@@ -671,7 +657,6 @@ const TABS = [
   { id: 'home', label: 'Home', icon: Home, blurb: 'Register, roster & day-of basics' },
   { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
   { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
-  { id: 'seeding', label: 'Seeds', icon: TrendingUp, blurb: "Who's seeded — and who's on the bubble" },
   { id: 'scholarship', label: 'Scholarship', icon: GraduationCap, blurb: 'Apply, recipients & the cause' },
   { id: 'legacy', label: 'Legacy', icon: Heart, blurb: "Arian's story, Hall of Fame & past results" },
   { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Tournament memories, 2020 to today' },
@@ -685,6 +670,9 @@ const TAB_SLUGS = { draws: 'brackets' };
 const slugForTab = (id) => TAB_SLUGS[id] || id;
 const tabForSlug = (slug) => {
   if (!slug) return null;
+  // The public "Seeds" tab was retired (seed order is committee-private; the
+  // draw is the only public surface) — send old #seeding links to Brackets.
+  if (slug === 'seeding') return 'draws';
   if (TABS.some(t => t.id === slug)) return slug;
   const alias = Object.entries(TAB_SLUGS).find(([, s]) => s === slug);
   return alias ? alias[0] : null;
@@ -794,7 +782,6 @@ function NotifyMeBox({ source = 'site' }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => tabForSlug((typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')) || 'home');
   const [bracketEvent, setBracketEvent] = useState('doubles');
-  const [seedingEvent, setSeedingEvent] = useState('Singles');
   // Randomize which photo set lands on the left vs. right on each visit.
   const [heroSwap] = useState(() => Math.random() < 0.5);
   const heroLeft = heroSwap ? HERO_SET_B : HERO_SET_A;
@@ -996,21 +983,6 @@ export default function App() {
     return (firstNameCounts[first.toLowerCase()] > 1 && parts.length > 1)
       ? `${first} ${parts[parts.length - 1][0].toUpperCase()}.`
       : first;
-  };
-  // Match a roster name to a published seed and return its rank (or null).
-  // Conservative on purpose — exact full-name for singles, exact-name-in-team
-  // for doubles — so we never mislabel the wrong person as a seed.
-  const seedFor = (full) => {
-    const name = full.trim().toLowerCase();
-    let best = null;
-    for (const s of seeds) {
-      const sn = (s.name || '').trim().toLowerCase();
-      const hit = s.type === 'Doubles'
-        ? sn.split(/\s*&\s*/).includes(name)
-        : sn === name;
-      if (hit && (best == null || s.rank < best)) best = s.rank;
-    }
-    return best;
   };
   const classTag = (cy) => {
     const m = (cy || '').match(/\d{2,4}/);
@@ -1323,10 +1295,6 @@ export default function App() {
                         </button>
                       );
                     })}
-                    <button onClick={() => { setActiveTab('seeding'); window.scrollTo({ top: 0 }); }}
-                      className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
-                      Projected Seeds <span aria-hidden>→</span>
-                    </button>
                   </div>
                 </div>
 
@@ -1342,19 +1310,11 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-zinc-800/50 text-sm">
                       {filteredRoster.map((player, i) => {
-                        const seed = seedFor(player.name);
                         return (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2">
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-zinc-200">{ledgerName(player.name)}</span>
-                              {seed != null && (
-                                <button onClick={() => { setActiveTab('seeding'); window.scrollTo({ top: 0 }); }}
-                                  title="See the projected seed board"
-                                  className="shrink-0 text-[9px] font-mono font-bold uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25 rounded px-1.5 py-0.5 hover:bg-[#fbbf24]/20 transition-colors">
-                                  Seed #{seed}
-                                </button>
-                              )}
                             </div>
                             {player.partner
                               ? <div className="text-[11px] text-[#fbbf24]/80 font-medium mt-0.5">w/ {player.partner.split(/\s+/)[0]}</div>
@@ -1428,123 +1388,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ==========================================
-            TAB: PROJECTED SEEDS
-            ========================================== */}
-        {activeTab === 'seeding' && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <h2 className="text-xl font-black text-white uppercase tracking-wider">Projected Seeds</h2>
-              <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                Current projected seeds based on prior AFA results, UTR/WTN, recent results, and committee review. These players and teams are currently slotted into the bracket. Reigning champions get an automatic top seed.
-              </p>
-              <p className="text-xs text-zinc-500 mt-3 max-w-2xl leading-relaxed">
-                Think you belong higher? Send your UTR / WTN or recent results to{' '}
-                <a href="mailto:acesforarian@gmail.com?subject=Seeding%20consideration%20—%20Aces%20for%20Arian"
-                  className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">the committee</a>{' '}
-                — we review right up to the entry cutoff.
-              </p>
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-              <button onClick={() => setSeedingEvent('Singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${seedingEvent === 'Singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#151515] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
-              <button onClick={() => setSeedingEvent('Doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${seedingEvent === 'Doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#151515] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
-            </div>
-
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-              <div className="flex items-center gap-2 flex-wrap mb-4">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">{seedsFinal ? 'Final Seeds' : 'Projected Seeds'}</h3>
-                <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${seedsFinal ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20'}`}>{seedsFinal ? 'Locked into the draw' : 'Currently in the draw'}</span>
-              </div>
-              {/* Only 1–8 are individually seeded; 9–16 (and 17–32 in the 32-player
-                  singles draw) go into the bracket as GROUPS — their list order sets
-                  placement but they aren't ranked against each other. */}
-              {(() => {
-                const list = seeds.filter(item => item.type === seedingEvent);
-                const cap = DRAW_CAP[seedingEvent] ?? 32;
-                const unit = seedingEvent === 'Doubles' ? 'team' : 'player';
-                const groupHint = 'bracket group — placed in the draw together, not individually ranked';
-                const bands = [
-                  [`Seeds 1–${SEED_CUT}`, 'individually seeded', (r) => r <= SEED_CUT],
-                  ['9–16', groupHint, (r) => r > SEED_CUT && r <= 16],
-                  ...(cap > 16 ? [['17–32', groupHint, (r) => r > 16 && r <= 32]] : []),
-                  ['Alternates', `beyond the ${cap}-${unit} draw — first in on a withdrawal`, (r) => r > cap],
-                ];
-                return bands.map(([label, hint, inBand]) => {
-                  const group = list.filter(s => inBand(s.rank));
-                  if (!group.length) return null;
-                  return (
-                    <div key={label} className="mb-5 last:mb-0">
-                      <div className="flex items-baseline gap-2 flex-wrap mb-2.5">
-                        <h4 className="text-xs font-black text-zinc-300 uppercase tracking-widest">{label}</h4>
-                        <span className="text-[10px] text-zinc-600">{hint}</span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3">
-                {group.map((candidate, idx) => {
-                  const isTop3 = candidate.rank <= 3;
-                  return (
-                    <div key={idx} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4.5 rounded-2xl border ${isTop3 ? 'bg-[#111] border-[#fbbf24]/30' : 'bg-[#111] border-zinc-800/50'}`}>
-                      <div className="flex items-center gap-5 w-full">
-                        <div className={`w-12 h-12 flex items-center justify-center rounded-xl shrink-0 ${isTop3 ? 'bg-[#fbbf24] text-black shadow-inner font-black text-xl' : candidate.rank <= SEED_CUT ? 'bg-zinc-900 text-zinc-400 border border-zinc-800 font-black text-xl' : 'bg-zinc-900/60 text-zinc-600 border border-zinc-800/60 font-bold text-sm'}`}>
-                          {candidate.rank}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-base font-bold text-white">{candidate.name}</h4>
-                            {candidate.result && (
-                              <span className="text-[10px] font-mono font-bold bg-[#fbbf24]/10 px-2 py-0.5 rounded-md text-[#fbbf24] border border-[#fbbf24]/20">{candidate.result}</span>
-                            )}
-                            {candidate.utr && (
-                              <span className="text-[10px] font-mono bg-black px-2 py-0.5 rounded-md text-emerald-400 border border-zinc-800">UTR {candidate.utr}</span>
-                            )}
-                            {candidate.wtn && (
-                              <span className="text-[10px] font-mono bg-black px-2 py-0.5 rounded-md text-sky-400 border border-zinc-800">WTN {candidate.wtn}</span>
-                            )}
-                          </div>
-                          {candidate.notes && (
-                            <p className="text-xs text-zinc-500 mt-1 italic">"{candidate.notes}"</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-
-            {BUBBLE.filter(b => b.type === seedingEvent).length > 0 && (
-              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">On the Bubble</h3>
-                <p className="text-xs text-zinc-500 mt-1 mb-4">In contention for a seed. Bubble names aren't ranked and aren't currently placed in the draw.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {BUBBLE.filter(b => b.type === seedingEvent).map((b, i) => (
-                    <div key={i} className="bg-[#111] border border-dashed border-zinc-700 rounded-xl p-4">
-                      <div className="text-sm font-bold text-zinc-200">{b.name}</div>
-                      <div className="text-xs text-zinc-500 italic mt-0.5">"{b.notes}"</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Crowdsource CTA */}
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <h4 className="text-sm font-black text-white uppercase tracking-wider">Help us seed the draw</h4>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Submit your UTR, WTN, recent results, or tennis background so the committee can build the fairest bracket possible.</p>
-              </div>
-              <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
-                className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
-                <span>Submit my info</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </div>
-          </div>
-        )}
 
         {/* ==========================================
             TAB: DRAWS & BRACKETS
@@ -1695,8 +1538,8 @@ export default function App() {
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
                 {seedsFinal
-                  ? 'Final draws. The top 8 are seeded; the rest of the field is placed by group (9–16, then 17–32) and open lines are byes — top seeds get the byes first.'
-                  : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 are individually seeded; 9–16 and 17–32 place as groups.'}
+                  ? "Final draws. The top 8 are seeded (seeds 1–4 can't meet before the semifinals; 5–8 are slated for the quarterfinals) and open lines are byes — top seeds get the byes first."
+                  : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
               </p>
               <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
                 <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
