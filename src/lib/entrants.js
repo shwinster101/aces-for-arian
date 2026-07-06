@@ -189,23 +189,37 @@ export function deriveEntrants(participants, event) {
   return [...[...teams.values()].sort(byDisplay), ...solos.sort(byDisplay)];
 }
 
+// Loose (first-name) keys are only trustworthy when they identify a single
+// entrant — e.g. ten players who share a first name must NOT alias each
+// other. Returns the set of loose keys shared by 2+ distinct entrants.
+export function ambiguousLooseKeys(entrants) {
+  const count = new Map();
+  for (const e of entrants) count.set(e.looseKey, (count.get(e.looseKey) || 0) + 1);
+  return new Set([...count].filter(([, n]) => n > 1).map(([k]) => k));
+}
+
 // Issues per seed row: { duplicateOf?: <earlier row index>, unknown?: true }.
 // `duplicateOf` catches the same player/team seeded twice — including the
 // reversed-partner form of a doubles team. `unknown` marks a name matching no
-// registered entrant (typo, or someone who never signed up).
+// registered entrant (typo, or someone who never signed up). Loose first-name
+// matches only count as duplicates when the loose key is unambiguous in the
+// field (see ambiguousLooseKeys).
 export function seedListIssues(list, entrants) {
   const known = new Set();
   for (const e of entrants) {
     known.add(e.key);
     known.add(e.looseKey);
   }
+  const ambiguous = ambiguousLooseKeys(entrants);
   const seen = new Map(); // canonical key -> first row index using it
   return list.map((row, i) => {
     const name = (row.name || '').trim();
     if (!name) return {};
     const k = rowKeys(name);
     const issue = {};
-    const dupe = seen.has(k.key) ? seen.get(k.key) : seen.get(k.loose);
+    const dupe = seen.has(k.key) ? seen.get(k.key)
+      : (!ambiguous.has(k.loose) && seen.has(k.loose)) ? seen.get(k.loose)
+      : undefined;
     if (dupe !== undefined) issue.duplicateOf = dupe;
     if (!seen.has(k.key)) seen.set(k.key, i);
     if (!seen.has(k.loose)) seen.set(k.loose, i);

@@ -198,10 +198,11 @@ export function mapRoster(rows) {
     });
 }
 
-// --- CONFIG TAB -> { raised, goal, showBar } -------------------------------
+// --- CONFIG TAB -> { raised, goal, showBar, seedsFinal } -------------------
 // Expects a two-column "Key | Value" tab. Recognized keys (case/spacing
 // insensitive): "raised" (authoritative public scholarship total), "goal"
-// (target $), "show bar" (yes/no).
+// (target $), "show bar" (yes/no), "seeds final" (yes/no — locks the field:
+// seed board flips to "Final Seeds" and open bracket lines become BYEs).
 // Returns only the keys it actually found, so unset keys keep their defaults.
 export function mapConfig(rows) {
   if (!rows || rows.length < 1) return {};
@@ -218,6 +219,9 @@ export function mapConfig(rows) {
     } else if (/goal|target/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n)) out.goal = n;
+    } else if (/final|lock/.test(key)) {
+      if (truthy(val)) out.seedsFinal = true;
+      else if (falsy(val)) out.seedsFinal = false;
     } else if (/bar|meter|progress|scholarship/.test(key)) {
       if (truthy(val)) out.showBar = true;
       else if (falsy(val)) out.showBar = false;

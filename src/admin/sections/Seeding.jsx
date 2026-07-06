@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox } from '../ui';
+import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox, Toggle } from '../ui';
 import { nextId } from '../store';
-import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName } from '../../lib/entrants';
+import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
+import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys } from '../../lib/entrants';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -36,6 +37,7 @@ export default function Seeding({ participants, ops }) {
 
       <FieldPicker event={event} ops={ops} entrants={entrants} />
       <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
+      <FieldLock ops={ops} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
     </div>
@@ -85,20 +87,24 @@ function FieldPicker({ event, ops, entrants }) {
   const list = ops.store.seeds[event];
   const [query, setQuery] = useState('');
 
+  // A loose (first-name) key only counts as "already seeded" when it points
+  // at a single entrant — otherwise seeding one "Alex" would hide every Alex.
+  const ambiguous = useMemo(() => ambiguousLooseKeys(entrants), [entrants]);
+  const isSeeded = (e, keys) => keys.has(e.key) || (!ambiguous.has(e.looseKey) && keys.has(e.looseKey));
+
   const seededKeys = useMemo(() => seedKeySet(list), [list]);
-  const remaining = entrants.filter(e => !seededKeys.has(e.key) && !seededKeys.has(e.looseKey));
+  const remaining = entrants.filter(e => !isSeeded(e, seededKeys));
   const q = query.trim().toLowerCase();
   const shown = q ? remaining.filter(e => e.display.toLowerCase().includes(q)) : remaining;
 
   const seedRow = (e, rank) => ({ id: nextId(), rank, name: e.display, notes: '' });
   const addEntrant = (entrant) => ops.setSeeds(event, prev => {
-    const keys = seedKeySet(prev);
-    if (keys.has(entrant.key) || keys.has(entrant.looseKey)) return prev;
+    if (isSeeded(entrant, seedKeySet(prev))) return prev;
     return [...prev, seedRow(entrant, prev.length + 1)];
   });
   const addAll = () => ops.setSeeds(event, prev => {
     const keys = seedKeySet(prev);
-    const rest = entrants.filter(e => !keys.has(e.key) && !keys.has(e.looseKey));
+    const rest = entrants.filter(e => !isSeeded(e, keys));
     return [...prev, ...rest.map((e, i) => seedRow(e, prev.length + i + 1))];
   });
 
@@ -196,16 +202,43 @@ function SeedList({ event, ops, namesInEvent, entrants }) {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={list.map(r => r.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
-              {list.map((row, i) => (
-                <SortableSeedRow key={row.id} row={row} index={i} issue={issues[i] || {}} event={event}
-                  datalistId={datalistId} patchRow={patchRow} removeRow={removeRow} move={move} />
-              ))}
+              {list.map((row, i) => {
+                const divider = bandDividerFor(event, i);
+                return (
+                  <Fragment key={row.id}>
+                    {divider && <BandDivider label={divider} />}
+                    <SortableSeedRow row={row} index={i} issue={issues[i] || {}}
+                      datalistId={datalistId} patchRow={patchRow} removeRow={removeRow} move={move} />
+                  </Fragment>
+                );
+              })}
             </div>
           </SortableContext>
         </DndContext>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = seed rank. Drag the grip to reorder, or use the up/down arrows.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = bracket placement. Only 1–8 are individually seeded — 9–16{event === 'Singles' ? ' and 17–32' : ''} go into the draw as groups, but order within a group still sets which line they land on. Drag the grip to reorder, or use the up/down arrows.</p>
     </Card>
+  );
+}
+
+// Bands in the seed order: 1–8 are the true seeds; 9–16 / 17–32 place in the
+// bracket as groups; anything past the draw size is an alternate. Mirrors
+// bandLabel/singleElim on the public site (src/App.jsx).
+function bandDividerFor(event, i) {
+  const cap = event === 'Doubles' ? 16 : 32;
+  if (i === 8) return '9–16 · bracket group';
+  if (i === 16) return cap === 16 ? 'Alternates — beyond the 16-team draw' : '17–32 · bracket group';
+  if (i === 32 && cap === 32) return 'Alternates — beyond the 32-player draw';
+  return null;
+}
+
+function BandDivider({ label }) {
+  return (
+    <div className="flex items-center gap-2 pt-1.5">
+      <span className="h-px flex-1 bg-zinc-800" />
+      <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600">{label}</span>
+      <span className="h-px flex-1 bg-zinc-800" />
+    </div>
   );
 }
 
@@ -221,7 +254,7 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
         className="touch-none cursor-grab active:cursor-grabbing min-h-11 -my-1 px-0.5 flex items-center text-zinc-600 hover:text-zinc-300 transition-colors shrink-0">
         <GripVertical className="w-4 h-4" />
       </button>
-      <span className="w-7 h-7 shrink-0 rounded-lg bg-[#fbbf24]/10 border border-[#fbbf24]/20 text-[#fbbf24] flex items-center justify-center text-xs font-black">{index + 1}</span>
+      <span className={`w-7 h-7 shrink-0 rounded-lg border flex items-center justify-center text-xs font-black ${index < 8 ? 'bg-[#fbbf24]/10 border-[#fbbf24]/20 text-[#fbbf24]' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>{index + 1}</span>
       <div className="flex-1 min-w-0">
         <input list={datalistId} value={row.name} onChange={(e) => patchRow(row.id, { name: e.target.value })}
           placeholder="Player / team"
@@ -248,6 +281,46 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
         <IconButton icon={Trash2} tone="danger" label="Remove seed" onClick={() => removeRow(row.id)} />
       </div>
     </div>
+  );
+}
+
+// ------------------------------------------------------------- Field lock
+// Public "Seeds Final" switch (Config tab, key "seeds final"). While draft,
+// open bracket lines read TBD; once locked they read BYE — and byes fall to
+// the top seeds first by construction (see singleElim in src/App.jsx).
+// Reads the live Config on mount so the toggle shows the real current state.
+function FieldLock({ ops }) {
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(CONFIG_CSV_URL)
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(t => {
+        if (cancelled) return;
+        const c = mapConfig(parseCSV(t));
+        if (c.seedsFinal != null) setLocked(c.seedsFinal);
+      })
+      .catch(() => { /* empty/unset Config — treat as draft */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const flip = (next) => {
+    setLocked(next);
+    ops.pushConfig({ seedsFinal: next });
+  };
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><LockKeyhole className="w-4 h-4 text-[#fbbf24]" /> Field lock</h3>
+          <p className="text-[11px] text-zinc-500 mt-1 max-w-md">Flip once entries close: the public board switches to “Final Seeds” and open first-round lines show as BYEs (top seeds get them first) instead of TBD.</p>
+        </div>
+        <Toggle checked={locked} onChange={flip} label="Draft — open lines are TBD" activeLabel="Locked — open lines are BYEs" />
+      </div>
+      <p className="text-[10px] text-zinc-600 mt-2.5">Writes “seeds final” to the sheet’s Config tab (needs the latest Apps Script deployed — or set that row to yes/no by hand; the site follows within ~1 min).</p>
+    </Card>
   );
 }
 

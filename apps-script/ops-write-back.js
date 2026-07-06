@@ -387,6 +387,18 @@ function writeConfig_(payload) {
   };
   upsert(/raised|funding|amount|current/, 'raised', payload.raised);
   upsert(/goal|target/, 'goal', payload.goal);
+  // Yes/no flags get their own upsert (the numeric one above would mangle
+  // them). "seeds final" flips the public board to Final Seeds and turns
+  // open first-round bracket lines into BYEs — same fuzzy key mapConfig reads.
+  var upsertFlag = function (re, canonical, val) {
+    if (val === undefined || val === null || val === '') return;
+    var v = (val === true || /^(y|yes|true|1|on)$/i.test(String(val))) ? 'yes' : 'no';
+    for (var i = 0; i < rows.length; i++) {
+      if (re.test(String(rows[i][0] || '').trim().toLowerCase())) { rows[i] = [rows[i][0], v]; return; }
+    }
+    rows.push([canonical, v]);
+  };
+  upsertFlag(/final|lock/, 'seeds final', payload.seedsFinal);
   writeRows_(sheet, rows);
 }
 
