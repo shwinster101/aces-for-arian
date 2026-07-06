@@ -1117,6 +1117,26 @@ export default function App() {
     const m = (cy || '').match(/\d{2,4}/);
     return m ? `'${m[0].slice(-2)}` : (cy || '').trim();
   };
+  // Doubles bracket lines are narrow, so full "First Last & First Last" team
+  // names don't fit — compact to first names + class year ("Ashwin '17 &
+  // Ati '16"). Years come from the roster (exact full-name match, else a
+  // unique first-name match); a player we can't match just shows their first
+  // name. Singles lines keep full names — they fit.
+  const shortTeamLabel = (teamName) => {
+    const parts = (teamName || '').split(/\s*&\s*/);
+    if (parts.length < 2) return teamName;
+    return parts.map(full => {
+      const norm = full.trim().toLowerCase();
+      const first = full.trim().split(/\s+/)[0];
+      let match = roster.find(p => p.name.trim().toLowerCase() === norm);
+      if (!match) {
+        const hits = roster.filter(p => p.name.trim().split(/\s+/)[0].toLowerCase() === first.toLowerCase());
+        if (hits.length === 1) match = hits[0];
+      }
+      const tag = match ? classTag(match.classYear) : '';
+      return tag ? `${first} ${tag}` : first;
+    }).join(' & ');
+  };
   // Scholarship total is staff-controlled. Config "raised" is the authoritative
   // public total; do not infer dollars from Verified entries because Verified
   // means confirmed entry, not paid. The live ace chip is a teaser/count only;
@@ -1526,28 +1546,111 @@ export default function App() {
         {activeTab === 'draws' && (
           <div className="space-y-6 animate-fade-in">
 
-            {/* Live Ace Tracker — every ace hit on a live court adds $5
-                toward Arian's scholarship, up to $500. Hidden until the
-                admin's first +1 (see mapAces in lib/sheet.js). */}
-            {acesLive && (
-              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-5 md:gap-8">
-                  <div className="flex items-center gap-4 shrink-0">
-                    <TennisBallIcon className="w-14 h-14 md:w-16 md:h-16 shrink-0" />
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Live Ace Tracker</div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl md:text-5xl font-black text-white tabular-nums">{aces}</span>
-                        <span className="text-sm text-zinc-400 uppercase tracking-wider font-bold">{aces === 1 ? 'Ace' : 'Aces'}</span>
-                      </div>
-                    </div>
+            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
+              <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
+                {seedsFinal
+                  ? "Final draws. The top 8 are seeded (seeds 1–4 can't meet before the semifinals; 5–8 are slated for the quarterfinals) and open lines are byes — top seeds get the byes first."
+                  : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
+              </p>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
+                <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
+                <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
+              </div>
+              <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
+                placeholder="Find yourself in the draw — type your name"
+                className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+            </div>
+
+            {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
+            {bracketEvent === 'doubles' && (
+              <div className="space-y-5">
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Award className="w-5 h-5 text-[#fbbf24]" />
+                    <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · 16 Teams</h3>
                   </div>
-                  <div className="flex-1 w-full">
-                    <p className="text-sm text-zinc-400 leading-relaxed">Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</p>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+                    Every team is guaranteed multiple matches. If a round does not go your way, you rotate into a new direction with another path to compete.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
+                    {[
+                      ['East', 'Championship path — all 16 teams', 'text-[#fbbf24]'],
+                      ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
+                      ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-200'],
+                      ['South', 'Final placement path after opening West round (4)', 'text-zinc-200'],
+                    ].map(([dir, desc, color]) => (
+                      <div key={dir} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
+                        <div className={`font-black uppercase tracking-wider ${color}`}>{dir}</div>
+                        <div className="text-zinc-500 mt-1 leading-snug">{desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {(() => {
+                  let next = 1;
+                  return [
+                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, seedNamesFrom(seeds, 'Doubles').map(shortTeamLabel), showByes)],
+                    ['West Draw', singleElim(8, false)],
+                    ['North Draw', singleElim(4, false)],
+                    ['South Draw', singleElim(4, false)],
+                  ].map(([title, rounds]) => {
+                    const numbered = numberSeq(rounds, next); next = numbered.next;
+                    return (
+                      <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
+                        <Bracket rounds={numbered.rounds} highlight={drawHighlight} />
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+
+            {/* SUNDAY SINGLES — Double Elimination (32 players) */}
+            {bracketEvent === 'singles' && (
+              <div className="space-y-5">
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Trophy className="w-5 h-5 text-[#fbbf24]" />
+                    <h3 className="text-base font-black text-white uppercase tracking-wider">Double Elimination · 32 Players</h3>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+                    Players get a two-match cushion. After a first setback, you move into the comeback bracket and can still battle all the way back to the Grand Final.
+                  </p>
+                </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
+                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} highlight={drawHighlight} />
+                </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Comeback Bracket</h4>
+                  <Bracket
+                    rounds={numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61])}
+                    names={['Comeback R1', 'Comeback R2', 'Comeback R3', 'Comeback R4', 'Comeback R5', 'Comeback R6', 'Comeback R7', 'Comeback Final']}
+                  />
+                </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final <span className="text-[10px] font-mono font-normal text-zinc-500">· Match 62 (+ 63 if reset)</span></h4>
+                  <div className="flex items-center gap-5 flex-wrap">
+                    <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
+                      <div className="px-3 py-2 text-xs text-zinc-200">Winners Bracket Champion</div>
+                      <div className="px-3 py-2 text-xs text-zinc-200">Comeback Bracket Champion</div>
+                    </div>
+                    <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
+                      If the Comeback Bracket Champion wins, a deciding "bracket reset" set is played because the Winners Champion has not dropped a match yet.
+                    </p>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Crowdsourced seeding input — hidden once the field locks */}
+            <SeedSuggestionBox participants={roster} seedsFinal={seedsFinal} />
 
             {/* Live court board — answers "when is my next match?" */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
@@ -1665,111 +1768,28 @@ export default function App() {
               </div>
             )}
 
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
-              <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                {seedsFinal
-                  ? "Final draws. The top 8 are seeded (seeds 1–4 can't meet before the semifinals; 5–8 are slated for the quarterfinals) and open lines are byes — top seeds get the byes first."
-                  : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
-              </p>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
-                <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
-                <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
-              </div>
-              <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
-                placeholder="Find yourself in the draw — type your name"
-                className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
-            </div>
-
-            {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
-            {bracketEvent === 'doubles' && (
-              <div className="space-y-5">
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Award className="w-5 h-5 text-[#fbbf24]" />
-                    <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · 16 Teams</h3>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Every team is guaranteed multiple matches. If a round does not go your way, you rotate into a new direction with another path to compete.
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
-                    {[
-                      ['East', 'Championship path — all 16 teams', 'text-[#fbbf24]'],
-                      ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
-                      ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-200'],
-                      ['South', 'Final placement path after opening West round (4)', 'text-zinc-200'],
-                    ].map(([dir, desc, color]) => (
-                      <div key={dir} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
-                        <div className={`font-black uppercase tracking-wider ${color}`}>{dir}</div>
-                        <div className="text-zinc-500 mt-1 leading-snug">{desc}</div>
+            {/* Live Ace Tracker — every ace hit on a live court adds $5
+                toward Arian's scholarship, up to $500. Hidden until the
+                admin's first +1 (see mapAces in lib/sheet.js). */}
+            {acesLive && (
+              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-5 md:gap-8">
+                  <div className="flex items-center gap-4 shrink-0">
+                    <TennisBallIcon className="w-14 h-14 md:w-16 md:h-16 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Live Ace Tracker</div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl md:text-5xl font-black text-white tabular-nums">{aces}</span>
+                        <span className="text-sm text-zinc-400 uppercase tracking-wider font-bold">{aces === 1 ? 'Ace' : 'Aces'}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {(() => {
-                  let next = 1;
-                  return [
-                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, seedNamesFrom(seeds, 'Doubles'), showByes)],
-                    ['West Draw', singleElim(8, false)],
-                    ['North Draw', singleElim(4, false)],
-                    ['South Draw', singleElim(4, false)],
-                  ].map(([title, rounds]) => {
-                    const numbered = numberSeq(rounds, next); next = numbered.next;
-                    return (
-                      <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                        <Bracket rounds={numbered.rounds} highlight={drawHighlight} />
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            )}
-
-            {/* SUNDAY SINGLES — Double Elimination (32 players) */}
-            {bracketEvent === 'singles' && (
-              <div className="space-y-5">
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Trophy className="w-5 h-5 text-[#fbbf24]" />
-                    <h3 className="text-base font-black text-white uppercase tracking-wider">Double Elimination · 32 Players</h3>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Players get a two-match cushion. After a first setback, you move into the comeback bracket and can still battle all the way back to the Grand Final.
-                  </p>
-                </div>
-
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} highlight={drawHighlight} />
-                </div>
-
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Comeback Bracket</h4>
-                  <Bracket
-                    rounds={numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61])}
-                    names={['Comeback R1', 'Comeback R2', 'Comeback R3', 'Comeback R4', 'Comeback R5', 'Comeback R6', 'Comeback R7', 'Comeback Final']}
-                  />
-                </div>
-
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final <span className="text-[10px] font-mono font-normal text-zinc-500">· Match 62 (+ 63 if reset)</span></h4>
-                  <div className="flex items-center gap-5 flex-wrap">
-                    <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
-                      <div className="px-3 py-2 text-xs text-zinc-200">Winners Bracket Champion</div>
-                      <div className="px-3 py-2 text-xs text-zinc-200">Comeback Bracket Champion</div>
                     </div>
-                    <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-                      If the Comeback Bracket Champion wins, a deciding "bracket reset" set is played because the Winners Champion has not dropped a match yet.
-                    </p>
+                  </div>
+                  <div className="flex-1 w-full">
+                    <p className="text-sm text-zinc-400 leading-relaxed">Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</p>
                   </div>
                 </div>
               </div>
             )}
-
-            {/* Crowdsourced seeding input — hidden once the field locks */}
-            <SeedSuggestionBox participants={roster} seedsFinal={seedsFinal} />
 
             <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
               <div className="flex items-center gap-3">
