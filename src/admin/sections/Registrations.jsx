@@ -87,7 +87,15 @@ function RegistrationRow({ p, ops }) {
           {p.source === 'added' && (
             <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-sky-400 bg-sky-500/10 border border-sky-500/20 rounded px-1.5 py-0.5">Walk-up</span>
           )}
-          <StatusBadge status={p.status} />
+          {/* The tappable chip on the right IS the status — only surface the
+              sheet's own column when it disagrees (i.e. an ops override is in
+              effect), so rows don't show two identical badges. */}
+          {(p.status === 'Verified' ? 'confirmed' : 'pending') !== status && (
+            <span className="inline-flex items-center gap-1" title="What the Google Sheet's own Status column says — the chip on the right is the override in effect">
+              <span className="text-[8px] font-mono uppercase tracking-wider text-zinc-600">sheet:</span>
+              <StatusBadge status={p.status} />
+            </span>
+          )}
         </div>
         <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
           {p.classYear && <span>Class of {p.classYear}</span>}

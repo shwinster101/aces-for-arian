@@ -251,14 +251,18 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
   const hasIssue = issue.duplicateOf !== undefined || issue.unknown;
 
   return (
+    // flex-wrap + the input's min-width: on a phone the name gets the full
+    // first line (long "A & B" team names stay readable instead of truncating
+    // to a few letters) and the arrow/trash controls wrap to a second line;
+    // on ≥sm everything fits on one line exactly as before.
     <div ref={setNodeRef} style={style}
-      className={`flex items-center gap-2 bg-[#111] border rounded-xl p-2.5 ${isDragging ? 'relative z-10 border-[#fbbf24]/50 shadow-lg shadow-black/50' : 'border-zinc-800'}`}>
+      className={`flex flex-wrap items-center gap-2 bg-[#111] border rounded-xl p-2.5 ${isDragging ? 'relative z-10 border-[#fbbf24]/50 shadow-lg shadow-black/50' : 'border-zinc-800'}`}>
       <button {...attributes} {...listeners} aria-label="Drag to reorder"
         className="touch-none cursor-grab active:cursor-grabbing min-h-11 -my-1 px-0.5 flex items-center text-zinc-600 hover:text-zinc-300 transition-colors shrink-0">
         <GripVertical className="w-4 h-4" />
       </button>
       <span className={`w-7 h-7 shrink-0 rounded-lg border flex items-center justify-center text-xs font-black ${index < SEED_CUT ? 'bg-[#fbbf24]/10 border-[#fbbf24]/20 text-[#fbbf24]' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>{index + 1}</span>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-[11rem]">
         <input list={datalistId} value={row.name} onChange={(e) => patchRow(row.id, { name: e.target.value })}
           placeholder="Player / team"
           className="w-full bg-transparent outline-none text-sm font-bold text-zinc-100 placeholder:text-zinc-600 placeholder:font-normal" />
@@ -277,7 +281,7 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
         )}
       </div>
       <TextInput value={row.notes} onChange={(v) => patchRow(row.id, { notes: v })} placeholder="Note (optional)" className="hidden sm:block w-44" />
-      <div className="flex items-center gap-0.5 shrink-0">
+      <div className="flex items-center gap-0.5 shrink-0 ml-auto">
         <IconButton icon={ChevronUp} label="Move up" onClick={() => move(index, -1)} />
         <IconButton icon={ChevronDown} label="Move down" onClick={() => move(index, 1)} />
         <IconButton icon={Trash2} tone="danger" label="Remove seed" onClick={() => removeRow(row.id)} />
