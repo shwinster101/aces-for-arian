@@ -456,11 +456,13 @@ const roundLabel = (matches) =>
 // deliberately unlabeled — publicly they read the same as unseeded entrants,
 // so nobody sees themselves ranked near the bottom of the draw. SEED_CUT/
 // DRAW_CAP live in lib/entrants.js, shared with the admin seed list.
-function Slot({ slot }) {
+function Slot({ slot, highlight }) {
   const bye = !!(slot && slot.bye);
+  // "Find yourself in the draw": light the line up when it matches the query.
+  const hit = !!(highlight && slot && slot.name && slot.name.toLowerCase().includes(highlight));
   return (
-    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
-      <span className={`text-[11px] truncate ${slot && slot.name ? 'text-zinc-200' : bye ? 'text-zinc-500 italic' : 'text-zinc-600'}`}>
+    <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${hit ? 'bg-[#fbbf24]/15' : ''}`}>
+      <span className={`text-[11px] truncate ${hit ? 'text-[#fbbf24] font-bold' : slot && slot.name ? 'text-zinc-200' : bye ? 'text-zinc-500 italic' : 'text-zinc-600'}`}>
         {slot && slot.name ? slot.name : bye ? 'BYE' : 'TBD'}
       </span>
       {slot && slot.seed != null && slot.seed <= SEED_CUT && !bye && (
@@ -472,19 +474,19 @@ function Slot({ slot }) {
   );
 }
 
-function MatchCard({ match }) {
+function MatchCard({ match, highlight }) {
   return (
     <div className="flex items-center gap-1.5 shrink-0">
       <span className="w-5 shrink-0 text-right text-[8px] font-mono font-bold text-zinc-500">{match.num != null ? match.num : ''}</span>
       <div className="w-40 md:w-44 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
-        <Slot slot={match.a} />
-        <Slot slot={match.b} />
+        <Slot slot={match.a} highlight={highlight} />
+        <Slot slot={match.b} highlight={highlight} />
       </div>
     </div>
   );
 }
 
-function Bracket({ rounds, names }) {
+function Bracket({ rounds, names, highlight }) {
   return (
     <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-2">
       {rounds.map((matches, ri) => (
@@ -493,7 +495,7 @@ function Bracket({ rounds, names }) {
             {names ? names[ri] : roundLabel(matches.length)}
           </div>
           <div className="flex flex-col justify-around flex-1 gap-1.5">
-            {matches.map((m, mi) => <MatchCard key={mi} match={m} />)}
+            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} />)}
           </div>
         </div>
       ))}
@@ -907,6 +909,8 @@ function NotifyMeBox({ source = 'site' }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => tabForSlug((typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')) || 'home');
   const [bracketEvent, setBracketEvent] = useState('doubles');
+  const [drawQuery, setDrawQuery] = useState(''); // "find yourself in the draw" highlight
+  const drawHighlight = drawQuery.trim().length >= 2 ? drawQuery.trim().toLowerCase() : '';
   // Randomize which photo set lands on the left vs. right on each visit.
   const [heroSwap] = useState(() => Math.random() < 0.5);
   const heroLeft = heroSwap ? HERO_SET_B : HERO_SET_A;
@@ -1241,7 +1245,9 @@ export default function App() {
           glance (no hidden horizontal scroll); desktop keeps them on one row. */}
       <div className="sticky top-0 z-40 bg-[#5c1313]/95 backdrop-blur-sm border-b-2 border-[#fbbf24] shadow-lg shadow-black/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-start gap-1">
-          <nav ref={navRef} className="flex-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 py-2.5 md:flex-nowrap md:justify-start md:gap-x-8 md:py-3">
+          {/* Single scrollable row on phones (was wrapping to 3 rows and eating
+              ~a quarter of the viewport); the active tab auto-scrolls into view. */}
+          <nav ref={navRef} className="flex-1 flex flex-nowrap overflow-x-auto no-scrollbar items-center justify-start gap-x-5 py-2.5 md:gap-x-8 md:py-3">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -1670,6 +1676,9 @@ export default function App() {
                 <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
                 <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
               </div>
+              <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
+                placeholder="Find yourself in the draw — type your name"
+                className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
             </div>
 
             {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
@@ -1710,7 +1719,7 @@ export default function App() {
                     return (
                       <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                         <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                        <Bracket rounds={numbered.rounds} />
+                        <Bracket rounds={numbered.rounds} highlight={drawHighlight} />
                       </div>
                     );
                   });
@@ -1733,7 +1742,7 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} />
+                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} highlight={drawHighlight} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">

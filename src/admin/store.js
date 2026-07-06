@@ -84,6 +84,13 @@ function load() {
   }
 }
 
+// Lets the ops header show "last push sent H:MM" — pushToSheet notifies this
+// on every dispatched POST. Module-level because pushToSheet is a module
+// function; useOpsStore registers/clears the listener. "Sent" is the honest
+// word: no-cors means the response is unreadable, so delivery can't be
+// confirmed — only that the request left the device.
+let notifyPush = null;
+
 // Fire-and-forget POST to the optional write-back endpoint. Apps Script web
 // apps don't return readable CORS responses from a browser, so this is purely
 // "best effort, don't block on it" — local storage stays the real state.
@@ -100,6 +107,7 @@ export function pushToSheet(type, payload) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ type, payload, ts: Date.now(), token: WRITE_TOKEN }),
     }).catch(() => {});
+    if (notifyPush) notifyPush(Date.now());
   } catch { /* ignore — local store is still authoritative */ }
 }
 
@@ -108,10 +116,17 @@ export const nextId = () => `${Date.now().toString(36)}-${(uid++).toString(36)}`
 
 export function useOpsStore() {
   const [store, setStore] = useState(load);
+  const [lastPushAt, setLastPushAt] = useState(0);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch { /* storage full/unavailable */ }
   }, [store]);
+
+  // Surface "last push sent" to the ops header (see notifyPush above).
+  useEffect(() => {
+    notifyPush = setLastPushAt;
+    return () => { if (notifyPush === setLastPushAt) notifyPush = null; };
+  }, []);
 
   const getOverlay = (name) => ({ ...emptyOverlay(), ...store.participants[name] });
 
@@ -291,6 +306,7 @@ export function useOpsStore() {
 
   return {
     store,
+    lastPushAt,
     getOverlay, setOverlay,
     addWalkUp, removeWalkUp,
     setSeeds,
