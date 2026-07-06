@@ -19,9 +19,6 @@ export const firstName = (s) => normName(s).split(' ')[0] || '';
 // seeded; the rest of the field places in the draw as groups.
 export const SEED_CUT = 8;
 export const DRAW_CAP = { Singles: 32, Doubles: 16 };
-// Bracket badge for a draw position: exact number for true seeds, band label
-// ("9–16" / "17–32") for the grouped rest of the field.
-export const bandLabel = (seed) => (seed <= SEED_CUT ? null : seed <= 16 ? '9–16' : '17–32');
 
 // Title-case a free-text partner name the same way mapRoster does.
 const titleCase = (s) => (s || '').trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
