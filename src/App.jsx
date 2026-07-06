@@ -21,7 +21,7 @@ import {
   mapAces,
   mapOpsStatus,
 } from './lib/sheet';
-import { DRAW_CAP, SEED_CUT } from './lib/entrants';
+import { DRAW_CAP, SEED_CUT, deriveEntrants } from './lib/entrants';
 import {
   Trophy, 
   Award, 
@@ -722,6 +722,131 @@ function IdeaBox() {
             </button>
           </div>
         </form>
+      )}
+    </div>
+  );
+}
+
+// Public "suggest the seeds" tool — open until the committee locks the field
+// (seedsFinal hides it). A word bank of REGISTERED entrants only, built with
+// deriveEntrants — the same helper the ops console uses — so doubles teams
+// are pre-merged and singles-only vs doubles-only entrants land in the right
+// bank (no free typing, no misspelled names). Tapping builds a ranked top-10
+// per event; submitting emails the committee through the existing token-less
+// 'idea' pipeline (handleIdea_ in apps-script/ops-write-back.js). Deliberately
+// email-only: raw participant submissions must never be stored in the
+// link-viewable sheet — see the PUBLIC / COMMITTEE DATA SEPARATION note in
+// lib/sheet.js. Entrant chips show display names ONLY (no committee flags).
+const SUGGEST_EVENTS = ['Singles', 'Doubles'];
+const SUGGEST_MAX = 10;
+
+function SeedSuggestionBox({ participants, seedsFinal }) {
+  const [event, setEvent] = useState('Singles');
+  const [picks, setPicks] = useState({ Singles: [], Doubles: [] }); // ranked display names
+  const [from, setFrom] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const banks = useMemo(() => ({
+    Singles: deriveEntrants(participants, 'Singles'),
+    Doubles: deriveEntrants(participants, 'Doubles'),
+  }), [participants]);
+
+  if (!SHEET_WRITE_URL || seedsFinal) return null;
+
+  const list = picks[event];
+  const bank = banks[event].filter(e => !list.includes(e.display));
+  const full = list.length >= SUGGEST_MAX;
+
+  const setList = (next) => setPicks(p => ({ ...p, [event]: next }));
+  const add = (name) => { if (!full && !list.includes(name)) setList([...list, name]); };
+  const removeAt = (i) => setList(list.filter((_, j) => j !== i));
+  const move = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    setList(next);
+  };
+
+  const submit = () => {
+    const sections = SUGGEST_EVENTS
+      .filter(ev => picks[ev].length)
+      .map(ev => `${ev}:\n` + picks[ev].map((n, i) => `${i + 1}. ${n}`).join('\n'));
+    if (!sections.length) return;
+    const text = `SEED SUGGESTION — top ${SUGGEST_MAX}\n\n${sections.join('\n\n')}`;
+    try {
+      fetch(SHEET_WRITE_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'idea', payload: { text: text.slice(0, 3000), from: from.trim().slice(0, 150) } }),
+      }).catch(() => {});
+    } catch { /* fire and forget */ }
+    setSent(true);
+  };
+
+  const rowBtn = 'min-w-8 min-h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors shrink-0';
+
+  return (
+    <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-7">
+      <h3 className="text-sm font-black text-white uppercase tracking-wider">Suggest the seeds</h3>
+      <p className="text-xs text-zinc-400 mt-1 mb-4 max-w-2xl leading-relaxed">
+        Think you know the field? Tap registered players and teams into your top {SUGGEST_MAX} — order matters — and send it straight to the seeding committee. Advisory only (the committee weighs suggestions against results, UTR/WTN, and its own review), and open until the draw locks.
+      </p>
+      {sent ? (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-sm text-emerald-300">
+          Thanks — your picks are with the committee. <button onClick={() => setSent(false)} className="text-emerald-400/80 hover:text-emerald-200 underline underline-offset-2 ml-1">Suggest again</button>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2 mb-4">
+            {SUGGEST_EVENTS.map(ev => (
+              <button key={ev} onClick={() => setEvent(ev)}
+                className={`whitespace-nowrap px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition ${event === ev ? 'bg-[#fbbf24] text-black' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>
+                {ev === 'Singles' ? 'Sunday Singles' : 'Saturday Doubles'}{picks[ev].length > 0 && ` · ${picks[ev].length}`}
+              </button>
+            ))}
+          </div>
+
+          {list.length > 0 && (
+            <ol className="space-y-1.5 mb-4">
+              {list.map((n, i) => (
+                <li key={n} className="flex items-center gap-2 bg-[#111] border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <span className="w-6 h-6 shrink-0 rounded-md bg-[#fbbf24]/10 border border-[#fbbf24]/20 text-[#fbbf24] flex items-center justify-center text-[11px] font-black">{i + 1}</span>
+                  <span className="flex-1 min-w-0 text-sm font-bold text-zinc-200 truncate">{n}</span>
+                  <button onClick={() => move(i, -1)} aria-label={`Move ${n} up`} className={rowBtn}>↑</button>
+                  <button onClick={() => move(i, 1)} aria-label={`Move ${n} down`} className={rowBtn}>↓</button>
+                  <button onClick={() => removeAt(i)} aria-label={`Remove ${n}`} className="min-w-8 min-h-8 flex items-center justify-center rounded-md text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0">×</button>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-2">
+            {event} field — tap to add{full ? ' · your ten are set' : ` · ${SUGGEST_MAX - list.length} spots left`}
+          </div>
+          {bank.length === 0 ? (
+            <p className="text-xs text-zinc-600 mb-4">{full ? 'Reorder above or send it in.' : 'No registered entrants yet — check back once signups land.'}</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {bank.map(e => (
+                <button key={e.key} onClick={() => add(e.display)} disabled={full}
+                  className="text-xs font-bold text-zinc-300 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg px-3 py-2 transition-colors">
+                  {e.display}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <input value={from} onChange={(e) => setFrom(e.target.value)} maxLength={150}
+              placeholder="Name or email (optional, so the committee can follow up)"
+              className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+            <button onClick={submit} disabled={!picks.Singles.length && !picks.Doubles.length}
+              className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
+              Send my picks
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1633,6 +1758,9 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* Crowdsourced seeding input — hidden once the field locks */}
+            <SeedSuggestionBox participants={roster} seedsFinal={seedsFinal} />
 
             <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
               <div className="flex items-center gap-3">
