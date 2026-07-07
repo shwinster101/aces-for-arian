@@ -74,8 +74,9 @@ Apps Script (**redeploy required** — see §8).
 Pre-Saturday manual checklist (owner): (1) redeploy Apps Script + end-to-end
 dry run, (2) shuffle 9-16/17-32 seed order within bands before locking,
 (3) one-authoritative-device-per-domain runbook (check-ins / payments / aces
-/ scores+walk-ups), (4) confirm singles tiebreak + ace sponsor terms,
-(5) add the courts' street address. Details: audit doc §4.
+/ scores+walk-ups), (4) confirm singles tiebreak + ace sponsor terms.
+Venue naming is settled: "DHS Tennis" + maps search link, no street number.
+Details: audit doc §4.
 
 ---
 

@@ -45,8 +45,9 @@ grep -riE "loser" dist/assets/ | grep -v losersBracket
 - **OPS**: roster "Live" badge appears; confirmed counts match the sheet;
   a Registrations status flip in admin reaches an open Home tab within ~2 min
   (OpsStatus poll) — no reload.
-- Carried forward: no street address yet (maps link is a search query);
-  no social/after-event info.
+- Carried forward: venue is deliberately "DHS Tennis" (maps search link, no
+  street number — owner decision 2026-07-07, don't re-flag it); no
+  social/after-event info.
 
 ### Rules
 - **PLAYER**: BOTH events fully scored — doubles Fast-4 + tiebreak line, and
