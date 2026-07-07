@@ -176,7 +176,7 @@ function ScholarshipMeter({ ops }) {
         </button>
       </div>
       <p className="text-[10px] text-zinc-600 mt-3">
-        Single public number — fold in ace money (Scores → Live Ace Tracker shows the $) and any external/offline donations here by hand. The site meter follows within ~1 min.
+        Single public number — fold in ace money (Scores → Live Ace Tracker shows the $) and any external/offline donations here by hand. Open public pages re-check within ~2 min; a reload picks it up immediately.
       </p>
     </Card>
   );

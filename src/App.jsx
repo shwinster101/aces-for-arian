@@ -102,7 +102,7 @@ function AddToCalendarButton({ className = "" }) {
       'DTEND:20260712T220000Z',   // Sun Jul 12, ~5:00 PM CDT
       'SUMMARY:Aces for Arian 2026 — Memorial Tennis Tournament',
       'LOCATION:Dunlap High School\\, Dunlap\\, IL',
-      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11\\, Singles Sun July 12. First serve tentatively 9 AM Saturday (start times vary by final counts). Register: https://aces-for-arian.pages.dev/',
+      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~8 AM). Start times vary by final counts. Details: https://aces-for-arian.pages.dev/',
       'URL:https://aces-for-arian.pages.dev/',
       'END:VEVENT',
       'END:VCALENDAR',
@@ -137,6 +137,29 @@ function ShareInvite({ className = "" }) {
     <button onClick={onShare} className={className}>
       <Share2 className="w-3.5 h-3.5" /> {copied ? 'Link copied!' : 'Share / invite'}
     </button>
+  );
+}
+
+// Register CTA that respects the July 6 sign-up close. Before the deadline
+// it's the standard gold button; after, it demotes to a muted "closed" note —
+// the (still-working) form stays reachable through the inline link so
+// coordinators can wave in approved late entries without a code change.
+function RegisterCTA({ closed, label = 'Register Here!', className = '' }) {
+  if (!closed) {
+    return (
+      <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className={className}>
+        <span>{label}</span>
+        <ExternalLink className="h-4 w-4" />
+      </a>
+    );
+  }
+  return (
+    <div className="text-left text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 leading-relaxed max-w-xs">
+      <span className="block text-zinc-200 font-black uppercase tracking-wider text-[10px] mb-0.5">Sign-ups closed July 6</span>
+      Want in late? Text a coordinator first — the{' '}
+      <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">registration form</a>{' '}
+      stays open for approved additions.
+    </div>
   );
 }
 
@@ -354,24 +377,13 @@ const DONATE_URL = VENMO_URL;
 // The Google Form players register through — reused by every "Register" CTA.
 const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
 
-// Baseline seeding: prior A4A results first, then public UTR / WTN where players
-// have them, then committee + community refinement. result/utr/wtn are optional.
-const topSeeds = [
-  // Singles
-  { name: "Alex", type: "Singles", rank: 1, result: "2025 Champion", notes: "Reigning singles champion — automatic top seed." },
-  { name: "Andrew", type: "Singles", rank: 2, result: "2025 Finalist", notes: "Stormed the back draw to the final last year." },
-  { name: "Shaan", type: "Singles", rank: 3, result: "2025 3rd", notes: "2025 No. 1 seed." },
-  { name: "Ashwin Yedavalli", type: "Singles", rank: 4, utr: "7.2", notes: "what's a backhand?" },
-  { name: "Venil Tummarakota", type: "Singles", rank: 5, utr: "7.0", notes: "Can't buy a second serve." },
-  { name: "Aanan Kashyap", type: "Singles", rank: 6, utr: "6.9", notes: "DHS singles mainstay." },
-  { name: "Imadh Khan", type: "Singles", rank: 7, notes: "Triad champ" },
-  { name: "David Wu", type: "Singles", rank: 8, notes: "Does he still play?" },
-  // Doubles
-  { name: "Greyson & Andy", type: "Doubles", rank: 1, result: "2025 Champions", notes: "We talkin' bout practice" },
-  { name: "Doug & Graham", type: "Doubles", rank: 2, notes: "Da boys" },
-  { name: "Aanan & Shaan", type: "Doubles", rank: 3, notes: "Bro life" },
-  { name: "Atishay & Ashwin", type: "Doubles", rank: 4, notes: "DUPR don't lie" }
-];
+// Seeding baseline (methodology, surfaced in the Rules FAQ and the suggest-
+// seeds blurb): prior A4A results first, then public UTR / WTN where players
+// have them, then committee + community refinement. The seed list itself is
+// NEVER hardcoded here — it loads exclusively from the sanitized
+// SeedBoardPublic tab, so brackets stay honest TBD placeholders until the
+// committee publishes, and no committee-side data can ride along in the
+// public bundle.
 
 // Seeding lifecycle: Projected Seed → Final Seed. Flip to true once the
 // committee locks the field at the entry cutoff (or set the Config tab's
@@ -630,6 +642,10 @@ function ScholarsList({ showDonate = false }) {
           </div>
         ))}
       </div>
+
+      <p className="text-[11px] text-zinc-500 mt-3 leading-relaxed">
+        Scholars are selected each spring; the newest class's awards are funded by that summer's tournament — so this weekend's entries and donations back the 2026 scholars above.
+      </p>
 
       <div className="mt-3 bg-[#111] border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
         <div className="flex-1">
@@ -919,8 +935,8 @@ export default function App() {
   const [rosterLive, setRosterLive] = useState(false);
   const [opsStatus, setOpsStatus] = useState({}); // OpsStatus tab: name -> Verified/Pending overlay
   const [config, setConfig] = useState({});        // from the "Config" tab
-  const [seeds, setSeeds] = useState(topSeeds);     // from the sanitized "SeedBoardPublic" tab — never raw committee data
-  const [seedsLive, setSeedsLive] = useState(false); // true once real SeedBoardPublic rows loaded (vs topSeeds fallback)
+  const [seeds, setSeeds] = useState([]);            // from the sanitized "SeedBoardPublic" tab — never raw committee data
+  const [seedsLive, setSeedsLive] = useState(false); // true once real SeedBoardPublic rows loaded (empty = all-TBD draft draw)
   const [gallery, setGallery] = useState(GALLERY);  // from the "Photos" tab
   const [matches, setMatches] = useState([]);       // live scores, from the "Matches" tab
   const [matchesLive, setMatchesLive] = useState(false);
@@ -939,8 +955,8 @@ export default function App() {
   // Locked = seeds badge flips to "Final Seeds" and the brackets show BYEs
   // for unfilled first-round slots instead of TBD. Byes additionally require
   // seedsLive: config and the seed board load independently, so without this
-  // gate a locked flag + failed/slow seed fetch would draw authoritative-
-  // looking BYEs against the hardcoded fallback names.
+  // gate a locked flag + failed/slow seed fetch would render an authoritative-
+  // looking all-BYE draw before any real names have loaded.
   const seedsFinal = config.seedsFinal ?? SEEDS_FINAL;
   const showByes = seedsFinal && seedsLive;
 
@@ -959,39 +975,48 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-sync Config / Seeds / Photos from their tabs; each fails over silently
-  // to the static defaults so a missing tab never breaks the dashboard.
+  // Auto-sync Config / Seeds / Photos / OpsStatus from their tabs; each fails
+  // over silently to the static defaults so a missing tab never breaks the
+  // dashboard. Re-polls every 2 minutes (slower than the 60s Matches/Aces
+  // polls — these tabs change rarely, and the edge cache absorbs the reads) so
+  // a phone that's been open all day still picks up the scholarship meter,
+  // draw lock/BYEs, seed updates, and confirmation flips without a reload.
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false, timer;
     const grab = (url) => fetch(url)
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => parseCSV(text));
 
-    grab(CONFIG_CSV_URL).then(rows => {
-      const cfg = mapConfig(rows);
-      if (!cancelled && Object.keys(cfg).length) setConfig(cfg);
-    }).catch(() => {});
+    const load = () => {
+      grab(CONFIG_CSV_URL).then(rows => {
+        const cfg = mapConfig(rows);
+        if (!cancelled && Object.keys(cfg).length) setConfig(cfg);
+      }).catch(() => {});
 
-    // Sanitized seed board ONLY — see SEED_BOARD_PUBLIC_CSV_URL in lib/sheet.js.
-    // Never point this at committee-side seed data.
-    grab(SEED_BOARD_PUBLIC_CSV_URL).then(rows => {
-      const s = mapSeeds(rows);
-      if (!cancelled && s.length) { setSeeds(s); setSeedsLive(true); }
-    }).catch(() => {});
+      // Sanitized seed board ONLY — see SEED_BOARD_PUBLIC_CSV_URL in lib/sheet.js.
+      // Never point this at committee-side seed data.
+      grab(SEED_BOARD_PUBLIC_CSV_URL).then(rows => {
+        const s = mapSeeds(rows);
+        if (!cancelled && s.length) { setSeeds(s); setSeedsLive(true); }
+      }).catch(() => {});
 
-    grab(PHOTOS_CSV_URL).then(rows => {
-      const g = mapGallery(rows);
-      if (!cancelled && g.length) setGallery(g);
-    }).catch(() => {});
+      grab(PHOTOS_CSV_URL).then(rows => {
+        const g = mapGallery(rows);
+        if (!cancelled && g.length) setGallery(g);
+      }).catch(() => {});
 
-    // Admin reg-status overlay (Name|Status) — merged over the roster's own
-    // Status column below so an admin "Confirmed" shows as Verified publicly.
-    // Empty/missing tab just means no overrides (board uses the sheet's Status).
-    grab(OPSSTATUS_CSV_URL).then(rows => {
-      if (!cancelled) setOpsStatus(mapOpsStatus(rows));
-    }).catch(() => {});
+      // Admin reg-status overlay (Name|Status) — merged over the roster's own
+      // Status column below so an admin "Confirmed" shows as Verified publicly.
+      // Empty/missing tab just means no overrides (board uses the sheet's Status).
+      grab(OPSSTATUS_CSV_URL).then(rows => {
+        if (!cancelled) setOpsStatus(mapOpsStatus(rows));
+      }).catch(() => {});
 
-    return () => { cancelled = true; };
+      if (!cancelled) timer = setTimeout(load, 120000);
+    };
+    load();
+
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   // Live match scores from a published sheet. Polls every 60s; on a failed
@@ -1092,8 +1117,15 @@ export default function App() {
   // Field-filling momentum: doubles run as 16 teams (~2 players each), singles
   // as a 32 draw. Countdown to the July 6 sign-up close, live off the heartbeat.
   const doublesTeams = Math.ceil(doublesCount / 2);
-  const daysLeft = Math.ceil((new Date('2026-07-06T23:59:59') - now) / 86400000);
-  const closeText = daysLeft > 1 ? `in ${daysLeft} days` : daysLeft === 1 ? 'tomorrow' : daysLeft === 0 ? 'today' : 'closed';
+  // Closed the moment the deadline passes — checked on the raw ms, NOT via
+  // daysLeft: Math.ceil of a negative fraction rounds toward zero, which
+  // would keep the whole day after the deadline reading "close today".
+  // closeLine is the whole phrase (not just the tail) so the closed state
+  // reads "sign-ups closed (July 6)", never "sign-ups close closed".
+  const msLeft = new Date('2026-07-06T23:59:59') - now;
+  const regClosed = msLeft < 0;
+  const daysLeft = Math.ceil(msLeft / 86400000); // 1 = closes within 24h
+  const closeLine = regClosed ? 'closed' : daysLeft <= 1 ? 'close today' : daysLeft === 2 ? 'close tomorrow' : `close in ${daysLeft} days`;
   const filteredRoster =
     ledgerFilter === 'singles' ? roster.filter(p => p.events.includes('Singles'))
     : ledgerFilter === 'doubles' ? roster.filter(p => p.events.includes('Doubles'))
@@ -1357,14 +1389,11 @@ export default function App() {
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
                 <p className="text-[13px] text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — 7 straight summers since Eagle Classic 2020!
+                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of tournament tennis, counting the Eagle Classic years (2020–21)!
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
-                  <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                    <span>Register Here!</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  <RegisterCTA closed={regClosed} label="Register Here!"
+                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
                   <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
                 </div>
                 {/* Field-filling momentum — social proof + scarcity off the live roster */}
@@ -1373,7 +1402,7 @@ export default function App() {
                   <span className="text-zinc-700">·</span>
                   <span><strong className="text-[#fbbf24] font-bold">{singlesCount}</strong><span className="text-zinc-600">/32</span> singles</span>
                   <span className="text-zinc-700">·</span>
-                  <span className="text-zinc-500">sign-ups close <strong className="text-zinc-300 font-semibold">{closeText}</strong> (July 6)</span>
+                  <span className="text-zinc-500">sign-ups <strong className="text-zinc-300 font-semibold">{closeLine}</strong> (July 6)</span>
                 </div>
 
                 {/* Flyer poster — sits beneath the blurb in the center column */}
@@ -1529,6 +1558,19 @@ export default function App() {
                     <li>• Pre-payment required before taking the court.</li>
                   </ul>
                 </div>
+
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Calendar className="h-5 w-5 text-[#fbbf24]" />
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Getting There</h3>
+                  </div>
+                  <ul className="text-xs text-zinc-400 space-y-2.5">
+                    <li>• <a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">Dunlap High School tennis courts — map &amp; directions</a></li>
+                    <li>• Free parking in the school lot by the courts.</li>
+                    <li>• Spectators welcome all weekend — bring a chair.</li>
+                    <li>• First serve ~9 AM Saturday · ~8 AM Sunday.</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -1571,7 +1613,7 @@ export default function App() {
                     <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · 16 Teams</h3>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Every team is guaranteed multiple matches. If a round does not go your way, you rotate into a new direction with another path to compete.
+                    Every team is guaranteed at least 3 matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
                     {[
@@ -1871,7 +1913,7 @@ export default function App() {
                 <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 8:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets.</li>
+                  <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets; a tied set is decided by a tiebreak (format confirmed at check-in).</li>
                   <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
                 </ul>
@@ -1885,7 +1927,7 @@ export default function App() {
               </div>
               <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                 <li>Pay the <strong className="text-zinc-200">$40</strong> at sign-in before your first match — and grab your t-shirt.</li>
-                <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong>.</li>
+                <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong> — <a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">map &amp; directions</a>. Free parking in the school lot by the courts.</li>
                 <li><strong className="text-zinc-200">Arrive early and sign in.</strong> More than 15 minutes past match time is a default.</li>
                 <li>Schedule conflict? Tell a coordinator <strong className="text-zinc-200">ASAP</strong>.</li>
               </ul>
@@ -1928,8 +1970,10 @@ export default function App() {
               </div>
               <div className="space-y-5">
                 {[
-                  ["What if it rains?", "Matches are weather-permitting. If rain moves in, coordinators will pause and reschedule as needed — keep an eye on your phone for updates."],
+                  ["What if it rains?", "Matches are weather-permitting. If rain moves in, coordinators text registered players to pause or reschedule — keep an eye on your phone, and check the Brackets tab here for the live court board."],
                   ["What should I bring?", "Your racquet, water, and court shoes. Balls, court snacks, and your tournament tee are provided."],
+                  ["Can friends and family come watch?", "Absolutely — spectators are free and welcome all weekend. Bring a chair or grab the bleachers, and park in the school lot by the courts."],
+                  ["How are seeds decided?", "Prior Aces for Arian results first, then public UTR/WTN where players have them, then committee review — with the community's suggest-the-seeds picks (Brackets tab) as advisory input. Only the top 8 carry seed numbers."],
                   ["Can I get a refund?", "Entry fees go straight to the scholarship, so they're non-refundable — but you can transfer your spot to another player; just tell a coordinator."],
                 ].map(([q, a]) => (
                   <div key={q}>
@@ -2074,10 +2118,8 @@ export default function App() {
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% of entry fees and donations fund the Arian Rahbar Memorial Scholarship for Dunlap seniors pursuing higher education.</div>
               </div>
               <div className="shrink-0 flex flex-col sm:flex-row gap-2.5">
-                <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                  <span>Register to Play — $40</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                <RegisterCTA closed={regClosed} label="Register to Play — $40"
+                  className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
                 <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors">
                   <Heart className="w-4 h-4" />
                   <span>Donate</span>
@@ -2174,10 +2216,8 @@ export default function App() {
                 <div className="text-sm font-black text-white uppercase tracking-wider">Fund it by playing</div>
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Every entry fee goes straight to this scholarship. Grab a spot in the July 11–12 tournament — singles, doubles, or both.</div>
               </div>
-              <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                <span>Register to Play — $40</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
+              <RegisterCTA closed={regClosed} label="Register to Play — $40"
+                className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
             </div>
 
             {/* Application link — kept low-key off-season; promote in spring */}

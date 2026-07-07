@@ -39,7 +39,7 @@ const PUBLIC_VIEW = {
   registrations: { hash: 'home', label: 'public roster' },
   checkins: { hash: 'home', label: 'public roster' },
   payments: { hash: 'home', label: 'public roster' },
-  seeding: { hash: 'seeding', label: 'projected seeds' },
+  seeding: { hash: 'brackets', label: 'public draws' },
   scores: { hash: 'brackets', label: 'live court board' },
   merch: { hash: 'merch', label: 'merch page' },
 };
@@ -139,7 +139,11 @@ function OpsConsole({ onLock }) {
             {ops.lastPushAt > 0 && (
               <>
                 <span className="text-zinc-700">·</span>
-                <span className="text-emerald-400/80">last push sent {new Date(ops.lastPushAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                {/* "attempted", not "sent/delivered": pushes are fire-and-forget
+                    no-cors, so this only proves the request left the device.
+                    The one real receipt is the public page updating. */}
+                <span title="Pushes can't be delivery-confirmed — spot-check the public page (View live) after important edits."
+                  className="text-emerald-400/80">last push attempted {new Date(ops.lastPushAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
               </>
             )}
           </div>
@@ -184,7 +188,7 @@ function OpsConsole({ onLock }) {
           </a>
         </p>
         <button
-          onClick={() => { if (window.confirm("Clear ALL ops data saved on THIS device — check-ins, payments, walk-ups, seeds, matches, merch & the ace counter? This can't be undone. (The public roster from the Google Sheet is unaffected.)")) ops.clearOps(); }}
+          onClick={() => { if (window.confirm("Clear ALL ops data saved on THIS device — check-ins, payments, walk-ups, seeds, matches, merch & the ace counter? This can't be undone. Note: anything already pushed to the sheet (matches, scores, aces, confirmations, seeds) STAYS LIVE on the public site — this only wipes this device's copy. The public roster from the Google Sheet is unaffected.")) ops.clearOps(); }}
           className="text-zinc-700 hover:text-rose-400 underline underline-offset-2 transition-colors">
           Clear this device's ops data
         </button>
