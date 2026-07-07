@@ -69,6 +69,12 @@ it is NOT a tab —
   dropped upstream. This joins §9 item 1.
 - Ops should refresh the weather post from the courts as the forecast
   firms up — the fallback is honest ("as of Tue 7/7") but static.
+- **Weather corrected against Apple Weather (7/7):** earlier posts had it
+  backwards. Apple shows **Saturday** = wet early morning (~25% at 6–7 AM)
+  clearing to partly cloudy, high **83°F**; **Sunday** = sunny/hot, high
+  **87°F**, hourly rain ~0% through play (40% daily headline only). Saturday
+  now leads (banner) as the actionable day. Temps are Apple-exact; **wind is
+  omitted** — no Apple wind panel was pulled. Add wind if a panel is provided.
 
 ---
 

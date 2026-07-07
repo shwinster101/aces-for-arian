@@ -372,20 +372,24 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // rows (same pattern as fallbackRoster), so the section launches with real
 // content even before the Apps Script redeploy that activates live posting.
 // Forecast source: weather.com for Dunlap, IL, pulled Tue 2026-07-07.
+// Time-of-day breakdown sourced from Apple Weather (Dunlap), pulled Tue 7/7.
+// Array order = display order; Saturday leads because its wet start is the
+// nearer, more actionable item, so it's the banner. Temps are Apple-exact;
+// wind is omitted (no Apple wind panel pulled yet).
 const FALLBACK_ANNOUNCEMENTS = [
   {
-    id: 'fallback-weather-sun-0707',
-    ts: '2026-07-07T12:05:00-05:00',
-    event: 'Singles',
-    category: 'weather',
-    message: 'Sunday singles outlook (as of Tue 7/7): ~86% chance of rain for the day. Pre-match (6–8 AM): scattered storms — plan for an on-time 8 AM start between cells. During play: storms grow more widespread through the afternoon, so midday through the final is the highest-risk window — expect rain pauses. Evening: lingering storms possible after the last match. High ~80°F, wind NE ~10 mph. Delays post here; coordinators text players.',
-  },
-  {
-    id: 'fallback-weather-sat-0707',
-    ts: '2026-07-07T12:00:00-05:00',
+    id: 'fallback-weather-sat-0707b',
+    ts: '2026-07-07T15:00:00-05:00',
     event: 'Doubles',
     category: 'weather',
-    message: 'Saturday doubles outlook (as of Tue 7/7): dry day — no real rain signal pre-match, during play, or in the evening. Mostly sunny, high near 91°F and humid, wind SSW 5–10 mph. Heat is the opponent: bring water and sunscreen, find shade between rounds.',
+    message: 'Saturday doubles outlook (Apple Weather, as of Tue 7/7): a wet start that clears for play. Pre-match — rain overnight into the early morning, ~25% around 6–7 AM, so courts may be damp at open before it tapers off. During play — drying to partly cloudy, only ~10% midday with a small ~15–20% chance of a passing afternoon shower (3–6 PM). Evening — mostly clear, ~10%. Comfortable: high near 83°F, up from the upper 60s at first serve. Pack a towel for damp lines early.',
+  },
+  {
+    id: 'fallback-weather-sun-0707b',
+    ts: '2026-07-07T14:55:00-05:00',
+    event: 'Singles',
+    category: 'weather',
+    message: 'Sunday singles outlook (Apple Weather, as of Tue 7/7): sunny and hot — the nicer day of the two. Rain stays near 0% pre-match, during play, and into the evening — the hourly forecast is dry all day (Apple lists a 40% daily figure, but no play-hour shows measurable rain). Full sun and warming fast: low ~67°F at the 8 AM start, high near 87°F by mid-afternoon. Heat is the opponent — hydrate, sunscreen, shade between matches.',
   },
 ];
 
