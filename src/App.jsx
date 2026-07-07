@@ -1201,6 +1201,9 @@ export default function App() {
   const boardLive = useMatchBoard;
   const boardFresh = matchesFresh;
   const boardUpdated = matchesUpdated;
+  // Tournament-live switch: flips when ops posts the first match. Drives the
+  // phase-aware ordering — court board above the brackets, live strip on Home.
+  const liveDay = boardLive;
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
@@ -1427,6 +1430,22 @@ export default function App() {
             </div>
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
 
+            {/* Live-day strip — routes everyone to the court board the moment
+                ops posts the first match. Hidden all draw week. */}
+            {liveDay && (
+              <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 hover:border-[#fbbf24] rounded-2xl px-5 py-4 transition-colors group text-left">
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-white uppercase tracking-wider">We're live — court board &amp; scores</span>
+                    <span className="block text-xs text-zinc-400 mt-0.5">Find your court, the up-next queue, and live results.</span>
+                  </span>
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#fbbf24] shrink-0 group-hover:translate-x-0.5 transition-transform">Brackets →</span>
+              </button>
+            )}
+
             {/* Next steps: reassurance, quick actions, discreet payment note */}
             <div className="mx-auto w-full max-w-xl text-center space-y-3">
               <p className="text-xs text-zinc-400 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
@@ -1446,10 +1465,13 @@ export default function App() {
               <p className="text-[10px] text-zinc-600">$40 entry — pay <a href={VENMO_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">{VENMO_HANDLE} on Venmo</a> or cash at sign-in.</p>
             </div>
 
-            {/* Roster & Info Grid */}
+            {/* Roster & Info Grid. On phones the logistics column (coordinators,
+                rules, directions) stacks FIRST — day-of visitors need a phone
+                number and the parking lot before 30 rows of roster. Desktop
+                keeps roster left, info right. */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              <div className="lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+
+              <div className="order-2 lg:order-1 lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                 <div className="pb-4 border-b border-zinc-800 mb-4">
                   <div className="flex justify-between items-center gap-2 mb-3">
                     <div className="flex items-center gap-2">
@@ -1528,7 +1550,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="space-y-6">
+              <div className="order-1 lg:order-2 space-y-6">
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-center">
                   <h3 className="text-sm font-black text-white uppercase tracking-wider mb-5">Coordinators</h3>
                   <div className="space-y-3">
@@ -1557,6 +1579,10 @@ export default function App() {
                     <li>• Players 15 minutes late will be defaulted.</li>
                     <li>• Pre-payment required before taking the court.</li>
                   </ul>
+                  <button onClick={() => { setActiveTab('rules'); window.scrollTo({ top: 0 }); }}
+                    className="mt-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors text-left">
+                    Full rules &amp; schedule →
+                  </button>
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
@@ -1585,15 +1611,22 @@ export default function App() {
         {/* ==========================================
             TAB: DRAWS & BRACKETS
             ========================================== */}
-        {activeTab === 'draws' && (
-          <div className="space-y-6 animate-fade-in">
-
+        {activeTab === 'draws' && (() => {
+          // Phase-aware ordering (liveDay, defined with the board consts
+          // above). Draw week reads draws-first; the moment ops posts matches,
+          // the live boards jump above the brackets so "which court am I on?"
+          // is the first thing on the tab instead of ten phone-screens down.
+          // Same section cards either way — only the order changes.
+          const introAndDraws = (
+            <>
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
               <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
               <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
                 {seedsFinal
                   ? "Final draws. The top 8 are seeded (seeds 1–4 can't meet before the semifinals; 5–8 are slated for the quarterfinals) and open lines are byes — top seeds get the byes first."
-                  : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
+                  : regClosed
+                    ? 'Draft brackets. Registration closed July 6 — the committee is finalizing seeds, and the draw fills in when the field locks. Only the top 8 carry a seed number.'
+                    : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
               </p>
               <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
                 <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
@@ -1602,6 +1635,7 @@ export default function App() {
               <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
                 placeholder="Find yourself in the draw — type your name"
                 className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+              <p className="text-[10px] text-zinc-600 mt-1.5">Highlights your line in the brackets below{liveDay ? ' — for your live court, use “Find your match” on the court board' : ''}.</p>
             </div>
 
             {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
@@ -1691,9 +1725,15 @@ export default function App() {
               </div>
             )}
 
-            {/* Crowdsourced seeding input — hidden once the field locks */}
-            <SeedSuggestionBox participants={roster} seedsFinal={seedsFinal} />
+            </>
+          );
 
+          // Crowdsourced seeding input — hidden once the field locks; only in
+          // the draw-week order (by live day the suggestion window is moot).
+          const suggestBox = <SeedSuggestionBox participants={roster} seedsFinal={seedsFinal} />;
+
+          const liveBoards = (
+            <>
             {/* Live court board — answers "when is my next match?" */}
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
@@ -1711,6 +1751,9 @@ export default function App() {
                       <input value={matchQuery} onChange={(e) => setMatchQuery(e.target.value)}
                         placeholder="Find your match — type your name"
                         className="w-full bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+                      {matchQuery.trim().length < 2 && (
+                        <p className="text-[10px] text-zinc-600 mt-1.5">Shows your court and queue spot right now — bracket paths live in the draws below.</p>
+                      )}
                       {matchQuery.trim().length >= 2 && (
                         <div className="mt-2 space-y-1.5">
                           {myMatches.length === 0 ? (
@@ -1810,10 +1853,13 @@ export default function App() {
               </div>
             )}
 
-            {/* Live Ace Tracker — every ace hit on a live court adds $5
-                toward Arian's scholarship, up to $500. Hidden until the
-                admin's first +1 (see mapAces in lib/sheet.js). */}
-            {acesLive && (
+            </>
+          );
+
+          // Live Ace Tracker — every ace hit on a live court adds $5 toward
+          // Arian's scholarship, up to $500. Hidden until the admin's first
+          // +1 (see mapAces in lib/sheet.js).
+          const aceTracker = acesLive && (
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-5 md:gap-8">
                   <div className="flex items-center gap-4 shrink-0">
@@ -1831,8 +1877,9 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            )}
+          );
 
+          const legacyLink = (
             <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
               <div className="flex items-center gap-3">
                 <Trophy className="w-5 h-5 text-[#fbbf24] shrink-0" />
@@ -1843,8 +1890,16 @@ export default function App() {
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0">Legacy →</span>
             </button>
-          </div>
-        )}
+          );
+
+          return (
+            <div className="space-y-6 animate-fade-in">
+              {liveDay
+                ? <>{liveBoards}{aceTracker}{introAndDraws}{legacyLink}</>
+                : <>{introAndDraws}{suggestBox}{liveBoards}{aceTracker}{legacyLink}</>}
+            </div>
+          );
+        })()}
 
         {/* ==========================================
             TAB: PHOTOS
@@ -1854,7 +1909,7 @@ export default function App() {
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Gallery</h2>
-                <p className="text-sm text-zinc-400 mt-2">Relive the highlights — rotating through every year of Aces for Arian.</p>
+                <p className="text-sm text-zinc-400 mt-2">Relive the highlights from the tournament archive — full albums for every year below.</p>
               </div>
               <ImageIcon className='w-12 h-12 text-zinc-800 hidden sm:block' />
             </div>
@@ -1904,6 +1959,10 @@ export default function App() {
                   <li><strong className="text-zinc-200">Quarterfinals on:</strong> teams may switch to 2-of-3 regular sets if everyone in the round agrees.</li>
                   <li><strong className="text-zinc-200">Prizes:</strong> awarded to the top 3.</li>
                 </ul>
+                <button onClick={() => { setBracketEvent('doubles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                  className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                  See the doubles bracket →
+                </button>
               </div>
               <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
                 <div className="w-12 h-12 rounded-xl bg-[#5c1313]/30 text-rose-500 flex items-center justify-center mb-6">
@@ -1913,10 +1972,14 @@ export default function App() {
                 <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 8:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets; a tied set is decided by a tiebreak (format confirmed at check-in).</li>
+                  <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets; 7-point tiebreak at 6–6.</li>
                   <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
                 </ul>
+                <button onClick={() => { setBracketEvent('singles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                  className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                  See the singles bracket →
+                </button>
               </div>
             </div>
 
