@@ -37,6 +37,12 @@ checklist for the next auditor).
 
 ## 1. Session Summary — 2026-07-07 announcements pass
 
+**Also 7/7: registration deadline extended to end of day July 8** (owner
+decision). The `regClosed` date constant and every "July 6" copy mention in
+`App.jsx` moved to July 8, so the Register widget is open again until then.
+Note: the printed flyer image still says "Register by July 6th" — the site
+copy supersedes it; swap `public/flyer.jpg` if an updated flyer exists.
+
 New **Announcements** system (weather emphasized), placed by first
 principles: an announcement must reach people who aren't looking for it, so
 it is NOT a tab —

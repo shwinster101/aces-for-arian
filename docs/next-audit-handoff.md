@@ -47,9 +47,11 @@ grep -riE "loser" dist/assets/ | grep -v losersBracket
   render with the right icon and weather stays emphasized.
 
 ### Home
-- **FAN**: Register CTA state matches the calendar (open → gold button;
-  past close → "Sign-ups closed" note with the form still linked). Momentum
-  row reads grammatically in all states ("close in N days" / "closed").
+- **FAN**: Register CTA state matches the calendar — deadline is **July 8**,
+  extended from July 6 on 7/7 (open → gold button; past close → "Sign-ups
+  closed" note with the form still linked). Momentum row reads grammatically
+  in all states ("close in N days" / "closed"). Known visual mismatch: the
+  flyer JPG still prints "Register by July 6th."
   Getting There card: maps link opens the right place, parking/spectator
   lines still true, start times match Rules. Coordinator numbers current.
   On phones, the logistics column (Coordinators / rules / Getting There)

@@ -150,7 +150,7 @@ function ShareInvite({ className = "" }) {
   );
 }
 
-// Register CTA that respects the July 6 sign-up close. Before the deadline
+// Register CTA that respects the July 8 sign-up close. Before the deadline
 // it's the standard gold button; after, it demotes to a muted "closed" note —
 // the (still-working) form stays reachable through the inline link so
 // coordinators can wave in approved late entries without a code change.
@@ -165,7 +165,7 @@ function RegisterCTA({ closed, label = 'Register Here!', className = '' }) {
   }
   return (
     <div className="text-left text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 leading-relaxed max-w-xs">
-      <span className="block text-zinc-200 font-black uppercase tracking-wider text-[10px] mb-0.5">Sign-ups closed July 6</span>
+      <span className="block text-zinc-200 font-black uppercase tracking-wider text-[10px] mb-0.5">Sign-ups closed July 8</span>
       Want in late? Text a coordinator first — the{' '}
       <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">registration form</a>{' '}
       stays open for approved additions.
@@ -1262,14 +1262,15 @@ export default function App() {
   const singlesCount = roster.filter(p => p.events.includes('Singles')).length;
   const doublesCount = roster.filter(p => p.events.includes('Doubles')).length;
   // Field-filling momentum: doubles run as 16 teams (~2 players each), singles
-  // as a 32 draw. Countdown to the July 6 sign-up close, live off the heartbeat.
+  // as a 32 draw. Countdown to the July 8 sign-up close (extended from July 6
+  // on 7/7), live off the heartbeat.
   const doublesTeams = Math.ceil(doublesCount / 2);
   // Closed the moment the deadline passes — checked on the raw ms, NOT via
   // daysLeft: Math.ceil of a negative fraction rounds toward zero, which
   // would keep the whole day after the deadline reading "close today".
   // closeLine is the whole phrase (not just the tail) so the closed state
-  // reads "sign-ups closed (July 6)", never "sign-ups close closed".
-  const msLeft = new Date('2026-07-06T23:59:59') - now;
+  // reads "sign-ups closed (July 8)", never "sign-ups close closed".
+  const msLeft = new Date('2026-07-08T23:59:59') - now;
   const regClosed = msLeft < 0;
   const daysLeft = Math.ceil(msLeft / 86400000); // 1 = closes within 24h
   const closeLine = regClosed ? 'closed' : daysLeft <= 1 ? 'close today' : daysLeft === 2 ? 'close tomorrow' : `close in ${daysLeft} days`;
@@ -1569,7 +1570,7 @@ export default function App() {
                   <span className="text-zinc-700">·</span>
                   <span><strong className="text-[#fbbf24] font-bold">{singlesCount}</strong><span className="text-zinc-600">/32</span> singles</span>
                   <span className="text-zinc-700">·</span>
-                  <span className="text-zinc-500">sign-ups <strong className="text-zinc-300 font-semibold">{closeLine}</strong> (July 6)</span>
+                  <span className="text-zinc-500">sign-ups <strong className="text-zinc-300 font-semibold">{closeLine}</strong> (July 8)</span>
                 </div>
 
                 {/* Flyer poster — sits beneath the blurb in the center column */}
@@ -1792,8 +1793,8 @@ export default function App() {
                 {seedsFinal
                   ? "Final draws. The top 8 are seeded (seeds 1–4 can't meet before the semifinals; 5–8 are slated for the quarterfinals) and open lines are byes — top seeds get the byes first."
                   : regClosed
-                    ? 'Draft brackets. Registration closed July 6 — the committee is finalizing seeds, and the draw fills in when the field locks. Only the top 8 carry a seed number.'
-                    : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 6 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
+                    ? 'Draft brackets. Registration closed July 8 — the committee is finalizing seeds, and the draw fills in when the field locks. Only the top 8 carry a seed number.'
+                    : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 8 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
               </p>
               <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
                 <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
