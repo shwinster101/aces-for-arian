@@ -6,6 +6,7 @@ import {
   Swords,
   Grid3x3,
   Package,
+  Megaphone,
   RefreshCw,
   LogOut,
   ExternalLink,
@@ -21,6 +22,7 @@ import CheckIns from './sections/CheckIns';
 import Payments from './sections/Payments';
 import Seeding from './sections/Seeding';
 import Scores from './sections/Scores';
+import Announce from './sections/Announce';
 import Merch from './sections/Merch';
 
 const TABS = [
@@ -29,6 +31,7 @@ const TABS = [
   { id: 'payments', label: 'Payments', icon: CircleDollarSign },
   { id: 'seeding', label: 'Seeding & Draws', icon: Swords },
   { id: 'scores', label: 'Scores & Courts', icon: Grid3x3 },
+  { id: 'announce', label: 'Announce', icon: Megaphone },
   { id: 'merch', label: 'Merch', icon: Package },
 ];
 
@@ -41,6 +44,7 @@ const PUBLIC_VIEW = {
   payments: { hash: 'home', label: 'public roster' },
   seeding: { hash: 'brackets', label: 'public draws' },
   scores: { hash: 'brackets', label: 'live court board' },
+  announce: { hash: 'home', label: 'announcements feed' },
   merch: { hash: 'merch', label: 'merch page' },
 };
 
@@ -178,6 +182,7 @@ function OpsConsole({ onLock }) {
         {tab === 'payments' && <Payments {...sectionProps} />}
         {tab === 'seeding' && <Seeding {...sectionProps} />}
         {tab === 'scores' && <Scores {...sectionProps} />}
+        {tab === 'announce' && <Announce {...sectionProps} />}
         {tab === 'merch' && <Merch {...sectionProps} />}
       </main>
 

@@ -48,6 +48,7 @@ const initialStore = () => ({
   courtBoard: emptyCourtBoard(),
   merch: {},                                 // inventory: key ('shirt:M' | 'sweatbands' | …) -> { order, stock }
   aces: 0,                                   // live "Ace Tracker" running total — see incrementAces/decrementAces
+  announcements: [],                         // staff posts: [{ id, ts, event, category, message }] — see postAnnouncement
 });
 
 const publicMatchPayload = (m) => ({
@@ -78,6 +79,7 @@ function load() {
       courtBoard: parsed.courtBoard?.courts ? parsed.courtBoard : emptyCourtBoard(),
       merch: parsed.merch && typeof parsed.merch === 'object' ? parsed.merch : {},
       aces: typeof parsed.aces === 'number' && parsed.aces >= 0 ? parsed.aces : 0,
+      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
     };
   } catch {
     return initialStore();
@@ -276,6 +278,25 @@ export function useOpsStore() {
     pushToSheet('aces', { count: next });
   };
 
+  // Public announcements (weather delays, schedule changes, round calls…) —
+  // discrete posts, so no debounce: each Post/Delete fires one push. The row
+  // lands in the public Announcements tab via writeAnnounce_ (upsert by id),
+  // which the site's banner + Home feed poll. Local list is this device's
+  // posting history; the sheet is the public source of truth.
+  const postAnnouncement = ({ event = 'Both', category = 'general', message = '' }) => {
+    const msg = message.trim().slice(0, 400);
+    if (!msg) return null;
+    const row = { id: nextId(), ts: new Date().toISOString(), event, category, message: msg };
+    setStore(s => ({ ...s, announcements: [row, ...s.announcements] }));
+    pushToSheet('announce', row);
+    return row.id;
+  };
+  const deleteAnnouncement = (id) => {
+    setStore(s => ({ ...s, announcements: s.announcements.filter(a => a.id !== id) }));
+    // Mirror the delete so a retracted post doesn't linger on the public feed.
+    pushToSheet('announce-delete', { id });
+  };
+
   // Push ONLY the display-safe registration flag (Verified/Pending) for a
   // sheet-sourced registrant, so tapping the "Confirmed" chip flips the public
   // board's badge. Intentionally separate from setOverlay (which stays local):
@@ -313,6 +334,7 @@ export function useOpsStore() {
     addMatch, updateMatch, removeMatch, moveMatch,
     setMerch,
     incrementAces, decrementAces,
+    postAnnouncement, deleteAnnouncement,
     pushPublicStatus, pushConfig,
     exportJSON, clearOps,
   };

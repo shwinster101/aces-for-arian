@@ -64,6 +64,21 @@ export const COURT_BOARD_CSV_URL = sheetCsv("Courts");  // live court board (Cou
 export const MATCHES_CSV_URL     = sheetCsv("Matches"); // live scores (Event | Round | Num | ...)
 export const ACES_CSV_URL        = sheetCsv("Aces");    // live ace counter (Count)
 export const OPSSTATUS_CSV_URL   = sheetCsv("OpsStatus"); // admin reg-status overlay (Name | Status)
+export const ANNOUNCEMENTS_CSV_URL = sheetCsv("Announcements"); // staff posts (Id | Timestamp | Event | Category | Message)
+
+// Announcement categories — one list shared by the admin composer and the
+// public renderer so a posted category always has a public label. 'weather'
+// is the emphasized class (amber warning styling on the public site).
+export const ANNOUNCE_CATEGORIES = [
+  { key: "weather", label: "Weather" },
+  { key: "schedule", label: "Schedule" },
+  { key: "round", label: "Round update" },
+  { key: "courts", label: "Courts" },
+  { key: "lost-found", label: "Lost & found" },
+  { key: "food", label: "Food & water" },
+  { key: "awards", label: "Awards" },
+  { key: "general", label: "General" },
+];
 
 // --- WRITE-BACK ------------------------------------------------------------
 // Google's CSV export is read-only, so by itself the admin panel can only
@@ -312,6 +327,32 @@ export function mapCourtBoard(rows) {
 // Columns (flexible): Event | Round | Num | Player A | Player B | Court | Status | Score | Winner
 // This is what the public "Live Scores" section reads — it's written
 // automatically by apps-script/ops-write-back.js as the admin scores matches.
+// Announcements tab -> [{ id, ts, event, category, message }], newest first,
+// capped so a season of posts can't bloat the payload. Header-flexible like
+// mapMatches; rows without a message are dropped.
+export function mapAnnouncements(rows) {
+  if (!rows || rows.length < 2) return [];
+  const headers = rows[0].map(h => h.trim().toLowerCase());
+  const col = (...names) => headers.findIndex(h => names.some(n => h.includes(n)));
+  const iId = col("id");
+  const iTs = col("timestamp", "time", "date");
+  const iEvent = col("event");
+  const iCat = col("category", "type");
+  const iMsg = col("message", "text", "announcement");
+  if (iMsg < 0) return [];
+  return rows.slice(1)
+    .map(r => ({
+      id: iId >= 0 ? (r[iId] || "").toString().trim() : "",
+      ts: iTs >= 0 ? (r[iTs] || "").toString().trim() : "",
+      event: (iEvent >= 0 ? (r[iEvent] || "").toString().trim() : "") || "Both",
+      category: ((iCat >= 0 ? (r[iCat] || "").toString().trim() : "") || "general").toLowerCase(),
+      message: (r[iMsg] || "").toString().trim(),
+    }))
+    .filter(a => a.message)
+    .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+    .slice(0, 20);
+}
+
 export function mapMatches(rows) {
   if (!rows || rows.length < 2) return [];
   const headers = rows[0].map(h => h.trim().toLowerCase());

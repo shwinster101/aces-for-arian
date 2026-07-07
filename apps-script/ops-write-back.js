@@ -112,6 +112,8 @@ function doPost(e) {
       case 'aces':         writeAces_(body.payload); break;
       case 'status':       writeStatus_(body.payload); break;
       case 'config':       writeConfig_(body.payload); break;
+      case 'announce':        writeAnnounce_(body.payload); break;
+      case 'announce-delete': deleteAnnounce_(body.payload); break;
       // 'participant' / 'walk-up': see the note at the bottom of this file.
     }
   } catch (err) {
@@ -176,7 +178,7 @@ function writeSubscribe_(payload) {
 // token in hand, the raw roster (email/phone/payment) NEVER leaves this script.
 // The Cloudflare Function filters again on its side (defense in depth).
 var READ_TOKEN = 'a4a-read-8db082a282da9e0b622178164cd9b202'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
-var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces', 'OpsStatus']; // '' = roster (first tab)
+var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces', 'OpsStatus', 'Announcements']; // '' = roster (first tab)
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
@@ -256,6 +258,7 @@ var COURT_HEADERS = ['Court', 'Now', 'Next'];
 var MATCH_HEADERS = ['Event', 'Round', 'Num', 'Player A', 'Player B', 'Court', 'Status', 'Score', 'Winner', 'ID'];
 var ACES_HEADERS  = ['Count'];
 var OPSSTATUS_HEADERS = ['Name', 'Status'];
+var ANNOUNCE_HEADERS = ['Id', 'Timestamp', 'Event', 'Category', 'Message'];
 
 // --------------------------------------------------------------------------
 // WHY SEEDS ARE SANITIZED HERE, NOT JUST CLIENT-SIDE
@@ -411,6 +414,40 @@ function deleteMatch_(payload) {
   var idCol = MATCH_HEADERS.length - 1;
   var kept = rows.filter(function (r) {
     return String(r[idCol] || '') !== String(payload.id || '');
+  });
+  if (kept.length !== rows.length) writeRows_(sheet, kept);
+}
+
+// Public announcements (weather delays, schedule changes, round calls, lost &
+// found…) — staff-authored via the admin Announce tab, rendered on the public
+// site's banner + Home feed. Upsert by the admin's id so a post can be
+// corrected in place; message is length-capped server-side (the write token is
+// only a deterrent, so don't let this become a free public billboard).
+function writeAnnounce_(payload) {
+  if (!payload || !payload.id) return;
+  var sheet = sheetByName_('Announcements', ANNOUNCE_HEADERS);
+  var rows = readRows_(sheet);
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '') === String(payload.id)) { idx = i; break; }
+  }
+  var row = [
+    String(payload.id),
+    String(payload.ts || new Date().toISOString()).slice(0, 40),
+    String(payload.event || 'Both').slice(0, 20),
+    String(payload.category || 'general').slice(0, 20),
+    String(payload.message || '').slice(0, 500).trim(),
+  ];
+  if (!row[4]) return; // no empty announcements
+  if (idx >= 0) rows[idx] = row; else rows.push(row);
+  writeRows_(sheet, rows);
+}
+
+function deleteAnnounce_(payload) {
+  var sheet = sheetByName_('Announcements', ANNOUNCE_HEADERS);
+  var rows = readRows_(sheet);
+  var kept = rows.filter(function (r) {
+    return String(r[0] || '') !== String((payload && payload.id) || '');
   });
   if (kept.length !== rows.length) writeRows_(sheet, kept);
 }

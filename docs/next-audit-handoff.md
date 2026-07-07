@@ -34,6 +34,18 @@ grep -riE "loser" dist/assets/ | grep -v losersBracket
 
 ## Public tabs
 
+### Global: announcement banner (every tab)
+- **ALL ROLES**: the newest Announcements post renders as a banner under the
+  sticky nav on EVERY tab (weather = amber). Dismiss X hides that post only
+  and survives reload (localStorage `a4a-announce-dismissed`); a NEWER post
+  must re-surface the banner. Tap → Home `#announcements` feed. Until the
+  live `Announcements` tab has rows, the site shows `FALLBACK_ANNOUNCEMENTS`
+  (App.jsx) — check its weather copy isn't stale ("as of …" date). Live rows
+  need the Apps Script redeploy (`announce` handlers + `READABLE`).
+- **OPS**: admin → Announce tab → post (category/event/message) → public
+  banner + feed update within ~1 min; delete retracts. Verify categories
+  render with the right icon and weather stays emphasized.
+
 ### Home
 - **FAN**: Register CTA state matches the calendar (open → gold button;
   past close → "Sign-ups closed" note with the form still linked). Momentum

@@ -35,7 +35,38 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 later pass (phase-aware ordering)
+## 1. Session Summary — 2026-07-07 announcements pass
+
+New **Announcements** system (weather emphasized), placed by first
+principles: an announcement must reach people who aren't looking for it, so
+it is NOT a tab —
+
+- **Site-wide banner** under the sticky nav on every public tab: newest
+  post, category icon + Doubles/Singles/Both chip + time-ago, per-post
+  dismiss (localStorage), amber styling for weather. Tap → Home feed.
+- **Home feed** (`#announcements` anchor) between the live strip and
+  next-steps: full list, newest first, hidden when empty.
+- **Admin "Announce" tab**: category pills (weather / schedule / round /
+  courts / lost-found / food / awards / general), event pills, 400-char
+  composer, posted-list with delete. `postAnnouncement`/`deleteAnnouncement`
+  in `store.js` push `announce`/`announce-delete` (upsert/remove by id).
+- **Data**: new public `Announcements` tab (`Id|Timestamp|Event|Category|
+  Message`), allowlisted in `functions/api/sheet.js` + Apps Script
+  `READABLE`; public site polls it every 60s (Matches-style backoff).
+- **Fallback**: `FALLBACK_ANNOUNCEMENTS` in `App.jsx` shows until the live
+  tab has rows — currently seeded with the real Dunlap weekend forecast
+  (weather.com, pulled Tue 7/7): Sat sunny ~91°F SSW 5–10 mph; Sun ~86%
+  thunderstorms, ~80°F, NE ~10 mph.
+- **⚠️ Apps Script redeploy required** for live announcements (new
+  `announce`/`announce-delete` handlers + `Announcements` in `READABLE`).
+  Until then the site shows only the fallback post and admin posts are
+  dropped upstream. This joins §9 item 1.
+- Ops should refresh the weather post from the courts as the forecast
+  firms up — the fallback is honest ("as of Tue 7/7") but static.
+
+---
+
+## 1-prev. Session Summary — 2026-07-07 later pass (phase-aware ordering)
 
 Tab-by-tab flow review from the same three roles, then a first-principles
 pass: widget order now follows the tournament phase the app already tracks.
@@ -279,6 +310,8 @@ Allowed/read tabs:
 - `Aces` -> live ace count.
 - `OpsStatus` -> display-safe public confirmed-entry overlay.
   - Rows with names beginning `__` are treated as test/sentinel rows and scrubbed.
+- `Announcements` -> staff posts (Id | Timestamp | Event | Category | Message)
+  for the public banner + Home feed. Polled every 60s.
 - `Subscribers` is private and deliberately not allowlisted for public reads.
 
 Write-back event types:
@@ -287,6 +320,7 @@ Write-back event types:
 - `match` / `match-delete` -> `Matches`.
 - `aces` -> `Aces`.
 - `status` -> `OpsStatus`.
+- `announce` / `announce-delete` -> `Announcements`.
 - `court-board` exists in Apps Script but the current public board is mostly match-derived.
 - `participant`, `walk-up`, payment/check-in/shirt overlays are deliberately not sent.
 
@@ -401,8 +435,12 @@ Dry run checklist:
 
 1. **Redeploy Apps Script as a new version** — now covers `subscribe`,
    `OpsStatus` sentinel filtering, the `seeds final` Config flag (field
-   lock!), and the `idea` pipeline the public seed-suggestion tool uses.
-   Then run the end-to-end dry run in `docs/audit-2026-07-07.md` §4.1.
+   lock!), the `idea` pipeline the public seed-suggestion tool uses, AND the
+   new `announce`/`announce-delete` handlers + `Announcements` in `READABLE`
+   (live announcements are dead until this happens; the site shows only the
+   fallback weather post). Then run the dry run in `docs/audit-2026-07-07.md`
+   §4.1 plus: post a test announcement from admin → public banner/feed
+   updates within ~1 min.
 2. Merge the audit-fix branch to `main` and hard-reload the live site
    (go-live verdict: audit doc §5).
 3. Day-of runbook: one authoritative device per ops domain (check-ins,
