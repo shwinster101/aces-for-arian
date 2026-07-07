@@ -35,7 +35,29 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 (deep audit, T-4 days)
+## 1. Session Summary — 2026-07-07 later pass (phase-aware ordering)
+
+Tab-by-tab flow review from the same three roles, then a first-principles
+pass: widget order now follows the tournament phase the app already tracks.
+
+- **Brackets tab is live-aware** (`liveDay` = first match posted): draw week
+  renders draws-first as before; once ops posts a match, the Live Court Board
+  (with find-my-match) and Live Scores render ABOVE the brackets. Same cards,
+  order only. Test both phases (next-audit doc has the fixture-route recipe).
+- **Home live strip**: a "We're live — court board & scores" banner appears
+  under the hero on live day, linking to Brackets.
+- **Mobile Home reorder**: Coordinators / rules / Getting There stack before
+  the roster on phones (CSS `order-*`; desktop unchanged).
+- Brackets draft intro is now phase-aware (no more future-tense "until
+  registration closes July 6" after the close).
+- Singles tiebreak published: **7-point tiebreak at 6–6**. Awards wording
+  stays intentionally vague (owner decision). Both name-search inputs on
+  Brackets carry disambiguating captions; Home links to full Rules; Rules
+  event cards link to their brackets.
+
+---
+
+## 1a. Session Summary — 2026-07-07 (deep audit, T-4 days)
 
 Full three-persona audit (off-site ops manager / seed-focused varsity player /
 casual fan) — findings, evidence, and the go-live verdict are in
@@ -385,8 +407,10 @@ Dry run checklist:
    (go-live verdict: audit doc §5).
 3. Day-of runbook: one authoritative device per ops domain (check-ins,
    payments, aces, scores/walk-ups).
-4. Confirm the singles tiebreak rule and ace sponsor terms; add the courts'
-   street address.
+4. Singles tiebreak is settled and published (7-point tiebreak at 6–6);
+   ace sponsor terms ($5/ace, $500 cap) still unconfirmed for public copy.
+   **When the draw locks: post real match times and update the Rules
+   "Day-of Schedule" card** (still labeled tentative/2025 timeline).
 5. Post-event: Cloudflare Access for `/admin`, token/PIN rotation, push
    delivery confirmation, admin Matches read-back, `App.jsx` split
    (backlog: audit doc §6).

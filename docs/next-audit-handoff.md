@@ -40,6 +40,10 @@ grep -riE "loser" dist/assets/ | grep -v losersBracket
   row reads grammatically in all states ("close in N days" / "closed").
   Getting There card: maps link opens the right place, parking/spectator
   lines still true, start times match Rules. Coordinator numbers current.
+  On phones, the logistics column (Coordinators / rules / Getting There)
+  stacks BEFORE the roster (CSS `order-*`); desktop keeps roster left. On
+  live day a "We're live" strip appears under the hero and must land on the
+  Brackets tab with the court board up top.
 - **PLAYER**: format-reassurance pill guarantee matches Rules and Brackets
   wording ("at least 3 matches (up to 5)").
 - **OPS**: roster "Live" badge appears; confirmed counts match the sheet;
@@ -51,14 +55,22 @@ grep -riE "loser" dist/assets/ | grep -v losersBracket
 
 ### Rules
 - **PLAYER**: BOTH events fully scored — doubles Fast-4 + tiebreak line, and
-  the singles tiebreak line (interim "confirmed at check-in" until the
-  committee supplies the real rule — replace it if still there). Sunday 8 AM
-  visible. "How are seeds decided?" FAQ present and still accurate.
+  singles "6-game no-ad sets; 7-point tiebreak at 6–6" (published
+  2026-07-07). Sunday 8 AM visible. "How are seeds decided?" FAQ present and
+  still accurate. **Event-week to-do: when the draw locks, post real match
+  times and update the "Day-of Schedule" card** (still labeled
+  tentative/2025 timeline).
 - **FAN**: check-in bullets (map, parking), rain FAQ names a channel
   (coordinator texts + live board), spectator FAQ, refund/transfer policy.
 - **OPS**: default rule (15 min late) matches what staff actually enforce.
 
 ### Brackets (`#brackets`, internal id `draws`; `#seeding` must redirect here)
+- **ALL ROLES — test both phases.** The tab is live-aware (`liveDay` flips
+  when ops posts the first match): draw week = intro/draws first; live day =
+  Court Board + Live Scores ABOVE the brackets, and Home shows a "We're
+  live" strip under the hero. In a sandbox, flip the live phase by
+  intercepting `**/api/sheet**` with fixture CSV for the Matches tab
+  (Playwright `page.route`) — the real feeds won't resolve.
 - **PLAYER**: pre-publish = every slot TBD, zero named seeds (the hardcoded
   fallback was deleted 2026-07-07 — it must never come back; seeds load only
   from `SeedBoardPublic`). Post-lock = "Final Seeds", top-8 badges only,
