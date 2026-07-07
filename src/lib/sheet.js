@@ -96,10 +96,12 @@ export const COURT_BOARD = {
 
 // Fallback shown only when ROSTER_CSV_URL is blank or the live fetch fails,
 // so neither the dashboard nor the admin panel ever renders an empty roster.
+// Coordinators only, no bios: this CAN render publicly on a failed fetch, so
+// it must stay free of inside jokes / committee-side commentary.
 export const fallbackRoster = [
-  { name: "Ashwin Yedavalli", classYear: "19", events: "Singles & Doubles", status: "Verified", bio: "what's a backhand?" },
-  { name: "Aanan Kashyap", classYear: "19", events: "Doubles", status: "Verified", bio: "Onion Ketchup." },
-  { name: "Venil Tummarakota", classYear: "Alumni", events: "Singles & Doubles", status: "Verified", bio: "Can't buy a second serve." }
+  { name: "Ashwin Yedavalli", classYear: "19", events: "Singles & Doubles", status: "Verified", bio: "" },
+  { name: "Aanan Kashyap", classYear: "19", events: "Doubles", status: "Verified", bio: "" },
+  { name: "Venil Tummarakota", classYear: "Alumni", events: "Singles & Doubles", status: "Verified", bio: "" }
 ];
 
 // Minimal RFC-4180-ish CSV parser (handles quoted fields, commas, newlines).

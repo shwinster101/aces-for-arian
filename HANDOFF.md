@@ -4,8 +4,11 @@ Purpose: give a fresh session the current shape of the project without
 re-deriving it from memory. Memorial tennis tournament: **July 11-12, 2026**,
 Dunlap HS, Peoria IL.
 
-Last regenerated: 2026-06-16 23:51 PDT. Current implementation base: `2fae536` on `main`,
-in sync with `origin/main` before the visitor-first tab/copy handoff commit.
+Last regenerated: 2026-07-07. Current implementation base: `d69aa58` on `main`
+plus the 2026-07-07 audit-fix commit on `claude/aces-ariane-audit-nit795`.
+Companion docs: `docs/audit-2026-07-07.md` (full three-persona audit +
+go-live verdict) and `docs/next-audit-handoff.md` (tab-by-tab scrub
+checklist for the next auditor).
 
 ---
 
@@ -32,7 +35,51 @@ in sync with `origin/main` before the visitor-first tab/copy handoff commit.
 
 ---
 
-## 1. Session Summary — 2026-06-16
+## 1. Session Summary — 2026-07-07 (deep audit, T-4 days)
+
+Full three-persona audit (off-site ops manager / seed-focused varsity player /
+casual fan) — findings, evidence, and the go-live verdict are in
+`docs/audit-2026-07-07.md`. Material changes in the audit-fix commit:
+
+- Public site now **re-polls Config / SeedBoardPublic / OpsStatus every ~2 min**
+  (previously fetch-once-on-mount; only Matches/Aces polled). Admin "~1 min"
+  copy corrected accordingly.
+- **Hardcoded `topSeeds` fallback deleted** from `App.jsx` — it shipped
+  committee-style joke notes about named players in the public bundle and
+  rendered named seeds while the copy claimed placeholders. Seeds now come
+  exclusively from `SeedBoardPublic`; brackets are honest TBD until published.
+- **Closed-registration state**: past July 6 the countdown reads "sign-ups
+  closed (July 6)" (was "close closed") and every Register CTA demotes to a
+  "text a coordinator about late entry" note with the form still linked.
+  (PR #14's revert to the original form was intentional — the form recovered.)
+- **False-BYE guard**: admin field-lock now warns with per-event counts when
+  registered entrants are missing from the seed list before locking.
+- **Honest push indicator**: "last push attempted" (fire-and-forget no-cors
+  can't confirm delivery); clearOps dialog now says pushed sheet data stays
+  live; admin Seeding "View live" points at `#brackets` (Projected Seeds tab
+  is gone).
+- Rules: singles tiebreak line (interim wording pending committee rule),
+  map/parking/spectator/rain-channel logistics, "How are seeds decided?" FAQ,
+  Sunday 8 AM surfaced on Home + .ics, guarantee copy unified, 2026-scholars
+  funding note.
+
+Changes NOT yet reflected here from the 2026-06-17 → 2026-07-06 span (all on
+`main`): home flyer-hero redesign, merch overhaul with real products/pricing,
+ops seeding overhaul (`src/lib/entrants.js`, field picker, seed bands,
+byes-on-lock, dnd-kit), public seed privacy (top-8 chips only, Projected
+Seeds tab removed, `#seeding` → Brackets), public word-bank seed-suggestion
+tool (token-less `idea` email pipeline), and the `seeds final` Config flag in
+Apps Script (**redeploy required** — see §8).
+
+Pre-Saturday manual checklist (owner): (1) redeploy Apps Script + end-to-end
+dry run, (2) shuffle 9-16/17-32 seed order within bands before locking,
+(3) one-authoritative-device-per-domain runbook (check-ins / payments / aces
+/ scores+walk-ups), (4) confirm singles tiebreak + ace sponsor terms,
+(5) add the courts' street address. Details: audit doc §4.
+
+---
+
+## 1b. Session Summary — 2026-06-16
 
 Material changes now on `main` from Claude-assisted commits:
 
@@ -231,8 +278,8 @@ Tabs:
 
 - Home.
 - Rules.
-- Brackets.
-- Projected Seeds.
+- Brackets (internal id `draws`; `#seeding` redirects here — the separate
+  Projected Seeds tab was removed 2026-07-06).
 - Scholarship.
 - Legacy.
 - Photos.
@@ -329,12 +376,19 @@ Dry run checklist:
 
 ## 9. Current Highest-Leverage Work
 
-1. Redeploy Apps Script as a new version so `subscribe` and `OpsStatus` sentinel filtering are enforced upstream.
-2. Do a phone dry-run on `/admin.html` and `/#home`.
-3. Decide whether `OpsStatus` should poll periodically or remain reload-based.
-4. Consider Cloudflare Access for `/admin`; current PIN/token are deterrents only.
-5. Keep `App.jsx` refactor on the radar: it is ~2k lines and should eventually split into
-   public sections/components the way admin already is.
+1. **Redeploy Apps Script as a new version** — now covers `subscribe`,
+   `OpsStatus` sentinel filtering, the `seeds final` Config flag (field
+   lock!), and the `idea` pipeline the public seed-suggestion tool uses.
+   Then run the end-to-end dry run in `docs/audit-2026-07-07.md` §4.1.
+2. Merge the audit-fix branch to `main` and hard-reload the live site
+   (go-live verdict: audit doc §5).
+3. Day-of runbook: one authoritative device per ops domain (check-ins,
+   payments, aces, scores/walk-ups).
+4. Confirm the singles tiebreak rule and ace sponsor terms; add the courts'
+   street address.
+5. Post-event: Cloudflare Access for `/admin`, token/PIN rotation, push
+   delivery confirmation, admin Matches read-back, `App.jsx` split
+   (backlog: audit doc §6).
 
 ---
 

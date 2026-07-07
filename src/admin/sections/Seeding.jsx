@@ -37,7 +37,7 @@ export default function Seeding({ participants, ops }) {
 
       <FieldPicker event={event} ops={ops} entrants={entrants} />
       <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
-      <FieldLock ops={ops} />
+      <FieldLock ops={ops} participants={participants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
     </div>
@@ -295,7 +295,7 @@ function SortableSeedRow({ row, index, issue, datalistId, patchRow, removeRow, m
 // open bracket lines read TBD; once locked they read BYE — and byes fall to
 // the top seeds first by construction (see singleElim in src/App.jsx).
 // Reads the live Config on mount so the toggle shows the real current state.
-function FieldLock({ ops }) {
+function FieldLock({ ops, participants }) {
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
@@ -312,6 +312,20 @@ function FieldLock({ ops }) {
   }, []);
 
   const flip = (next) => {
+    if (next) {
+      // False-BYE guard: locking turns every open first-round line opposite a
+      // named entrant into a public BYE, so locking with a half-built seed
+      // list hands real players byes against slots that were merely unfilled.
+      // Same seeded-key test the FieldPicker uses.
+      const missing = EVENTS.map(({ value }) => {
+        const keys = seedKeySet(ops.store.seeds[value] || []);
+        const entrants = deriveEntrants(participants, value);
+        const ambiguous = ambiguousLooseKeys(entrants);
+        const left = entrants.filter(e => !(keys.has(e.key) || (!ambiguous.has(e.looseKey) && keys.has(e.looseKey)))).length;
+        return left ? `${value}: ${left} registered ${left === 1 ? 'entrant is' : 'entrants are'} not in the seed list` : null;
+      }).filter(Boolean);
+      if (missing.length && !window.confirm(`Heads up — once locked, open bracket lines show as public BYEs.\n\n${missing.join('\n')}\n\nLock anyway?`)) return;
+    }
     setLocked(next);
     ops.pushConfig({ seedsFinal: next });
   };
@@ -325,7 +339,7 @@ function FieldLock({ ops }) {
         </div>
         <Toggle checked={locked} onChange={flip} label="Draft — open lines are TBD" activeLabel="Locked — open lines are BYEs" />
       </div>
-      <p className="text-[10px] text-zinc-600 mt-2.5">Writes “seeds final” to the sheet’s Config tab (needs the latest Apps Script deployed — or set that row to yes/no by hand; the site follows within ~1 min).</p>
+      <p className="text-[10px] text-zinc-600 mt-2.5">Writes “seeds final” to the sheet’s Config tab (needs the latest Apps Script deployed — or set that row to yes/no by hand). Open public pages re-check within ~2 min; a reload picks it up immediately — spot-check via View live.</p>
     </Card>
   );
 }
