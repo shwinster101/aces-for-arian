@@ -7,6 +7,8 @@ import {
   MATCHES_CSV_URL,
   ACES_CSV_URL,
   OPSSTATUS_CSV_URL,
+  ANNOUNCEMENTS_CSV_URL,
+  ANNOUNCE_CATEGORIES,
   SHEET_WRITE_URL,
   MERCH_ITEMS,
   MERCH_BUNDLE,
@@ -20,6 +22,7 @@ import {
   mapMatches,
   mapAces,
   mapOpsStatus,
+  mapAnnouncements,
 } from './lib/sheet';
 import { DRAW_CAP, SEED_CUT, deriveEntrants } from './lib/entrants';
 import {
@@ -40,7 +43,14 @@ import {
   X,
   ChevronRight,
   Mail,
-  Share2
+  Share2,
+  Megaphone,
+  CloudRain,
+  Swords,
+  Grid3x3,
+  Search,
+  Utensils,
+  Info
 } from 'lucide-react';
 
 // ==========================================
@@ -357,6 +367,20 @@ const SCHOLARSHIP_WINNERS = [
 
 // Flattened, captioned slides across every album.
 const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year })));
+
+// Fallback announcements — shown until the live Announcements tab returns
+// rows (same pattern as fallbackRoster), so the section launches with real
+// content even before the Apps Script redeploy that activates live posting.
+// Forecast source: weather.com for Dunlap, IL, pulled Tue 2026-07-07.
+const FALLBACK_ANNOUNCEMENTS = [
+  {
+    id: 'fallback-weather-0707',
+    ts: '2026-07-07T12:00:00-05:00',
+    event: 'Both',
+    category: 'weather',
+    message: 'Weekend outlook (as of Tue 7/7): Saturday doubles looks great — mostly sunny, high near 91°F and humid, wind SSW 5–10 mph. Bring water and sunscreen. Sunday singles is the one to watch — scattered morning thunderstorms turning more widespread through the afternoon (~86% chance of rain), high near 80°F, wind NE ~10 mph. Plan for an on-time 8 AM start with possible rain pauses; delays post here and coordinators text players.',
+  },
+];
 
 // ==========================================
 // 2. THE SINGLE SOURCE OF TRUTH (DATA)
@@ -696,6 +720,96 @@ const tabForSlug = (slug) => {
   return alias ? alias[0] : null;
 };
 
+// --- Announcements (staff posts: weather delays, schedule changes, round
+// calls, lost & found). Read from the public Announcements tab; the newest
+// post becomes a site-wide banner, the full feed lives on Home. Weather is
+// the emphasized category (amber warning styling).
+const ANNOUNCE_ICONS = {
+  weather: CloudRain,
+  schedule: Clock,
+  round: Swords,
+  courts: Grid3x3,
+  'lost-found': Search,
+  food: Utensils,
+  awards: Trophy,
+  general: Info,
+};
+const announceLabel = (key) => (ANNOUNCE_CATEGORIES.find(c => c.key === key) || {}).label || key;
+
+// "12 min ago" for fresh posts (off the 30s heartbeat), weekday + clock time
+// for older ones — day-of freshness is the whole point of an announcement.
+function announceWhen(ts, now) {
+  const t = new Date(ts).getTime();
+  if (!t) return '';
+  const mins = Math.round((now - t) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  return new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
+function AnnouncementMeta({ item, now, emphasize }) {
+  return (
+    <span className="flex items-center gap-2 flex-wrap text-[9px] font-mono font-bold uppercase tracking-wider">
+      <span className={emphasize ? 'text-[#fbbf24]' : 'text-zinc-500'}>{announceLabel(item.category)}</span>
+      {item.event && item.event !== 'Both' && (
+        <span className="text-zinc-400 border border-zinc-700 rounded px-1.5 py-px">{item.event}</span>
+      )}
+      <span className="text-zinc-600">{announceWhen(item.ts, now)}</span>
+    </span>
+  );
+}
+
+// Site-wide banner under the sticky nav — the newest non-dismissed post, on
+// EVERY tab, because a rain delay has to reach the fan on the Photos tab too.
+// Dismiss is per-post (localStorage id), so it never nags.
+function AnnouncementBanner({ item, now, onOpen, onDismiss }) {
+  const Icon = ANNOUNCE_ICONS[item.category] || Info;
+  const weather = item.category === 'weather';
+  return (
+    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 -mb-3">
+      <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${weather ? 'bg-gradient-to-r from-[#1c1408] to-[#151515] border-[#fbbf24]/40' : 'bg-[#151515] border-zinc-800'}`}>
+        <Icon className={`w-4 h-4 shrink-0 mt-1 ${weather ? 'text-[#fbbf24]' : 'text-zinc-400'}`} />
+        <button onClick={onOpen} className="flex-1 min-w-0 text-left group">
+          <AnnouncementMeta item={item} now={now} emphasize={weather} />
+          <span className="line-clamp-2 text-xs text-zinc-300 mt-1 leading-relaxed group-hover:text-white transition-colors">{item.message}</span>
+        </button>
+        <button onClick={onDismiss} aria-label="Dismiss announcement" className="shrink-0 p-1 text-zinc-600 hover:text-white transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Full feed on Home — newest first; hidden entirely when there's nothing to say.
+function AnnouncementsFeed({ items, now }) {
+  if (!items.length) return null;
+  return (
+    <div id="announcements" className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
+      <div className="flex items-center gap-3 mb-1">
+        <Megaphone className="w-5 h-5 text-[#fbbf24]" />
+        <h3 className="text-sm font-black text-white uppercase tracking-wider">Announcements</h3>
+      </div>
+      <p className="text-xs text-zinc-500 mb-4">Weather, schedule changes, round calls, lost &amp; found — posted by the coordinators, newest first.</p>
+      <div className="space-y-2.5">
+        {items.map((a) => {
+          const Icon = ANNOUNCE_ICONS[a.category] || Info;
+          const weather = a.category === 'weather';
+          return (
+            <div key={a.id || a.ts} className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${weather ? 'bg-[#1c1408] border-[#fbbf24]/30' : 'bg-[#111] border-zinc-800'}`}>
+              <Icon className={`w-4 h-4 shrink-0 mt-1 ${weather ? 'text-[#fbbf24]' : 'text-zinc-500'}`} />
+              <div className="min-w-0">
+                <AnnouncementMeta item={a} now={now} emphasize={weather} />
+                <p className="text-sm text-zinc-200 mt-1 leading-relaxed break-words">{a.message}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Public "got an idea?" box — fire-and-forget POST to the Apps Script (type
 // 'idea'), which emails the organizers. no-cors means we can't read a response,
 // so we confirm optimistically.
@@ -944,6 +1058,11 @@ export default function App() {
   const [matchesLastOkAt, setMatchesLastOkAt] = useState(0);
   const [aces, setAces] = useState(0);              // live ace count, from the "Aces" tab
   const [acesLive, setAcesLive] = useState(false);
+  const [announcements, setAnnouncements] = useState(FALLBACK_ANNOUNCEMENTS); // staff posts, newest first
+  // Per-post banner dismissal — survives reloads so the banner never nags.
+  const [dismissedAnnounce, setDismissedAnnounce] = useState(() => {
+    try { return localStorage.getItem('a4a-announce-dismissed') || ''; } catch { return ''; }
+  });
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
   const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
@@ -1057,6 +1176,27 @@ export default function App() {
         delay = 60000;
         const a = mapAces(parseCSV(text));
         if (a) { setAces(a.count); setAcesLive(true); }
+      })
+      .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
+      .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
+    load();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
+  // Staff announcements — same poll/backoff shape as Matches. 60s cadence
+  // because these are time-critical (weather holds, round calls); the edge
+  // cache absorbs the crowd. Falls back to FALLBACK_ANNOUNCEMENTS until the
+  // live tab has rows.
+  useEffect(() => {
+    if (!ANNOUNCEMENTS_CSV_URL) return;
+    let cancelled = false, timer, delay = 60000;
+    const load = () => fetch(ANNOUNCEMENTS_CSV_URL)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(text => {
+        if (cancelled) return;
+        delay = 60000;
+        const a = mapAnnouncements(parseCSV(text));
+        if (a.length) setAnnouncements(a);
       })
       .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
       .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
@@ -1361,6 +1501,23 @@ export default function App() {
         </div>
       )}
 
+      {/* Site-wide announcement banner — newest non-dismissed post, every tab */}
+      {announcements.length > 0 && announcements[0].id !== dismissedAnnounce && (
+        <AnnouncementBanner
+          item={announcements[0]}
+          now={now}
+          onOpen={() => {
+            setActiveTab('home');
+            setTimeout(() => document.getElementById('announcements')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+          }}
+          onDismiss={() => {
+            const id = announcements[0].id || '';
+            setDismissedAnnounce(id);
+            try { localStorage.setItem('a4a-announce-dismissed', id); } catch { /* private mode */ }
+          }}
+        />
+      )}
+
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8">
 
@@ -1445,6 +1602,9 @@ export default function App() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#fbbf24] shrink-0 group-hover:translate-x-0.5 transition-transform">Brackets →</span>
               </button>
             )}
+
+            {/* Announcements feed — weather first-class; hidden when empty */}
+            <AnnouncementsFeed items={announcements} now={now} />
 
             {/* Next steps: reassurance, quick actions, discreet payment note */}
             <div className="mx-auto w-full max-w-xl text-center space-y-3">
