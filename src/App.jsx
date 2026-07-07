@@ -374,11 +374,18 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // Forecast source: weather.com for Dunlap, IL, pulled Tue 2026-07-07.
 const FALLBACK_ANNOUNCEMENTS = [
   {
-    id: 'fallback-weather-0707',
-    ts: '2026-07-07T12:00:00-05:00',
-    event: 'Both',
+    id: 'fallback-weather-sun-0707',
+    ts: '2026-07-07T12:05:00-05:00',
+    event: 'Singles',
     category: 'weather',
-    message: 'Weekend outlook (as of Tue 7/7): Saturday doubles looks great — mostly sunny, high near 91°F and humid, wind SSW 5–10 mph. Bring water and sunscreen. Sunday singles is the one to watch — scattered morning thunderstorms turning more widespread through the afternoon (~86% chance of rain), high near 80°F, wind NE ~10 mph. Plan for an on-time 8 AM start with possible rain pauses; delays post here and coordinators text players.',
+    message: 'Sunday singles outlook (as of Tue 7/7): ~86% chance of rain for the day. Pre-match (6–8 AM): scattered storms — plan for an on-time 8 AM start between cells. During play: storms grow more widespread through the afternoon, so midday through the final is the highest-risk window — expect rain pauses. Evening: lingering storms possible after the last match. High ~80°F, wind NE ~10 mph. Delays post here; coordinators text players.',
+  },
+  {
+    id: 'fallback-weather-sat-0707',
+    ts: '2026-07-07T12:00:00-05:00',
+    event: 'Doubles',
+    category: 'weather',
+    message: 'Saturday doubles outlook (as of Tue 7/7): dry day — no real rain signal pre-match, during play, or in the evening. Mostly sunny, high near 91°F and humid, wind SSW 5–10 mph. Heat is the opponent: bring water and sunscreen, find shade between rounds.',
   },
 ];
 
