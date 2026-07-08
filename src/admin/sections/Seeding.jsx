@@ -4,7 +4,7 @@ import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, us
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox, Toggle } from '../ui';
-import { nextId } from '../store';
+import { nextId, isEngineRow } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, shortLabel, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot } from '../../lib/draw';
@@ -442,31 +442,61 @@ export function DrawEditor({ event, ops, namesInEvent }) {
         <EmptyState title="No matches posted yet" hint={`Add R1 matchups as seeds lock in — staff and players will see updates reflected here in real time as you edit them.`} />
       ) : (
         <div className="space-y-2">
-          {matches.map(m => (
-            <div key={m.id} className="bg-[#111] border border-zinc-800 rounded-xl p-3 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[m.status]}`} />
-                <Select value={m.round} onChange={(v) => ops.updateMatch(m.id, { round: v })} options={ROUND_PRESETS} placeholder="Round" />
-                <TextInput value={m.num} onChange={(v) => ops.updateMatch(m.id, { num: v })} placeholder="Match #" className="w-20" type="number" />
-                <Select value={m.court} onChange={(v) => ops.updateMatch(m.id, { court: v })} options={COURTS} placeholder="Court" />
-                <Select value={m.status} onChange={(v) => ops.updateMatch(m.id, { status: v })} options={STATUS_OPTIONS.map(s => s.value)} placeholder="Status" />
-                <span className="ml-auto" />
-                <IconButton icon={ChevronUp} label="Bump earlier in the order" onClick={() => ops.moveMatch(m.id, -1)} />
-                <IconButton icon={ChevronDown} label="Push later in the order" onClick={() => ops.moveMatch(m.id, 1)} />
-                <IconButton icon={Trash2} tone="danger" label="Remove match" onClick={() => ops.removeMatch(m.id)} />
+          {matches.map(m => {
+            // Bracket-managed rows: number/round/names mirror the Draw board
+            // (and the public bracket templates) — lock them here so a hand
+            // edit can't break the numbering contract or get clobbered by the
+            // next re-sync. Court + status stay editable (courtside calls).
+            const engine = isEngineRow(m);
+            return (
+              <div key={m.id} className="bg-[#111] border border-zinc-800 rounded-xl p-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[m.status]}`} />
+                  {engine ? (
+                    <>
+                      <span className="text-xs font-black font-mono text-zinc-200 bg-black border border-zinc-800 rounded-lg px-2.5 py-2">M{m.num}</span>
+                      {m.round && <span className="text-[10px] font-mono text-zinc-500 uppercase">{m.round}</span>}
+                    </>
+                  ) : (
+                    <>
+                      <Select value={m.round} onChange={(v) => ops.updateMatch(m.id, { round: v })} options={ROUND_PRESETS} placeholder="Round" />
+                      <TextInput value={m.num} onChange={(v) => ops.updateMatch(m.id, { num: v })} placeholder="Match #" className="w-20" type="number" />
+                    </>
+                  )}
+                  <Select value={m.court} onChange={(v) => ops.updateMatch(m.id, { court: v })} options={COURTS} placeholder="Court" />
+                  <Select value={m.status} onChange={(v) => ops.updateMatch(m.id, { status: v })} options={STATUS_OPTIONS.map(s => s.value)} placeholder="Status" />
+                  <span className="ml-auto" />
+                  {engine ? (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-[#fbbf24]/80 bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded-md px-2 py-1">Managed by Draw board</span>
+                  ) : (
+                    <>
+                      <IconButton icon={ChevronUp} label="Bump earlier in the order" onClick={() => ops.moveMatch(m.id, -1)} />
+                      <IconButton icon={ChevronDown} label="Push later in the order" onClick={() => ops.moveMatch(m.id, 1)} />
+                      <IconButton icon={Trash2} tone="danger" label="Remove match" onClick={() => ops.removeMatch(m.id)} />
+                    </>
+                  )}
+                </div>
+                {engine ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <span className="bg-black/50 border border-zinc-800/70 rounded-lg px-3 py-2 text-sm font-bold text-zinc-200 truncate">{m.a || 'TBD'}</span>
+                    <span className="text-zinc-600 text-xs font-bold uppercase text-center">vs</span>
+                    <span className="bg-black/50 border border-zinc-800/70 rounded-lg px-3 py-2 text-sm font-bold text-zinc-200 truncate">{m.b || 'TBD'}</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <input list={datalistId} value={m.a} onChange={(e) => ops.updateMatch(m.id, { a: e.target.value })} placeholder="Player / team A"
+                      className="bg-black border border-zinc-800 rounded-lg px-3 py-2 text-sm font-bold text-zinc-100 outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-600 placeholder:font-normal w-full" />
+                    <span className="text-zinc-600 text-xs font-bold uppercase text-center">vs</span>
+                    <input list={datalistId} value={m.b} onChange={(e) => ops.updateMatch(m.id, { b: e.target.value })} placeholder="Player / team B"
+                      className="bg-black border border-zinc-800 rounded-lg px-3 py-2 text-sm font-bold text-zinc-100 outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-600 placeholder:font-normal w-full" />
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2">
-                <input list={datalistId} value={m.a} onChange={(e) => ops.updateMatch(m.id, { a: e.target.value })} placeholder="Player / team A"
-                  className="bg-black border border-zinc-800 rounded-lg px-3 py-2 text-sm font-bold text-zinc-100 outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-600 placeholder:font-normal w-full" />
-                <span className="text-zinc-600 text-xs font-bold uppercase text-center">vs</span>
-                <input list={datalistId} value={m.b} onChange={(e) => ops.updateMatch(m.id, { b: e.target.value })} placeholder="Player / team B"
-                  className="bg-black border border-zinc-800 rounded-lg px-3 py-2 text-sm font-bold text-zinc-100 outline-none focus:border-[#fbbf24]/40 transition-colors placeholder:text-zinc-600 placeholder:font-normal w-full" />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">Match # is the playing order — courts get assigned to whoever opens next, so teams may play on different courts through the day. Use ↑ / ↓ to bump a match earlier or later (e.g. someone needs to leave early).</p>
+      <p className="text-[10px] text-zinc-600 mt-3">Match # is the playing order — courts get assigned to whoever opens next, so teams may play on different courts through the day. Use ↑ / ↓ to bump a hand-added match earlier or later (e.g. someone needs to leave early). Rows tagged “Managed by Draw board” take their number, round, and names from the generated draw — fix names there (pencil on the slot); court and status stay editable here.</p>
     </Card>
   );
 }

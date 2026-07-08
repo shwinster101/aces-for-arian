@@ -35,7 +35,51 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 FULL bracket engine (all rounds)
+## 1. Session Summary — 2026-07-08 leak fix + locked engine rows + email blast
+
+**Why:** the owner's screenshot showed the PUBLIC Live Court Board + Live
+Scores displaying real participant names pre-reveal. Root cause: ops draw
+generation pushes real rows to the Matches tab (the `match` handler IS
+deployed), and the match-derived public surfaces gated only on `matchesLive`
+— `DRAWS_PUBLIC` covered the brackets, not the boards.
+
+- **Gating fix (`src/App.jsx`)**: `useMatchBoard` (court board + find-my-match
+  + Home live strip via `liveDay`) and the Live Scores card are now ALL behind
+  `DRAWS_PUBLIC && matchesLive && matches.length`. Polling/write logic is
+  untouched — data keeps flowing, display waits; on reveal everything lights
+  at once. Verified: pre-reveal, a Matches fixture full of names renders NO
+  name anywhere on any public tab (verify13); reveal build regression 8/8
+  (verify12).
+- **RUNBOOK — stale leaked rows**: the rows already in the Matches tab carry
+  old test names. After this deploys: ops → Seeding → per event **Clear**
+  (pushes match-delete) → **Regenerate**. Any stray row pushed from another
+  device: hand-delete it in the Matches tab once.
+- **Locked engine rows (Match Order)**: rows with ids `S-`/`D-` now render
+  number/round/names as read-only text with a "Managed by Draw board" tag —
+  no ↑↓ / delete / name inputs (they'd fight the numbering contract or get
+  clobbered by re-sync). Court + status stay editable. `moveMatch` now swaps
+  numbers between hand-added rows only and no-ops on engine rows; `addMatch`
+  numbers new rows max(num)+1 so they can't collide with bracket numbers.
+- **Email blast (ops Announce tab, bottom)**: Gmail-BCC list card —
+  "Fetch from sheet" pulls the roster's email column via the Apps Script
+  `?mode=emails&token=EMAILS_TOKEN` (NEW token, separate from read/write;
+  requires redeploying the Apps Script — Manage deployments → New version),
+  manual add (comma/space/newline, validated, case-insensitive dedupe),
+  removable chips, **Copy BCC** (comma-separated, pastes straight into
+  Gmail BCC). List is device-local (`store.emails`); emails still NEVER
+  flow through the public endpoint (main bundle grep is clean).
+  ⚠️ EMAILS_TOKEN ships in the admin bundle — deterrent only, accepted
+  tradeoff; **rotate it after the event** (Announce.jsx + Apps Script).
+  ⚠️ The cross-origin fetch couldn't be exercised from this sandbox —
+  verify on the phone; manual add is the fallback either way.
+- **Courts**: 9 everywhere (SCHEDULE_DEFAULTS, ops Schedule card, copy) —
+  confirmed, no change needed.
+- Scores-tab reminder (unchanged): mark winners on the Draw board, not the
+  Scores tab — bracket re-sync overwrites winner/status on engine rows.
+
+---
+
+## 1b. Session Summary — 2026-07-07 FULL bracket engine (all rounds)
 
 `src/lib/draw.js` now models the COMPLETE tournament as a static feeder
 graph evaluated from R1 slots + a results map:

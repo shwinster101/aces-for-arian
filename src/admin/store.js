@@ -53,7 +53,13 @@ const initialStore = () => ({
   announcements: [],                         // staff posts: [{ id, ts, event, category, message }] — see postAnnouncement
   brackets: { Singles: null, Doubles: null },// generated draws (src/lib/draw.js) — see generateBracket
   schedule: { ...SCHEDULE_DEFAULTS },        // courts + per-event match minutes for the "next match" estimate
+  emails: [],                                // email-blast BCC list (Announce tab) — manual adds + sheet fetch
 });
+
+// Match Order rows managed by the bracket engine carry ids prefixed 'S-'
+// (singles) / 'D-' (doubles); their numbers mirror the public bracket
+// templates and must never be renumbered or renamed by hand.
+export const isEngineRow = (m) => /^[SD]-/.test(String((m && m.id) || ''));
 
 const publicMatchPayload = (m) => ({
   id: m.id,
@@ -88,6 +94,7 @@ function load() {
         ? { Singles: parsed.brackets.Singles || null, Doubles: parsed.brackets.Doubles || null }
         : { Singles: null, Doubles: null },
       schedule: { ...SCHEDULE_DEFAULTS, ...(parsed.schedule && typeof parsed.schedule === 'object' ? parsed.schedule : {}) },
+      emails: Array.isArray(parsed.emails) ? parsed.emails.filter(e => typeof e === 'string') : [],
     };
   } catch {
     return initialStore();
@@ -210,10 +217,12 @@ export function useOpsStore() {
   const addMatch = (event) => {
     const id = nextId();
     // Courts are assigned dynamically day-of, so the match number IS the play
-    // order — auto-assign the next slot so new matches land at the back of the
-    // queue. (See moveMatch to reorder.)
+    // order — auto-assign one past the highest number in the event so new
+    // matches land at the back of the queue and never collide with a
+    // bracket-managed number. (See moveMatch to reorder.)
     setStore(s => {
-      const n = s.matches.filter(m => m.event === event).length + 1;
+      const n = s.matches.filter(m => m.event === event)
+        .reduce((mx, m) => Math.max(mx, Number(m.num) || 0), 0) + 1;
       return { ...s, matches: [...s.matches, { id, event, round: '', num: String(n), a: '', b: '', court: '', status: 'scheduled', score: '', winner: '' }] };
     });
     return id;
@@ -237,26 +246,27 @@ export function useOpsStore() {
     // on the public Live Scores board (the row is keyed by this same id).
     pushToSheet('match-delete', { id });
   };
-  // Reorder the playing queue: move a match up/down within its event and
-  // renumber the event 1..N to the new order. The match number = play order, so
-  // bumping someone up lets a player who must leave early go sooner. Pushes
-  // every row whose number actually changed so the public queue follows.
+  // Reorder the playing queue: swap play-order numbers with the neighboring
+  // hand-added match. Bracket-managed rows (ids 'S-'/'D-') are excluded on
+  // both ends — their numbers mirror the public bracket templates and must
+  // never be renumbered here (the Draw board owns them). Pushes the rows
+  // whose numbers changed so the public queue follows.
   const moveMatch = (id, dir) => {
     let pushes = [];
     setStore(s => {
       const m = s.matches.find(x => x.id === id);
-      if (!m) return s;
-      const sibs = s.matches.filter(x => x.event === m.event)
+      if (!m || isEngineRow(m)) return s;
+      const sibs = s.matches.filter(x => x.event === m.event && !isEngineRow(x))
         .sort((x, y) => (Number(x.num) || 0) - (Number(y.num) || 0));
       const idx = sibs.findIndex(x => x.id === id);
       const j = idx + dir;
       if (j < 0 || j >= sibs.length) return s;
-      [sibs[idx], sibs[j]] = [sibs[j], sibs[idx]];
-      const newNum = new Map(sibs.map((x, i) => [x.id, String(i + 1)]));
+      const a = sibs[idx], b = sibs[j];
+      const swap = new Map([[a.id, String(b.num)], [b.id, String(a.num)]]);
       pushes = [];
       const matches = s.matches.map(x => {
-        if (!newNum.has(x.id)) return x;
-        const n = newNum.get(x.id);
+        if (!swap.has(x.id)) return x;
+        const n = swap.get(x.id);
         const next = { ...x, num: n };
         if (String(x.num) !== n) pushes.push(publicMatchPayload(next));
         return next;
@@ -394,6 +404,29 @@ export function useOpsStore() {
     if (Object.keys(clean).length) pushConfig(clean);
   };
 
+  // Email-blast BCC list (Announce tab). Local to this device — emails are
+  // PII and never pushed to the sheet or the public endpoint from here; the
+  // optional "fetch from sheet" path is a direct Apps Script read the section
+  // performs itself (mode=emails), then merges through addEmails.
+  const addEmails = (raw) => {
+    const parts = String(raw || '').split(/[\s,;]+/).map(e => e.trim()).filter(Boolean);
+    const valid = parts.filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    // Dedupe against the current snapshot so we can report how many landed
+    // (case-insensitive; the stored casing of an existing address wins).
+    const seen = new Set(store.emails.map(e => e.toLowerCase()));
+    const fresh = [];
+    for (const e of valid) {
+      const k = e.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k); fresh.push(e);
+    }
+    if (fresh.length) setStore(s => ({ ...s, emails: [...s.emails, ...fresh] }));
+    return { parsed: parts.length, valid: valid.length, added: fresh.length };
+  };
+  const removeEmail = (email) =>
+    setStore(s => ({ ...s, emails: s.emails.filter(e => e.toLowerCase() !== String(email).toLowerCase()) }));
+  const clearEmails = () => setStore(s => ({ ...s, emails: [] }));
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
@@ -421,6 +454,7 @@ export function useOpsStore() {
     postAnnouncement, deleteAnnouncement,
     generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket,
     pushPublicStatus, pushConfig, setSchedule,
+    addEmails, removeEmail, clearEmails,
     exportJSON, clearOps,
   };
 }

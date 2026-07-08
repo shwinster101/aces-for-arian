@@ -1347,13 +1347,16 @@ export default function App() {
   const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
   // The board is entirely match-derived: live once matches are posted, else a
-  // pre-tournament placeholder.
-  const useMatchBoard = matchesLive && matches.length > 0;
+  // pre-tournament placeholder. HARD GATE: no participant names render on any
+  // public surface until DRAWS_PUBLIC — ops generating/testing the draw pushes
+  // real rows to the sheet, and pre-reveal those must stay invisible here
+  // (polling keeps running so everything lights up the moment we flip).
+  const useMatchBoard = DRAWS_PUBLIC && matchesLive && matches.length > 0;
   const boardLive = useMatchBoard;
   const boardFresh = matchesFresh;
   const boardUpdated = matchesUpdated;
-  // Tournament-live switch: flips when ops posts the first match. Drives the
-  // phase-aware ordering — court board above the brackets, live strip on Home.
+  // Tournament-live switch: flips when ops posts the first match (post-
+  // reveal only). Drives the phase-aware ordering + the Home live strip.
   const liveDay = boardLive;
 
   // Schedule inputs for the "when's my next match" estimate — staff-set via
@@ -2063,8 +2066,8 @@ export default function App() {
               )}
             </div>
 
-            {/* Live scores — only appears once ops has posted at least one match */}
-            {matchesLive && matches.length > 0 && (
+            {/* Live scores — only once draws are revealed AND ops has posted a match */}
+            {DRAWS_PUBLIC && matchesLive && matches.length > 0 && (
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                   <div className="flex items-center gap-2">
