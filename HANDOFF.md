@@ -35,7 +35,42 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 schedule estimates
+## 1. Session Summary — 2026-07-07 ops-interface audit (draw → public)
+
+Audited the ops→public seams and fixed three interface gaps so "save the
+draw → reveal" displays correctly:
+
+- **Public R1 now mirrors the ops draw** (`overlayR1` in `App.jsx`): the
+  seed-derived first round is overlaid with the posted Matches rows (round
+  `R1`, matched by num+event), so drag-balanced placements and pencil name
+  fixes reach the public bracket. Unposted lines (byes) fall back to
+  seed-derived labels.
+- **One name format everywhere**: public bracket names (both events) now use
+  the shared `shortLabel` ("First L. 'YY") — same as the ops draw, court
+  board, and Live Scores. `shortTeamLabel` in App.jsx was removed.
+- **Estimate chips are R1-only** (`r1RowsFor` filters round==='R1';
+  `Bracket` passes `estFor` only to round 0; only East/Winners get it):
+  fixes num collisions where ops R2/consolation numbering overlapped public
+  Comeback/QF lines and would have cross-wired names/estimates.
+- **Theme**: ops draw-board winners now read GOLD (public convention:
+  gold = winner/final, emerald = live); match-card headers carry a maroon
+  strip. Public unchanged (already maroon/gold).
+- **Confirmed**: the `match`/`match-delete` write path is in the CURRENTLY
+  deployed Apps Script (June dry run), so saving the draw feeds the public
+  live board with NO redeploy. Redeploy still gates announce / `seeds
+  final` / schedule-config persistence.
+- Caveats (by design, documented): mark winners on the Draw board (a
+  final set only in Scores is reset to scheduled if the bracket re-syncs);
+  manual a/b edits to `S-`/`D-` Match Order rows are clobbered by the next
+  bracket re-sync.
+- Verified: 9/9 reveal simulation (DRAWS_PUBLIC temporarily true + ops-shaped
+  fixtures: override visible publicly, decoy R2/Comeback rows produce zero
+  chips, find-yourself works on short names), 6/6 ops regression, 11/11
+  hidden-state. Shipped with DRAWS_PUBLIC back to false.
+
+---
+
+## 1-se. Session Summary — 2026-07-07 schedule estimates
 
 New **"when's my next match"** estimate wired through seed → draw → schedule.
 

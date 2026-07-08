@@ -24,7 +24,7 @@ import {
   mapOpsStatus,
   mapAnnouncements,
 } from './lib/sheet';
-import { DRAW_CAP, SEED_CUT, deriveEntrants } from './lib/entrants';
+import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/entrants';
 import { estimateLabel, SCHEDULE_DEFAULTS } from './lib/schedule';
 import {
   Trophy, 
@@ -553,7 +553,9 @@ function Bracket({ rounds, names, highlight, estFor }) {
             {names ? names[ri] : roundLabel(matches.length)}
           </div>
           <div className="flex flex-col justify-around flex-1 gap-1.5">
-            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} estFor={estFor} />)}
+            {/* estFor only on round 0 — R1 is the one round whose numbering is
+                guaranteed to match the ops queue (see r1RowsFor in App). */}
+            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} estFor={ri === 0 ? estFor : undefined} />)}
           </div>
         </div>
       ))}
@@ -1312,26 +1314,12 @@ export default function App() {
     const m = (cy || '').match(/\d{2,4}/);
     return m ? `'${m[0].slice(-2)}` : (cy || '').trim();
   };
-  // Doubles bracket lines are narrow, so full "First Last & First Last" team
-  // names don't fit — compact to first names + class year ("Ashwin '17 &
-  // Ati '16"). Years come from the roster (exact full-name match, else a
-  // unique first-name match); a player we can't match just shows their first
-  // name. Singles lines keep full names — they fit.
-  const shortTeamLabel = (teamName) => {
-    const parts = (teamName || '').split(/\s*&\s*/);
-    if (parts.length < 2) return teamName;
-    return parts.map(full => {
-      const norm = full.trim().toLowerCase();
-      const first = full.trim().split(/\s+/)[0];
-      let match = roster.find(p => p.name.trim().toLowerCase() === norm);
-      if (!match) {
-        const hits = roster.filter(p => p.name.trim().split(/\s+/)[0].toLowerCase() === first.toLowerCase());
-        if (hits.length === 1) match = hits[0];
-      }
-      const tag = match ? classTag(match.classYear) : '';
-      return tag ? `${first} ${tag}` : first;
-    }).join(' & ');
-  };
+  // Bracket display names use the SAME formatter as the ops draw board
+  // (shortLabel in lib/entrants.js -> "First L. 'YY", both sides of a team),
+  // so the public draw, the court board, and Live Scores all read the same —
+  // privacy-light, with the class year, and matching what ops posts.
+  const bracketYearMap = useMemo(() => new Map(roster.map(p => [normName(p.name), p.classYear])), [roster]);
+  const publicLabel = (name) => shortLabel(name, bracketYearMap);
   // Scholarship total is staff-controlled. Config "raised" is the authoritative
   // public total; do not infer dollars from Verified entries because Verified
   // means confirmed entry, not paid. The live ace chip is a teaser/count only;
@@ -1376,12 +1364,40 @@ export default function App() {
     singlesMin: config.singlesMin || SCHEDULE_DEFAULTS.singlesMin,
     warmupMin: config.warmupMin != null ? config.warmupMin : SCHEDULE_DEFAULTS.warmupMin,
   };
-  // Estimate label for a bracket match: match the rendered draw's num+event to
-  // a live Matches row, then "~N ahead · ~min · around H:MM". Returns null when
-  // that match isn't posted yet. `now` keeps it ticking off the heartbeat.
+  // The committee-posted first round (Matches tab, round R1) keyed by match
+  // number per event. R1 is the ONE round where ops and public numbering are
+  // guaranteed to agree (both count 1..N), so it's the only round we map —
+  // later rounds use different numbering schemes on each side and matching by
+  // bare num would cross-wire them (e.g. ops R2 nums land on Comeback lines).
+  const r1RowsFor = (evt) => new Map(
+    matches
+      .filter(m => (m.event || '') === evt && String(m.round || '').trim().toUpperCase() === 'R1')
+      .map(m => [Number(m.num), m])
+  );
+
+  // Overlay the posted R1 matchups onto the seed-derived first round, so the
+  // public draw mirrors EXACTLY what ops saved — drag-balanced placements and
+  // name fixes included. Rows must already be numbered; only round 0 changes.
+  const overlayR1 = (rounds, evt) => {
+    const byNum = r1RowsFor(evt);
+    if (!byNum.size) return rounds;
+    const r1 = rounds[0].map(match => {
+      const row = byNum.get(Number(match.num));
+      if (!row) return match;
+      return {
+        ...match,
+        a: { ...match.a, name: row.a || match.a.name },
+        b: { ...match.b, name: row.b || match.b.name },
+      };
+    });
+    return [r1, ...rounds.slice(1)];
+  };
+
+  // Estimate label for a first-round bracket line ("~N ahead · ~min · around
+  // H:MM"). Null when that match isn't posted. `now` ticks off the heartbeat.
   const estForEvent = (evt) => (n) => {
     if (n == null) return null;
-    const fm = matches.find(m => (m.event || '') === evt && Number(m.num) === Number(n));
+    const fm = r1RowsFor(evt).get(Number(n));
     return fm ? estimateLabel(fm, matches, scheduleCfg, now) : null;
   };
 
@@ -1879,16 +1895,20 @@ export default function App() {
                 {(() => {
                   let next = 1;
                   return [
-                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, seedNamesFrom(seeds, 'Doubles').map(shortTeamLabel), showByes)],
+                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, seedNamesFrom(seeds, 'Doubles').map(publicLabel), showByes)],
                     ['West Draw', singleElim(8, false)],
                     ['North Draw', singleElim(4, false)],
                     ['South Draw', singleElim(4, false)],
-                  ].map(([title, rounds]) => {
+                  ].map(([title, rounds], di) => {
                     const numbered = numberSeq(rounds, next); next = numbered.next;
+                    // Only the East (seeded) draw's R1 maps 1:1 onto the ops
+                    // match numbers — overlay + estimates apply there alone.
+                    const east = di === 0;
                     return (
                       <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                         <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                        <Bracket rounds={numbered.rounds} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
+                        <Bracket rounds={east ? overlayR1(numbered.rounds, 'Doubles') : numbered.rounds}
+                          highlight={drawHighlight} estFor={east ? estForEvent('Doubles') : undefined} />
                       </div>
                     );
                   });
@@ -1911,7 +1931,7 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} highlight={drawHighlight} estFor={estForEvent('Singles')} />
+                  <Bracket rounds={overlayR1(numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles').map(publicLabel), showByes), [1, 25, 41, 53, 59]), 'Singles')} highlight={drawHighlight} estFor={estForEvent('Singles')} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
