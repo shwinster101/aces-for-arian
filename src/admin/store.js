@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL } from '../lib/sheet';
+import { buildDraw, setResult, swapUnseeded, bracketMatchRows } from '../lib/draw';
 
 // Shared-secret gate for the write-back endpoint. Must match the token checked
 // in apps-script/ops-write-back.js. It ships in the public admin bundle, so it
@@ -49,6 +50,7 @@ const initialStore = () => ({
   merch: {},                                 // inventory: key ('shirt:M' | 'sweatbands' | …) -> { order, stock }
   aces: 0,                                   // live "Ace Tracker" running total — see incrementAces/decrementAces
   announcements: [],                         // staff posts: [{ id, ts, event, category, message }] — see postAnnouncement
+  brackets: { Singles: null, Doubles: null },// generated draws (src/lib/draw.js) — see generateBracket
 });
 
 const publicMatchPayload = (m) => ({
@@ -80,6 +82,9 @@ function load() {
       merch: parsed.merch && typeof parsed.merch === 'object' ? parsed.merch : {},
       aces: typeof parsed.aces === 'number' && parsed.aces >= 0 ? parsed.aces : 0,
       announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
+      brackets: parsed.brackets && typeof parsed.brackets === 'object'
+        ? { Singles: parsed.brackets.Singles || null, Doubles: parsed.brackets.Doubles || null }
+        : { Singles: null, Doubles: null },
     };
   } catch {
     return initialStore();
@@ -297,6 +302,49 @@ export function useOpsStore() {
     pushToSheet('announce-delete', { id });
   };
 
+  // --- Generated brackets (src/lib/draw.js) --------------------------------
+  // The bracket is ops-only state (seed placement + a results map); every
+  // downstream slot is derived. On every change we RE-SYNC this event's flat
+  // Match Order rows (ids prefixed 'S-'/'D-') from the bracket: contested R1
+  // plus any next-round match whose both sides are known. Court/score entered
+  // on the Scores tab survive the re-sync (merged by id). Matches that fall
+  // away (e.g. a bracket cleared, or a swap that empties a slot) are deleted
+  // from the sheet too, so the public board never keeps a ghost row.
+  const applyBracket = (event, compute) => {
+    const prefix = event === 'Doubles' ? 'D-' : 'S-';
+    const pushes = [];
+    setStore(s => {
+      const nextBracket = compute(s);
+      const prior = new Map(s.matches.map(m => [m.id, m]));
+      const rows = bracketMatchRows(nextBracket).map(r => {
+        const p = prior.get(r.id);
+        return {
+          id: r.id, event, round: r.round, num: r.num, a: r.a, b: r.b,
+          court: p ? p.court : '', score: p ? p.score : '', status: r.status, winner: r.winner,
+        };
+      });
+      const newIds = new Set(rows.map(r => r.id));
+      const kept = s.matches.filter(m => !String(m.id).startsWith(prefix));
+      for (const r of rows) pushes.push({ type: 'match', payload: publicMatchPayload(r) });
+      for (const m of s.matches) {
+        if (String(m.id).startsWith(prefix) && !newIds.has(m.id)) pushes.push({ type: 'match-delete', payload: { id: m.id } });
+      }
+      return { ...s, brackets: { ...s.brackets, [event]: nextBracket }, matches: [...kept, ...rows] };
+    });
+    pushes.forEach(p => pushToSheet(p.type, p.payload));
+  };
+  // Auto-populate the draw from the current seed list (nearest power of 2,
+  // byes to the top seeds) and sync R1 into Match Order.
+  const generateBracket = (event) => applyBracket(event, s => buildDraw(event, s.seeds[event]));
+  // Record a match result -> winner advances, R1 loser drops to consolation.
+  const markBracketWinner = (event, matchId, side) =>
+    applyBracket(event, s => (s.brackets[event] ? setResult(s.brackets[event], matchId, side) : null));
+  // Drag-balance: swap two unseeded R1 entrants (no-op unless both draggable).
+  const swapBracketSlots = (event, i, j) =>
+    applyBracket(event, s => (s.brackets[event] ? swapUnseeded(s.brackets[event], i, j) : null));
+  // Tear the generated draw down (and its synced Match Order rows).
+  const clearBracket = (event) => applyBracket(event, () => null);
+
   // Push ONLY the display-safe registration flag (Verified/Pending) for a
   // sheet-sourced registrant, so tapping the "Confirmed" chip flips the public
   // board's badge. Intentionally separate from setOverlay (which stays local):
@@ -335,6 +383,7 @@ export function useOpsStore() {
     setMerch,
     incrementAces, decrementAces,
     postAnnouncement, deleteAnnouncement,
+    generateBracket, markBracketWinner, swapBracketSlots, clearBracket,
     pushPublicStatus, pushConfig,
     exportJSON, clearOps,
   };

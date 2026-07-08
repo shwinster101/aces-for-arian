@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole } from 'lucide-react';
-import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole, Grid3x3, Check, RotateCcw } from 'lucide-react';
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox, Toggle } from '../ui';
 import { nextId } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
+import { resolve, isDraggableSlot } from '../../lib/draw';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -39,6 +40,7 @@ export default function Seeding({ participants, ops }) {
       <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
       <FieldLock ops={ops} participants={participants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
+      <DrawBoard event={event} ops={ops} />
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
     </div>
   );
@@ -462,5 +464,153 @@ export function DrawEditor({ event, ops, namesInEvent }) {
       )}
       <p className="text-[10px] text-zinc-600 mt-3">Match # is the playing order — courts get assigned to whoever opens next, so teams may play on different courts through the day. Use ↑ / ↓ to bump a match earlier or later (e.g. someone needs to leave early).</p>
     </Card>
+  );
+}
+
+// -------------------------------------------------------------- Draw board
+// Auto-populates the bracket from the seed list (src/lib/draw.js): standard
+// seed placement, byes to the top seeds, and working feeders — winners
+// advance to the next round, R1 losers drop into consolation (Comeback for
+// singles, West for compass doubles). Unseeded R1 entrants are drag-swappable
+// to balance the draw. Generating (and every result/swap) re-syncs R1 into the
+// Match Order card above so the day-of board and scoring use one pipeline.
+function DrawBoard({ event, ops }) {
+  const bracket = ops.store.brackets[event];
+  const view = useMemo(() => resolve(bracket), [bracket]);
+  const hasSeeds = (ops.store.seeds[event] || []).some(r => (r.name || '').trim());
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const onDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const i = Number(String(active.id).replace('slot-', ''));
+    const j = Number(String(over.id).replace('slot-', ''));
+    if (Number.isInteger(i) && Number.isInteger(j)) ops.swapBracketSlots(event, i, j);
+  };
+
+  const generate = () => {
+    if (bracket && !window.confirm('Regenerate the draw from the current seed order? This resets any results and re-posts R1 to the Match Order.')) return;
+    ops.generateBracket(event);
+  };
+
+  const isDoubles = event === 'Doubles';
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Grid3x3 className="w-4 h-4 text-[#fbbf24]" /> Draw board — {event}</h3>
+        <div className="flex items-center gap-2">
+          {bracket && (
+            <button onClick={() => { if (window.confirm('Clear the generated draw and its Match Order rows?')) ops.clearBracket(event); }}
+              className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-zinc-400 bg-zinc-900 hover:text-rose-400 border border-zinc-800 rounded-lg px-3 py-1.5 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" /> Clear
+            </button>
+          )}
+          <button onClick={generate} disabled={!hasSeeds}
+            className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 disabled:opacity-30 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
+            {bracket ? <RotateCcw className="w-3.5 h-3.5" /> : <Swords className="w-3.5 h-3.5" />} {bracket ? 'Regenerate' : 'Generate draw'}
+          </button>
+        </div>
+      </div>
+
+      {!bracket ? (
+        <EmptyState icon={Grid3x3} title="No draw generated yet"
+          hint={hasSeeds ? `Tap "Generate draw" to auto-populate the ${isDoubles ? 'compass' : 'double-elimination'} bracket from the seed order — byes go to the top seeds.` : 'Build the seed order above first, then generate the draw.'} />
+      ) : (
+        <>
+          <p className="text-[11px] text-zinc-500 mb-3">
+            {view.size}-{isDoubles ? 'team' : 'player'} {isDoubles ? 'compass draw' : 'double elimination'} · {bracket.fieldCount} entered · {bracket.byeCount} bye{bracket.byeCount === 1 ? '' : 's'}. Tap a side to mark the winner — it advances, and the R1 loser drops to {view.consolLabel}. Drag the grip to swap unseeded entrants and balance the draw.
+          </p>
+
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <div className="grid sm:grid-cols-2 gap-2 mb-4">
+              {view.wr1.map(w => (
+                <div key={w.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-2.5 py-1 border-b border-zinc-800/70">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600">M{w.m + 1}</span>
+                    {w.bye && <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>}
+                  </div>
+                  <DrawSlot event={event} ops={ops} idx={2 * w.m} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
+                  <div className="h-px bg-zinc-800/70" />
+                  <DrawSlot event={event} ops={ops} idx={2 * w.m + 1} slot={w.slotB} isWinner={w.winner === 'b'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'b')} />
+                </div>
+              ))}
+            </div>
+          </DndContext>
+
+          {(view.w2.length > 0 || view.c1.length > 0) && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {view.w2.length > 0 && (
+                <FeederColumn title="Winners — Round 2" matches={view.w2} tone="amber" />
+              )}
+              {view.c1.length > 0 && (
+                <FeederColumn title={`${view.consolLabel} — Round 1`} matches={view.c1} tone="zinc" />
+              )}
+            </div>
+          )}
+        </>
+      )}
+      <p className="text-[10px] text-zinc-600 mt-3">First round + next round for now — winners advance and R1 losers feed {view ? view.consolLabel : 'consolation'}. Deeper rounds fill in as the full engine lands. R1 posts to the Match Order above (and the public board once draws are revealed).</p>
+    </Card>
+  );
+}
+
+// One R1 slot row — draggable (grip) when it holds an unseeded entrant, with a
+// "Won" button when the match is contested. Both a drag source and drop target
+// so dropping one unseeded entrant on another swaps them.
+function DrawSlot({ idx, slot, isWinner, canWin, onWin }) {
+  const draggable = isDraggableSlot(slot);
+  const drag = useDraggable({ id: `slot-${idx}`, disabled: !draggable });
+  const drop = useDroppable({ id: `slot-${idx}`, disabled: !draggable });
+  const setRefs = (el) => { drag.setNodeRef(el); drop.setNodeRef(el); };
+  const style = drag.transform ? { transform: `translate(${drag.transform.x}px, ${drag.transform.y}px)`, zIndex: 20, position: 'relative' } : undefined;
+  const seeded = slot.name && slot.seed <= SEED_CUT;
+  return (
+    <div ref={setRefs} style={style}
+      className={`flex items-center gap-2 px-2.5 py-2 ${drop.isOver && draggable ? 'bg-[#fbbf24]/10' : ''} ${isWinner ? 'bg-emerald-500/10' : ''}`}>
+      {draggable && (
+        <button {...drag.attributes} {...drag.listeners} aria-label="Drag to swap"
+          className="touch-none cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 shrink-0">
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {seeded && <span className="w-5 h-5 shrink-0 rounded bg-[#fbbf24]/10 border border-[#fbbf24]/20 text-[#fbbf24] text-[10px] font-black flex items-center justify-center">{slot.seed}</span>}
+      <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-emerald-300 font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
+        {slot.name || (slot.bye ? 'BYE' : '—')}
+      </span>
+      {canWin && (
+        <button onClick={onWin}
+          className={`shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider rounded-md px-2 py-1 min-h-8 transition-colors ${isWinner ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700'}`}>
+          {isWinner ? <><Check className="w-3 h-3" /> Won</> : 'Won'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Read-only feeder column — fills as R1 results post ("W of M3" / "L of M3"
+// placeholders until then).
+function FeederColumn({ title, matches, tone }) {
+  const dot = tone === 'amber' ? 'text-[#fbbf24]' : 'text-zinc-500';
+  return (
+    <div>
+      <div className={`text-[10px] font-black uppercase tracking-widest mb-2 ${dot}`}>{title}</div>
+      <div className="space-y-2">
+        {matches.map(m => (
+          <div key={m.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-2.5 py-1 border-b border-zinc-800/70 text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600">M{m.num}</div>
+            {[m.slotA, m.slotB].map((s, i) => (
+              <Fragment key={i}>
+                {i === 1 && <div className="h-px bg-zinc-800/70" />}
+                <div className={`px-2.5 py-2 text-sm truncate ${s.name ? 'text-zinc-200 font-bold' : 'text-zinc-600 italic'}`}>
+                  {s.name || s.from}
+                </div>
+              </Fragment>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
