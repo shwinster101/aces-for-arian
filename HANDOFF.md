@@ -35,7 +35,30 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 bracket engine (ops)
+## 1. Session Summary — 2026-07-07 schedule estimates
+
+New **"when's my next match"** estimate wired through seed → draw → schedule.
+
+- `src/lib/schedule.js` (pure): `matchEstimate`/`estimateLabel` — "~N matches
+  ahead · ~min · around H:MM" from the live match queue. Wave model: with C
+  courts, matches clear ~C at a time each ~matchMin; +warmup before the first
+  wave. Live → "On court N", final → "Final". All approximate.
+- **Inputs** (`store.schedule`, defaults 9 courts / doubles 40 / singles 50 /
+  warm-up 10): ops **Schedule card** in Seeding sets them (`setSchedule` →
+  local + `pushConfig`); `mapConfig` parses `courts` / `doubles match min` /
+  `singles match min` / `warmup min`; `writeConfig_` upserts them (**needs the
+  Apps Script redeploy** to persist for the public; defaults apply until then).
+- **Shown everywhere**: ops DrawBoard R1 match cards, public **Find my match**
+  (label now carries ahead + time), and public **bracket R1** matches
+  (`MatchCard` `estFor` chip, matched by num+event to the live row — visible
+  once DRAWS_PUBLIC is revealed). R1 numbering agrees between the ops engine
+  and the public bracket, so the interface is robust for R1; deeper rounds
+  annotate only once posted.
+- Verified 5/5 in-browser incl. courts 9→2 growing the max wait 10→160 min.
+
+---
+
+## 1-be. Session Summary — 2026-07-07 bracket engine (ops)
 
 New **bracket engine** — `src/lib/draw.js` (pure) + `store.brackets` +
 `DrawBoard` in `src/admin/sections/Seeding.jsx`. Ops-only.

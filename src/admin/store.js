@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL } from '../lib/sheet';
 import { buildDraw, setResult, swapUnseeded, renameSlot, bracketMatchRows } from '../lib/draw';
+import { SCHEDULE_DEFAULTS } from '../lib/schedule';
 
 // Shared-secret gate for the write-back endpoint. Must match the token checked
 // in apps-script/ops-write-back.js. It ships in the public admin bundle, so it
@@ -51,6 +52,7 @@ const initialStore = () => ({
   aces: 0,                                   // live "Ace Tracker" running total — see incrementAces/decrementAces
   announcements: [],                         // staff posts: [{ id, ts, event, category, message }] — see postAnnouncement
   brackets: { Singles: null, Doubles: null },// generated draws (src/lib/draw.js) — see generateBracket
+  schedule: { ...SCHEDULE_DEFAULTS },        // courts + per-event match minutes for the "next match" estimate
 });
 
 const publicMatchPayload = (m) => ({
@@ -85,6 +87,7 @@ function load() {
       brackets: parsed.brackets && typeof parsed.brackets === 'object'
         ? { Singles: parsed.brackets.Singles || null, Doubles: parsed.brackets.Doubles || null }
         : { Singles: null, Doubles: null },
+      schedule: { ...SCHEDULE_DEFAULTS, ...(parsed.schedule && typeof parsed.schedule === 'object' ? parsed.schedule : {}) },
     };
   } catch {
     return initialStore();
@@ -366,6 +369,21 @@ export function useOpsStore() {
   // the live Config tab is the source of truth, read back fresh in the section.
   const pushConfig = (patch) => pushToSheet('config', patch);
 
+  // Schedule inputs for the "when's my next match" estimate. Kept locally for
+  // instant ops display AND pushed to the public Config tab so the public
+  // estimate uses the same numbers (mirrors the scholarship-meter pattern —
+  // persists after the Apps Script redeploy; defaults apply until then).
+  const setSchedule = (patch) => {
+    const clean = {};
+    for (const k of ['courts', 'doublesMin', 'singlesMin', 'warmupMin']) {
+      if (patch[k] === '' || patch[k] === undefined) continue;
+      const n = parseInt(patch[k], 10);
+      if (!isNaN(n) && n >= 0) clean[k] = n;
+    }
+    setStore(s => ({ ...s, schedule: { ...s.schedule, ...clean } }));
+    if (Object.keys(clean).length) pushConfig(clean);
+  };
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
@@ -392,7 +410,7 @@ export function useOpsStore() {
     incrementAces, decrementAces,
     postAnnouncement, deleteAnnouncement,
     generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket,
-    pushPublicStatus, pushConfig,
+    pushPublicStatus, pushConfig, setSchedule,
     exportJSON, clearOps,
   };
 }

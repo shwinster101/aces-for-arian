@@ -242,6 +242,18 @@ export function mapConfig(rows) {
     } else if (/bar|meter|progress|scholarship/.test(key)) {
       if (truthy(val)) out.showBar = true;
       else if (falsy(val)) out.showBar = false;
+    } else if (/court/.test(key)) {
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n > 0) out.courts = n;
+    } else if (/doub/.test(key) && /min/.test(key)) {
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n > 0) out.doublesMin = n;
+    } else if (/sing/.test(key) && /min/.test(key)) {
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n > 0) out.singlesMin = n;
+    } else if (/warm/.test(key)) {
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n >= 0) out.warmupMin = n;
     }
   });
   return out;

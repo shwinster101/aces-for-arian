@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole, Grid3x3, Check, RotateCcw, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole, Grid3x3, Check, RotateCcw, Pencil, X, Clock } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -8,6 +8,7 @@ import { nextId } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, shortLabel, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot } from '../../lib/draw';
+import { estimateLabel, SCHEDULE_DEFAULTS } from '../../lib/schedule';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -44,6 +45,7 @@ export default function Seeding({ participants, ops }) {
       <FieldLock ops={ops} participants={participants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
+      <ScheduleCard ops={ops} />
     </div>
   );
 }
@@ -501,6 +503,10 @@ function DrawBoard({ event, ops, participants }) {
   };
 
   const isDoubles = event === 'Doubles';
+  // "When's this match" estimate — the bracket-node id == the flat Match Order
+  // id, so look each R1 match up in the live matches for its status/queue.
+  const matchById = useMemo(() => new Map(ops.store.matches.map(m => [m.id, m])), [ops.store.matches]);
+  const estFor = (id) => { const fm = matchById.get(id); return fm ? estimateLabel(fm, ops.store.matches, ops.store.schedule) : null; };
   return (
     <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
@@ -532,9 +538,10 @@ function DrawBoard({ event, ops, participants }) {
             <div className="grid sm:grid-cols-2 gap-2 mb-4">
               {view.wr1.map(w => (
                 <div key={w.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
-                  <div className="flex items-center justify-between px-2.5 py-1 border-b border-zinc-800/70">
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600">M{w.m + 1}</span>
-                    {w.bye && <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>}
+                  <div className="flex items-center justify-between gap-2 px-2.5 py-1 border-b border-zinc-800/70">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600 shrink-0">M{w.m + 1}</span>
+                    {w.bye ? <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>
+                      : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/80 truncate">{estFor(w.id)}</span>}
                   </div>
                   <DrawSlot event={event} ops={ops} idx={2 * w.m} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
                   <div className="h-px bg-zinc-800/70" />
@@ -644,5 +651,35 @@ function FeederColumn({ title, matches, tone }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// -------------------------------------------------------------- Schedule
+// Inputs for the public "when's my next match" estimate — courts in play and
+// average match length per event. Saved locally for instant ops display and
+// pushed to the Config tab so the public estimate matches.
+function ScheduleCard({ ops }) {
+  const sched = { ...SCHEDULE_DEFAULTS, ...(ops.store.schedule || {}) };
+  const field = (label, key, hint) => (
+    <label className="flex flex-col gap-1">
+      <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">{label}</span>
+      <input type="number" min="1" inputMode="numeric" value={sched[key]}
+        onChange={(e) => ops.setSchedule({ [key]: e.target.value })}
+        className="w-24 bg-black border border-zinc-800 rounded-lg min-h-11 px-3 text-sm font-bold text-zinc-100 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+      {hint && <span className="text-[9px] text-zinc-600">{hint}</span>}
+    </label>
+  );
+  return (
+    <Card className="p-4 sm:p-5">
+      <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-1"><Clock className="w-4 h-4 text-[#fbbf24]" /> Schedule estimate</h3>
+      <p className="text-[11px] text-zinc-500 mb-3">Drives the “~N ahead · ~min · around H:MM” note players see on the draw and in Find-my-match. Rough estimates — tune as the day runs.</p>
+      <div className="flex flex-wrap items-start gap-4">
+        {field('Courts', 'courts', 'in play')}
+        {field('Doubles min', 'doublesMin', 'per match')}
+        {field('Singles min', 'singlesMin', 'per match')}
+        {field('Warm-up min', 'warmupMin', 'first match')}
+      </div>
+      <p className="text-[10px] text-zinc-600 mt-3">Saved to this device and pushed to the public Config (needs the latest Apps Script deployed to persist for visitors).</p>
+    </Card>
   );
 }

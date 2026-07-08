@@ -25,6 +25,7 @@ import {
   mapAnnouncements,
 } from './lib/sheet';
 import { DRAW_CAP, SEED_CUT, deriveEntrants } from './lib/entrants';
+import { estimateLabel, SCHEDULE_DEFAULTS } from './lib/schedule';
 import {
   Trophy, 
   Award, 
@@ -527,19 +528,23 @@ function Slot({ slot, highlight }) {
   );
 }
 
-function MatchCard({ match, highlight }) {
+function MatchCard({ match, highlight, estFor }) {
+  const est = estFor ? estFor(match.num) : null;
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
-      <span className="w-5 shrink-0 text-right text-[8px] font-mono font-bold text-zinc-500">{match.num != null ? match.num : ''}</span>
-      <div className="w-40 md:w-44 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
-        <Slot slot={match.a} highlight={highlight} />
-        <Slot slot={match.b} highlight={highlight} />
+    <div className="flex flex-col gap-0.5 shrink-0">
+      <div className="flex items-center gap-1.5">
+        <span className="w-5 shrink-0 text-right text-[8px] font-mono font-bold text-zinc-500">{match.num != null ? match.num : ''}</span>
+        <div className="w-40 md:w-44 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
+          <Slot slot={match.a} highlight={highlight} />
+          <Slot slot={match.b} highlight={highlight} />
+        </div>
       </div>
+      {est && <div className="pl-6 text-[8px] font-bold text-[#fbbf24]/70 truncate max-w-[11.5rem]">{est}</div>}
     </div>
   );
 }
 
-function Bracket({ rounds, names, highlight }) {
+function Bracket({ rounds, names, highlight, estFor }) {
   return (
     <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-2">
       {rounds.map((matches, ri) => (
@@ -548,7 +553,7 @@ function Bracket({ rounds, names, highlight }) {
             {names ? names[ri] : roundLabel(matches.length)}
           </div>
           <div className="flex flex-col justify-around flex-1 gap-1.5">
-            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} />)}
+            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} estFor={estFor} />)}
           </div>
         </div>
       ))}
@@ -1363,16 +1368,34 @@ export default function App() {
   // phase-aware ordering — court board above the brackets, live strip on Home.
   const liveDay = boardLive;
 
+  // Schedule inputs for the "when's my next match" estimate — staff-set via
+  // the ops Schedule card (Config tab), else sensible defaults.
+  const scheduleCfg = {
+    courts: config.courts || SCHEDULE_DEFAULTS.courts,
+    doublesMin: config.doublesMin || SCHEDULE_DEFAULTS.doublesMin,
+    singlesMin: config.singlesMin || SCHEDULE_DEFAULTS.singlesMin,
+    warmupMin: config.warmupMin != null ? config.warmupMin : SCHEDULE_DEFAULTS.warmupMin,
+  };
+  // Estimate label for a bracket match: match the rendered draw's num+event to
+  // a live Matches row, then "~N ahead · ~min · around H:MM". Returns null when
+  // that match isn't posted yet. `now` keeps it ticking off the heartbeat.
+  const estForEvent = (evt) => (n) => {
+    if (n == null) return null;
+    const fm = matches.find(m => (m.event || '') === evt && Number(m.num) === Number(n));
+    return fm ? estimateLabel(fm, matches, scheduleCfg, now) : null;
+  };
+
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
     ? matches.filter(m => `${m.a || ''} ${m.b || ''}`.toLowerCase().includes(matchQuery.trim().toLowerCase()))
     : [];
-  const matchWhere = (m) =>
-    m.status === 'live' ? { label: `On Court ${m.court} now`, cls: 'text-emerald-400' }
-    : m.status === 'final' ? { label: `Final${m.score ? ` · ${m.score}` : ''}`, cls: 'text-[#fbbf24]' }
-    : queuePos.get(m) === 1 ? { label: 'On deck · up next', cls: 'text-emerald-400/80' }
-    : queuePos.has(m) ? { label: `Up next · #${queuePos.get(m)} in line`, cls: 'text-zinc-100' }
-    : { label: 'Scheduled', cls: 'text-zinc-400' };
+  const matchWhere = (m) => ({
+    label: estimateLabel(m, matches, scheduleCfg, now),
+    cls: m.status === 'live' ? 'text-emerald-400'
+      : m.status === 'final' ? 'text-[#fbbf24]'
+      : queuePos.get(m) === 1 ? 'text-emerald-400/80'
+      : 'text-zinc-100',
+  });
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] text-zinc-200 font-sans flex flex-col selection:bg-[#fbbf24] selection:text-[#5c1313]">
@@ -1865,7 +1888,7 @@ export default function App() {
                     return (
                       <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                         <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                        <Bracket rounds={numbered.rounds} highlight={drawHighlight} />
+                        <Bracket rounds={numbered.rounds} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
                       </div>
                     );
                   });
@@ -1888,7 +1911,7 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} highlight={drawHighlight} />
+                  <Bracket rounds={numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles'), showByes), [1, 25, 41, 53, 59])} highlight={drawHighlight} estFor={estForEvent('Singles')} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
