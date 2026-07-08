@@ -23,6 +23,36 @@ export const DRAW_CAP = { Singles: 32, Doubles: 16 };
 // Title-case a free-text partner name the same way mapRoster does.
 const titleCase = (s) => (s || '').trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
+// Class year -> "'17" tag (mirrors classTag in src/App.jsx). Two-to-four
+// digit years collapse to a 2-digit apostrophe form; anything else (e.g.
+// "Alumni") passes through trimmed.
+export const classTag = (cy) => {
+  const m = (cy || '').match(/\d{2,4}/);
+  return m ? `'${m[0].slice(-2)}` : (cy || '').trim();
+};
+
+// Privacy-light display name for the generated draw: "First L. 'YY"
+// (first token + last-token initial + class-year tag). Graceful when there's
+// no last name ("Usher '17") or no year ("Ashwin Y."). classYear is optional.
+export function shortName(fullName, classYear) {
+  const toks = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (!toks.length) return '';
+  const first = toks[0];
+  const initial = toks.length > 1 ? ` ${toks[toks.length - 1][0].toUpperCase()}.` : '';
+  const yr = classTag(classYear);
+  return `${first}${initial}${yr ? ` ${yr}` : ''}`;
+}
+
+// Draw label for a seed entry — formats singles names and both sides of a
+// "A & B" doubles team, looking up each person's year in yearMap (a
+// Map(normName -> classYear) built from the roster).
+export function shortLabel(name, yearMap) {
+  const team = splitTeamName(name);
+  const yr = (n) => (yearMap && yearMap.get(normName(n))) || '';
+  if (team) return team.map(m => shortName(m, yr(m))).join(' & ');
+  return shortName(name, yr(name));
+}
+
 // Split "A & B" / "A and B" / "A + B" / "A / B" into the two sides.
 export function splitTeamName(s) {
   const parts = (s || '').split(/\s*(?:&|\+|\/|,|\band\b)\s*/i).map(p => p.trim()).filter(Boolean);

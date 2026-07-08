@@ -66,17 +66,26 @@ export const CONSOL_LABEL = { Singles: 'Comeback', Doubles: 'West' };
 export const isDraggableSlot = (s) => !!(s && s.name && !s.bye && s.seed > SEED_CUT);
 
 // Build the bracket from the ops seed list. Returns null if <2 entrants.
-export function buildDraw(event, seedList) {
+// opts.labelFor(fullName) -> display name (e.g. "First L. 'YY"); defaults to
+// the raw name. opts.overrides is a { canonicalKey -> customName } map that
+// wins over the formatted default (preserved across Regenerate so a name
+// fix — profanity/typo — sticks). Each slot carries raw (the seed-list name,
+// for key/lookup), def (the formatted default), and name (override ?? def).
+export function buildDraw(event, seedList, opts = {}) {
+  const labelFor = opts.labelFor || ((s) => s);
+  const overrides = opts.overrides || {};
   const field = fieldFromSeeds(seedList);
   const n = field.length;
   if (n < 2) return null;
   const size = nextPow2(n);
   const order = seedOrder(size); // slot -> seed number 1..size
-  const r1slots = order.map((seedNum) => ({
-    name: seedNum <= n ? field[seedNum - 1] : null, // null tail = byes
-    seed: seedNum,
-    bye: seedNum > n,
-  }));
+  const r1slots = order.map((seedNum) => {
+    if (seedNum > n) return { name: null, def: null, key: null, raw: null, seed: seedNum, bye: true };
+    const raw = field[seedNum - 1];
+    const key = rowKeys(raw).key;
+    const def = labelFor(raw);
+    return { name: overrides[key] || def, def, key, raw, seed: seedNum, bye: false };
+  });
   return {
     event,
     size,
@@ -85,6 +94,7 @@ export function buildDraw(event, seedList) {
     format: event === 'Doubles' ? 'compass' : 'double-elim',
     consolLabel: CONSOL_LABEL[event] || 'Comeback',
     r1slots,
+    overrides: { ...overrides },
     results: {}, // matchId -> 'a' | 'b'
   };
 }
@@ -161,17 +171,31 @@ export function clearResult(bracket, matchId) {
 }
 
 // Swap two unseeded R1 entrants to balance the draw. No-op unless BOTH slots
-// are draggable (real, non-seed, non-bye). The entrant identity moves; the
-// slot's seed number stays with its bracket position.
+// are draggable (real, non-seed, non-bye). The entrant IDENTITY moves
+// (name/def/key/raw); the slot's seed number stays with its bracket position.
 export function swapUnseeded(bracket, i, j) {
   if (i === j) return bracket;
   const a = bracket.r1slots[i];
   const b = bracket.r1slots[j];
   if (!isDraggableSlot(a) || !isDraggableSlot(b)) return bracket;
+  const move = (from, to) => ({ ...to, name: from.name, def: from.def, key: from.key, raw: from.raw });
   const r1slots = bracket.r1slots.slice();
-  r1slots[i] = { ...a, name: b.name };
-  r1slots[j] = { ...b, name: a.name };
+  r1slots[i] = move(b, a);
+  r1slots[j] = move(a, b);
   return { ...bracket, r1slots };
+}
+
+// Override (or clear, with an empty value) a slot's display name — the fix
+// for a profane/typo/nickname registration. Keyed by the entrant's canonical
+// key so it survives a Regenerate. No-op on byes/empty slots.
+export function renameSlot(bracket, idx, value) {
+  const slot = bracket.r1slots[idx];
+  if (!slot || !slot.key) return bracket;
+  const v = (value || '').trim();
+  const overrides = { ...bracket.overrides };
+  if (v) overrides[slot.key] = v; else delete overrides[slot.key];
+  const r1slots = bracket.r1slots.map((s, i) => (i === idx ? { ...s, name: v || s.def } : s));
+  return { ...bracket, overrides, r1slots };
 }
 
 // All bracket matches ready to post to the flat Match Order (store.matches) —

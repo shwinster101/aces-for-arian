@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole, Grid3x3, Check, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Swords, Users2, GripVertical, ListChecks, LockKeyhole, Grid3x3, Check, RotateCcw, Pencil, X } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox, Toggle } from '../ui';
 import { nextId } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
-import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
+import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, shortLabel, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot } from '../../lib/draw';
 
 const EVENTS = [
@@ -40,7 +40,7 @@ export default function Seeding({ participants, ops }) {
           secondary tools (lock, partners) and the raw match order. */}
       <FieldPicker event={event} ops={ops} entrants={entrants} />
       <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
-      <DrawBoard event={event} ops={ops} />
+      <DrawBoard event={event} ops={ops} participants={participants} />
       <FieldLock ops={ops} participants={participants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
@@ -476,10 +476,13 @@ export function DrawEditor({ event, ops, namesInEvent }) {
 // singles, West for compass doubles). Unseeded R1 entrants are drag-swappable
 // to balance the draw. Generating (and every result/swap) re-syncs R1 into the
 // Match Order card above so the day-of board and scoring use one pipeline.
-function DrawBoard({ event, ops }) {
+function DrawBoard({ event, ops, participants }) {
   const bracket = ops.store.brackets[event];
   const view = useMemo(() => resolve(bracket), [bracket]);
   const hasSeeds = (ops.store.seeds[event] || []).some(r => (r.name || '').trim());
+  // Roster year lookup -> privacy-light "First L. 'YY" draw labels.
+  const yearMap = useMemo(() => new Map(participants.map(p => [normName(p.name), p.classYear])), [participants]);
+  const labelFor = (name) => shortLabel(name, yearMap);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -493,8 +496,8 @@ function DrawBoard({ event, ops }) {
   };
 
   const generate = () => {
-    if (bracket && !window.confirm('Regenerate the draw from the current seed order? This resets any results and re-posts R1 to the Match Order.')) return;
-    ops.generateBracket(event);
+    if (bracket && !window.confirm('Regenerate the draw from the current seed order? This resets any results and re-posts R1 to the Match Order. (Name edits are kept.)')) return;
+    ops.generateBracket(event, labelFor);
   };
 
   const isDoubles = event === 'Doubles';
@@ -558,34 +561,61 @@ function DrawBoard({ event, ops }) {
   );
 }
 
-// One R1 slot row — draggable (grip) when it holds an unseeded entrant, with a
-// "Won" button when the match is contested. Both a drag source and drop target
-// so dropping one unseeded entrant on another swaps them.
-function DrawSlot({ idx, slot, isWinner, canWin, onWin }) {
+// One R1 slot row — draggable (grip) when it holds an unseeded entrant, a
+// pencil to fix the display name (profanity/typo/nickname), and a "Won"
+// button when the match is contested. Both a drag source and drop target so
+// dropping one unseeded entrant on another swaps them.
+function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
   const draggable = isDraggableSlot(slot);
-  const drag = useDraggable({ id: `slot-${idx}`, disabled: !draggable });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const drag = useDraggable({ id: `slot-${idx}`, disabled: !draggable || editing });
   const drop = useDroppable({ id: `slot-${idx}`, disabled: !draggable });
   const setRefs = (el) => { drag.setNodeRef(el); drop.setNodeRef(el); };
   const style = drag.transform ? { transform: `translate(${drag.transform.x}px, ${drag.transform.y}px)`, zIndex: 20, position: 'relative' } : undefined;
   const seeded = slot.name && slot.seed <= SEED_CUT;
+  const canRename = !!slot.name && !slot.bye;
+
+  const startEdit = () => { setDraft(slot.name || ''); setEditing(true); };
+  const commit = () => { ops.renameBracketSlot(event, idx, draft); setEditing(false); };
+  const cancel = () => setEditing(false);
+
   return (
     <div ref={setRefs} style={style}
       className={`flex items-center gap-2 px-2.5 py-2 ${drop.isOver && draggable ? 'bg-[#fbbf24]/10' : ''} ${isWinner ? 'bg-emerald-500/10' : ''}`}>
-      {draggable && (
+      {draggable && !editing && (
         <button {...drag.attributes} {...drag.listeners} aria-label="Drag to swap"
           className="touch-none cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 shrink-0">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
       )}
       {seeded && <span className="w-5 h-5 shrink-0 rounded bg-[#fbbf24]/10 border border-[#fbbf24]/20 text-[#fbbf24] text-[10px] font-black flex items-center justify-center">{slot.seed}</span>}
-      <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-emerald-300 font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
-        {slot.name || (slot.bye ? 'BYE' : '—')}
-      </span>
-      {canWin && (
-        <button onClick={onWin}
-          className={`shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider rounded-md px-2 py-1 min-h-8 transition-colors ${isWinner ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700'}`}>
-          {isWinner ? <><Check className="w-3 h-3" /> Won</> : 'Won'}
-        </button>
+      {editing ? (
+        <>
+          <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') cancel(); }}
+            aria-label="Edit display name"
+            className="flex-1 min-w-0 bg-black border border-[#fbbf24]/40 rounded px-2 py-1 text-sm text-zinc-100 outline-none" />
+          <button onClick={commit} aria-label="Save name" className="shrink-0 min-h-8 px-1.5 text-emerald-400 hover:text-emerald-300"><Check className="w-4 h-4" /></button>
+          <button onClick={cancel} aria-label="Cancel" className="shrink-0 min-h-8 px-1.5 text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
+        </>
+      ) : (
+        <>
+          <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-emerald-300 font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
+            {slot.name || (slot.bye ? 'BYE' : '—')}
+          </span>
+          {canRename && (
+            <button onClick={startEdit} aria-label="Edit name" className="shrink-0 min-h-8 px-1 text-zinc-600 hover:text-[#fbbf24] transition-colors">
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {canWin && (
+            <button onClick={onWin}
+              className={`shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider rounded-md px-2 py-1 min-h-8 transition-colors ${isWinner ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700'}`}>
+              {isWinner ? <><Check className="w-3 h-3" /> Won</> : 'Won'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

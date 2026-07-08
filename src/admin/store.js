@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL } from '../lib/sheet';
-import { buildDraw, setResult, swapUnseeded, bracketMatchRows } from '../lib/draw';
+import { buildDraw, setResult, swapUnseeded, renameSlot, bracketMatchRows } from '../lib/draw';
 
 // Shared-secret gate for the write-back endpoint. Must match the token checked
 // in apps-script/ops-write-back.js. It ships in the public admin bundle, so it
@@ -334,14 +334,22 @@ export function useOpsStore() {
     pushes.forEach(p => pushToSheet(p.type, p.payload));
   };
   // Auto-populate the draw from the current seed list (nearest power of 2,
-  // byes to the top seeds) and sync R1 into Match Order.
-  const generateBracket = (event) => applyBracket(event, s => buildDraw(event, s.seeds[event]));
+  // byes to the top seeds) and sync R1 into Match Order. labelFor formats the
+  // display name ("First L. 'YY"); prior name overrides are preserved so a
+  // Regenerate keeps last-minute name fixes.
+  const generateBracket = (event, labelFor) =>
+    applyBracket(event, s => buildDraw(event, s.seeds[event], { labelFor, overrides: s.brackets[event] ? s.brackets[event].overrides : {} }));
   // Record a match result -> winner advances, R1 loser drops to consolation.
   const markBracketWinner = (event, matchId, side) =>
     applyBracket(event, s => (s.brackets[event] ? setResult(s.brackets[event], matchId, side) : null));
   // Drag-balance: swap two unseeded R1 entrants (no-op unless both draggable).
   const swapBracketSlots = (event, i, j) =>
     applyBracket(event, s => (s.brackets[event] ? swapUnseeded(s.brackets[event], i, j) : null));
+  // Override an individual entrant's display name (profanity/typo/nickname).
+  // Propagates through advancement + the Match Order sync (so the public
+  // board never shows the bad name) and survives a Regenerate.
+  const renameBracketSlot = (event, idx, value) =>
+    applyBracket(event, s => (s.brackets[event] ? renameSlot(s.brackets[event], idx, value) : null));
   // Tear the generated draw down (and its synced Match Order rows).
   const clearBracket = (event) => applyBracket(event, () => null);
 
@@ -383,7 +391,7 @@ export function useOpsStore() {
     setMerch,
     incrementAces, decrementAces,
     postAnnouncement, deleteAnnouncement,
-    generateBracket, markBracketWinner, swapBracketSlots, clearBracket,
+    generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket,
     pushPublicStatus, pushConfig,
     exportJSON, clearOps,
   };
