@@ -390,6 +390,13 @@ function writeConfig_(payload) {
   };
   upsert(/raised|funding|amount|current/, 'raised', payload.raised);
   upsert(/goal|target/, 'goal', payload.goal);
+  // Schedule inputs for the public "when's my next match" estimate — same
+  // fuzzy keys mapConfig reads (courts / doubles match min / singles match
+  // min / warmup min).
+  upsert(/court/, 'courts', payload.courts);
+  upsert(/doub.*min/, 'doubles match min', payload.doublesMin);
+  upsert(/sing.*min/, 'singles match min', payload.singlesMin);
+  upsert(/warm/, 'warmup min', payload.warmupMin);
   // Yes/no flags get their own upsert (the numeric one above would mangle
   // them). "seeds final" flips the public board to Final Seeds and turns
   // open first-round bracket lines into BYEs — same fuzzy key mapConfig reads.
