@@ -1,27 +1,33 @@
 // ==========================================
-// BRACKET ENGINE — ops-only draw generation + advancement
+// BRACKET ENGINE — full draw generation + advancement (ops-only)
 // ==========================================
-// Turns the ops seed list into a real bracket: standard seed placement, byes
-// to the top seeds, and working feeders (winners advance, round-1 losers drop
-// into consolation). Pure functions, no store/DOM/sheet access — the admin
-// DrawBoard renders resolve() and mutates via setResult/swapUnseeded.
+// Turns the ops seed list into a complete tournament: standard seed
+// placement, byes to the top seeds, and working feeders for EVERY round —
+// the full compass draw for doubles (East → West/North/South drop routing)
+// and full double elimination for singles (winners rounds, the complete
+// Comeback backdraw, Grand Final + bracket reset).
 //
 // State is deliberately minimal: the R1 slot assignment (`r1slots`) plus a
-// results map (matchId -> winning side). EVERY downstream slot (Winners R2,
-// Consolation R1) is DERIVED by resolve() from those two, so re-marking a
-// result can never leave a stale name propagated downstream — the classic
-// bracket bug. Deeper rounds (WB R3+, Comeback R2+, North/South) are the
-// Friday build; the model already carries the feeder links they need.
+// results map (matchId -> winning side). EVERY downstream slot is DERIVED by
+// resolve() from a static feeder graph, so re-marking a result can never
+// leave a stale name propagated downstream. Byes cascade as walkovers: a
+// side whose source can never produce a player is "dead", and a match with
+// one live side auto-advances it.
+//
+// NUMBERING CONTRACT: match numbers mirror the PUBLIC bracket templates in
+// src/App.jsx exactly (doubles: East 1-15, West 16-22, North 23-25, South
+// 26-28 via numberSeq; singles: winners start [1,25,41,53,59], comeback
+// [17,33,45,49,55,57,60,61], Grand Final 62, reset 63). That is what lets
+// the public draw overlay ops-posted rows onto ANY round's lines by
+// num+event. Change one side and you must change the other.
 
-import { rowKeys, SEED_CUT } from './entrants';
+import { rowKeys, SEED_CUT, DRAW_CAP } from './entrants';
 
-// Smallest power of two >= n (min 2). 12 -> 16, 16 -> 16, 17 -> 32.
+// Smallest power of two >= n (min 2). Kept for tooling; buildDraw itself now
+// always uses the full event size (see below).
 export const nextPow2 = (n) => { let p = 2; while (p < n) p *= 2; return p; };
 
-// Standard single-elim seed placement — MIRRORS seedOrder() in src/App.jsx
-// (kept in sync by hand; both must agree so ops and public place seeds
-// identically). slot i (0-based) holds seed number order[i]: 1 v N, then
-// 2 v N-1 nested so top seeds only meet in the final rounds.
+// Standard single-elim seed placement — MIRRORS seedOrder() in src/App.jsx.
 export function seedOrder(n) {
   let seeds = [1, 2];
   while (seeds.length < n) {
@@ -33,19 +39,16 @@ export function seedOrder(n) {
   return seeds;
 }
 
-// Winners round-1 match m (0-based) -> its consolation round-1 slot. Cross-half
-// pairing: the top half of WB R1 losers fills the A slots, the bottom half the
-// B slots, so a consol match pairs a top-region loser with a bottom-region one
-// (delays rematches). consolCount = size/4.
+// Winners/East round-1 match m (0-based) -> consolation round-1 feed.
+// Cross-half pairing (top-half losers take the A slots) to delay rematches.
 export function loserRoute(size, m) {
   const consolCount = size / 4;
   return { match: m % consolCount, side: m < consolCount ? 'a' : 'b' };
 }
 
-// The ops seed list -> ordered, de-duped names (seed 1 first). Blank rows and
-// repeat entrants (same person/team, any partner order) are dropped via the
-// canonical key from entrants.js.
-function fieldFromSeeds(seedList) {
+// The ops seed list -> ordered, de-duped names (seed 1 first), capped to the
+// event's draw size (entries beyond the cap are alternates).
+function fieldFromSeeds(seedList, cap) {
   const seen = new Set();
   const out = [];
   for (const row of seedList || []) {
@@ -55,30 +58,29 @@ function fieldFromSeeds(seedList) {
     if (seen.has(k)) continue;
     seen.add(k);
     out.push(name);
+    if (out.length >= cap) break;
   }
   return out;
 }
 
 export const CONSOL_LABEL = { Singles: 'Comeback', Doubles: 'West' };
 
-// A slot is draggable when it holds a real, non-seeded entrant (seeds 1..8 and
-// byes are fixed) — that's the "balance the unseeded" affordance.
+// A slot is draggable when it holds a real, non-seeded entrant (seeds 1..8
+// and byes are fixed) — the "balance the unseeded" affordance.
 export const isDraggableSlot = (s) => !!(s && s.name && !s.bye && s.seed > SEED_CUT);
 
 // Build the bracket from the ops seed list. Returns null if <2 entrants.
-// opts.labelFor(fullName) -> display name (e.g. "First L. 'YY"); defaults to
-// the raw name. opts.overrides is a { canonicalKey -> customName } map that
-// wins over the formatted default (preserved across Regenerate so a name
-// fix — profanity/typo — sticks). Each slot carries raw (the seed-list name,
-// for key/lookup), def (the formatted default), and name (override ?? def).
+// The draw is ALWAYS the full event size (DRAW_CAP: 32 singles / 16 doubles)
+// so ops numbering lines up with the fixed public templates; short fields
+// simply carry more byes, which cascade as walkovers.
 export function buildDraw(event, seedList, opts = {}) {
   const labelFor = opts.labelFor || ((s) => s);
   const overrides = opts.overrides || {};
-  const field = fieldFromSeeds(seedList);
+  const size = DRAW_CAP[event] || nextPow2((seedList || []).length || 2);
+  const field = fieldFromSeeds(seedList, size);
   const n = field.length;
   if (n < 2) return null;
-  const size = nextPow2(n);
-  const order = seedOrder(size); // slot -> seed number 1..size
+  const order = seedOrder(size);
   const r1slots = order.map((seedNum) => {
     if (seedNum > n) return { name: null, def: null, key: null, raw: null, seed: seedNum, bye: true };
     const raw = field[seedNum - 1];
@@ -99,80 +101,209 @@ export function buildDraw(event, seedList, opts = {}) {
   };
 }
 
-const evPrefix = (event) => (event === 'Doubles' ? 'D' : 'S');
-export const wr1Id = (event, m) => `${evPrefix(event)}-W1-${m}`;
-export const wr2Id = (event, m) => `${evPrefix(event)}-W2-${m}`;
-export const cr1Id = (event, m) => `${evPrefix(event)}-C1-${m}`;
+// ---------------------------------------------------------------------------
+// STATIC FEEDER GRAPH — one match descriptor per playable match, in
+// evaluation (and play) order. aFrom/bFrom are either { slot } (an R1 slot
+// index) or { kind: 'winner'|'loser', ref: <matchId> }.
+// ---------------------------------------------------------------------------
+function graphFor(event) {
+  const matches = [];
+  const sections = [];
+  let section = null;
+  const open = (key, title) => { section = { key, title, ids: [] }; sections.push(section); };
+  const add = (id, roundTag, num, aFrom, bFrom, extra = {}) => {
+    matches.push({ id, roundTag, num, aFrom, bFrom, section: section.key, ...extra });
+    section.ids.push(id);
+  };
+  const Wof = (ref) => ({ kind: 'winner', ref });
+  const Lof = (ref) => ({ kind: 'loser', ref });
 
-// Derive the render-ready columns (Winners R1, Winners R2, Consolation R1)
-// with every known slot filled. This build surfaces R1 + the next round.
+  if (event === 'Doubles') {
+    // Compass, 16 teams. East all rounds; E R1 losers -> West; E QF losers ->
+    // North; West R1 losers -> South. Numbers = public numberSeq chain.
+    const E = (r, k) => `D-E${r}-${k}`, W = (r, k) => `D-W${r}-${k}`;
+    const N = (r, k) => `D-N${r}-${k}`, S = (r, k) => `D-S${r}-${k}`;
+    open('E1', 'East — Round of 16');
+    for (let k = 0; k < 8; k++) add(E(1, k), 'R1', k + 1, { slot: 2 * k }, { slot: 2 * k + 1 });
+    open('E2', 'East — Quarterfinals');
+    for (let k = 0; k < 4; k++) add(E(2, k), 'QF', 9 + k, Wof(E(1, 2 * k)), Wof(E(1, 2 * k + 1)));
+    open('E3', 'East — Semifinals');
+    for (let k = 0; k < 2; k++) add(E(3, k), 'SF', 13 + k, Wof(E(2, 2 * k)), Wof(E(2, 2 * k + 1)));
+    open('E4', 'East — Final');
+    add(E(4, 0), 'F', 15, Wof(E(3, 0)), Wof(E(3, 1)));
+    open('W1', 'West — Round 1');
+    for (let k = 0; k < 4; k++) add(W(1, k), 'West R1', 16 + k, Lof(E(1, k)), Lof(E(1, k + 4))); // loserRoute(16,·) cross-half
+    open('W2', 'West — Semifinals');
+    for (let k = 0; k < 2; k++) add(W(2, k), 'West SF', 20 + k, Wof(W(1, 2 * k)), Wof(W(1, 2 * k + 1)));
+    open('W3', 'West — Final');
+    add(W(3, 0), 'West F', 22, Wof(W(2, 0)), Wof(W(2, 1)));
+    open('N1', 'North — Semifinals');
+    for (let k = 0; k < 2; k++) add(N(1, k), 'North SF', 23 + k, Lof(E(2, 2 * k)), Lof(E(2, 2 * k + 1)));
+    open('N2', 'North — Final');
+    add(N(2, 0), 'North F', 25, Wof(N(1, 0)), Wof(N(1, 1)));
+    open('S1', 'South — Semifinals');
+    for (let k = 0; k < 2; k++) add(S(1, k), 'South SF', 26 + k, Lof(W(1, 2 * k)), Lof(W(1, 2 * k + 1)));
+    open('S2', 'South — Final');
+    add(S(2, 0), 'South F', 28, Wof(S(1, 0)), Wof(S(1, 1)));
+    return { matches, sections };
+  }
+
+  // Singles: full 32 double elimination. Winners W1..W5; Comeback L1..L8
+  // (pair-up rounds alternate with drop-in rounds; drop-ins reversed to delay
+  // rematches); Grand Final + reset. Numbers mirror the public 1-62(+63).
+  const W = (r, k) => `S-W${r}-${k}`, L = (r, k) => `S-L${r}-${k}`;
+  open('W1', 'Winners — Round 1');
+  for (let k = 0; k < 16; k++) add(W(1, k), 'R1', 1 + k, { slot: 2 * k }, { slot: 2 * k + 1 });
+  open('W2', 'Winners — Round 2');
+  for (let k = 0; k < 8; k++) add(W(2, k), 'R2', 25 + k, Wof(W(1, 2 * k)), Wof(W(1, 2 * k + 1)));
+  open('W3', 'Winners — Round 3');
+  for (let k = 0; k < 4; k++) add(W(3, k), 'R3', 41 + k, Wof(W(2, 2 * k)), Wof(W(2, 2 * k + 1)));
+  open('W4', 'Winners — Semifinals');
+  for (let k = 0; k < 2; k++) add(W(4, k), 'SF', 53 + k, Wof(W(3, 2 * k)), Wof(W(3, 2 * k + 1)));
+  open('W5', 'Winners — Final');
+  add(W(5, 0), 'F', 59, Wof(W(4, 0)), Wof(W(4, 1)));
+  open('L1', 'Comeback — Round 1');
+  for (let k = 0; k < 8; k++) add(L(1, k), 'Comeback R1', 17 + k, Lof(W(1, k)), Lof(W(1, k + 8))); // loserRoute(32,·)
+  open('L2', 'Comeback — Round 2');
+  for (let k = 0; k < 8; k++) add(L(2, k), 'Comeback R2', 33 + k, Wof(L(1, k)), Lof(W(2, 7 - k))); // reversed drop
+  open('L3', 'Comeback — Round 3');
+  for (let k = 0; k < 4; k++) add(L(3, k), 'Comeback R3', 45 + k, Wof(L(2, 2 * k)), Wof(L(2, 2 * k + 1)));
+  open('L4', 'Comeback — Round 4');
+  for (let k = 0; k < 4; k++) add(L(4, k), 'Comeback R4', 49 + k, Wof(L(3, k)), Lof(W(3, 3 - k))); // reversed drop
+  open('L5', 'Comeback — Round 5');
+  for (let k = 0; k < 2; k++) add(L(5, k), 'Comeback R5', 55 + k, Wof(L(4, 2 * k)), Wof(L(4, 2 * k + 1)));
+  open('L6', 'Comeback — Round 6');
+  for (let k = 0; k < 2; k++) add(L(6, k), 'Comeback R6', 57 + k, Wof(L(5, k)), Lof(W(4, 1 - k))); // reversed drop
+  open('L7', 'Comeback — Round 7');
+  add(L(7, 0), 'Comeback R7', 60, Wof(L(6, 0)), Wof(L(6, 1)));
+  open('L8', 'Comeback — Final');
+  add(L(8, 0), 'Comeback F', 61, Wof(L(7, 0)), Lof(W(5, 0)));
+  open('GF', 'Grand Final');
+  add('S-GF-0', 'Grand Final', 62, Wof(W(5, 0)), Wof(L(8, 0)));
+  // Bracket reset — only played if the Comeback champion wins the GF.
+  add('S-GF2-0', 'GF Reset', 63, Wof(W(5, 0)), Wof(L(8, 0)), { resetOf: 'S-GF-0' });
+  return { matches, sections };
+}
+
+// Evaluate the graph: fill every slot that is knowable from R1 + results,
+// auto-advancing walkovers (a live side vs a DEAD side — one whose source
+// can never produce a player, i.e. a bye or a chain of byes).
+function evalGraph(graph, r1slots, results) {
+  const state = new Map();
+  const numOf = new Map(graph.matches.map(m => [m.id, m.num]));
+  for (const m of graph.matches) {
+    const side = (from) => {
+      if (from.slot != null) {
+        const s = r1slots[from.slot];
+        return { name: s.name, seed: s.seed, dead: !!s.bye, from: null };
+      }
+      const label = `${from.kind === 'winner' ? 'W' : 'L'} of M${numOf.get(from.ref)}`;
+      const src = state.get(from.ref);
+      if (!src || !src.decided) return { name: null, dead: false, from: label };
+      if (from.kind === 'winner') return { name: src.winnerName, dead: src.winnerName == null, from: label };
+      return { name: src.loserName, dead: src.loserName == null, from: label };
+    };
+    const a = side(m.aFrom), b = side(m.bFrom);
+    const manual = results[m.id] || null;
+    let auto = null;
+    if (!manual) {
+      if (a.name && b.dead) auto = 'a';
+      else if (b.name && a.dead) auto = 'b';
+    }
+    const winner = manual || auto;
+    const bothDead = a.dead && b.dead;
+    const decided = !!winner || bothDead;
+    const winnerName = winner === 'a' ? a.name : winner === 'b' ? b.name : null;
+    const loserName = winner === 'a' ? b.name : winner === 'b' ? a.name : null;
+    state.set(m.id, {
+      a, b, manual, winner, decided,
+      winnerName, loserName,
+      contested: !!(a.name && b.name),
+      bothDead,
+    });
+  }
+  return state;
+}
+
+// Render-ready sections for the ops DrawBoard — every round of every
+// direction/bracket, slots filled as far as results allow. The reset match
+// is included but flagged inactive until the Comeback champ takes the GF.
 export function resolve(bracket) {
   if (!bracket) return null;
   const { event, size, r1slots, results } = bracket;
-  const wr1Count = size / 2;
-  const wr2Count = Math.floor(size / 4);
-  const cr1Count = Math.floor(size / 4);
-
-  // Winners R1 straight from the slots; a lone named side is a walkover.
-  const wr1 = [];
-  for (let m = 0; m < wr1Count; m++) {
-    const slotA = r1slots[2 * m];
-    const slotB = r1slots[2 * m + 1];
-    const id = wr1Id(event, m);
-    const bye = slotA.name && !slotB.name ? 'a' : slotB.name && !slotA.name ? 'b' : null;
-    const winner = results[id] || bye || null; // byes auto-decide
-    const contested = !!slotA.name && !!slotB.name;
-    wr1.push({ id, bracket: 'W', round: 1, m, slotA, slotB, winner, bye, contested });
-  }
-
-  // Shells for the next round + consolation, with "Winner/Loser of M#"
-  // placeholders until a result fills them. Match numbers continue after R1
-  // (R1 = 1..size/2) so the flat Match Order stays in playing order.
-  const w2 = Array.from({ length: wr2Count }, (_, k) => ({
-    id: wr2Id(event, k), bracket: 'W', round: 2, m: k, num: wr1Count + k + 1,
-    winner: results[wr2Id(event, k)] || null,
-    slotA: { name: null, from: `W of M${2 * k + 1}` },
-    slotB: { name: null, from: `W of M${2 * k + 2}` },
+  const graph = graphFor(event);
+  const state = evalGraph(graph, r1slots, results);
+  const byId = new Map(graph.matches.map(m => [m.id, m]));
+  const sections = graph.sections.map(sec => ({
+    key: sec.key,
+    title: sec.title,
+    matches: sec.ids.map(id => {
+      const g = byId.get(id);
+      const st = state.get(id);
+      const active = g.resetOf ? state.get(g.resetOf)?.manual === 'b' : true;
+      // Section 0 exposes the raw R1 slots so drag/rename keep working.
+      const isR1 = g.aFrom.slot != null;
+      const slotA = isR1 ? r1slots[g.aFrom.slot] : st.a;
+      const slotB = isR1 ? r1slots[g.bFrom.slot] : st.b;
+      return {
+        id, num: g.num, roundTag: g.roundTag, k: isR1 ? g.aFrom.slot / 2 : null,
+        slotA, slotB,
+        winner: st.winner, manual: st.manual, contested: st.contested,
+        bye: isR1 ? !!(slotA.bye || slotB.bye) : st.bothDead ? true : (!st.contested && (st.a.dead || st.b.dead)),
+        active,
+      };
+    }),
   }));
-  const c1 = Array.from({ length: cr1Count }, (_, k) => ({
-    id: cr1Id(event, k), bracket: 'C', round: 1, m: k, num: wr1Count + wr2Count + k + 1,
-    winner: results[cr1Id(event, k)] || null,
-    slotA: { name: null, from: `L of M${k + 1}` },
-    slotB: { name: null, from: `L of M${k + cr1Count + 1}` },
-  }));
-
-  const put = (arr, idx, side, slot) => { if (arr[idx]) arr[idx][side === 'a' ? 'slotA' : 'slotB'] = slot; };
-
-  for (const w of wr1) {
-    if (!w.winner) continue;
-    const wSlot = w.winner === 'a' ? w.slotA : w.slotB;
-    const lSlot = w.winner === 'a' ? w.slotB : w.slotA;
-    // Winner advances to Winners R2.
-    put(w2, Math.floor(w.m / 2), w.m % 2 === 0 ? 'a' : 'b',
-      { name: wSlot.name, seed: wSlot.seed, from: `W of M${w.m + 1}` });
-    // Loser drops to Consolation R1 (byes have no loser).
-    if (w.contested && lSlot.name) {
-      const r = loserRoute(size, w.m);
-      put(c1, r.match, r.side, { name: lSlot.name, from: `L of M${w.m + 1}` });
-    }
-  }
-
-  return { size, format: bracket.format, consolLabel: bracket.consolLabel, wr1, w2, c1 };
+  return {
+    size,
+    format: bracket.format,
+    consolLabel: bracket.consolLabel,
+    fieldCount: bracket.fieldCount,
+    byeCount: bracket.byeCount,
+    sections,
+  };
 }
 
-// Record / clear a match result (immutable).
+// All matches consuming this one's outcome (transitively) — their recorded
+// results become meaningless if this result changes, so they get cleared.
+function downstreamIds(event, size, startId) {
+  const graph = graphFor(event);
+  const consumers = new Map();
+  for (const m of graph.matches) {
+    for (const f of [m.aFrom, m.bFrom]) {
+      if (!f.ref) continue;
+      if (!consumers.has(f.ref)) consumers.set(f.ref, []);
+      consumers.get(f.ref).push(m.id);
+    }
+  }
+  const out = new Set();
+  const queue = [startId];
+  while (queue.length) {
+    const id = queue.shift();
+    for (const next of consumers.get(id) || []) {
+      if (!out.has(next)) { out.add(next); queue.push(next); }
+    }
+  }
+  return out;
+}
+
+// Record / clear a result (immutable). Changing a result invalidates every
+// downstream result — the participants those results referred to may no
+// longer be in that match. Ops re-marks the affected matches.
 export function setResult(bracket, matchId, side) {
-  return { ...bracket, results: { ...bracket.results, [matchId]: side } };
+  const results = { ...bracket.results, [matchId]: side };
+  for (const id of downstreamIds(bracket.event, bracket.size, matchId)) delete results[id];
+  return { ...bracket, results };
 }
 export function clearResult(bracket, matchId) {
   const results = { ...bracket.results };
   delete results[matchId];
+  for (const id of downstreamIds(bracket.event, bracket.size, matchId)) delete results[id];
   return { ...bracket, results };
 }
 
-// Swap two unseeded R1 entrants to balance the draw. No-op unless BOTH slots
-// are draggable (real, non-seed, non-bye). The entrant IDENTITY moves
-// (name/def/key/raw); the slot's seed number stays with its bracket position.
+// Swap two unseeded R1 entrants to balance the draw (identity moves; the
+// slot's seed number stays with its bracket position).
 export function swapUnseeded(bracket, i, j) {
   if (i === j) return bracket;
   const a = bracket.r1slots[i];
@@ -185,9 +316,8 @@ export function swapUnseeded(bracket, i, j) {
   return { ...bracket, r1slots };
 }
 
-// Override (or clear, with an empty value) a slot's display name — the fix
-// for a profane/typo/nickname registration. Keyed by the entrant's canonical
-// key so it survives a Regenerate. No-op on byes/empty slots.
+// Override (or clear) a slot's display name — keyed by the entrant's
+// canonical key so it survives a Regenerate and flows to every round.
 export function renameSlot(bracket, idx, value) {
   const slot = bracket.r1slots[idx];
   if (!slot || !slot.key) return bracket;
@@ -198,31 +328,26 @@ export function renameSlot(bracket, idx, value) {
   return { ...bracket, overrides, r1slots };
 }
 
-// All bracket matches ready to post to the flat Match Order (store.matches) —
-// contested R1 plus any next-round match whose both slots are known. The
-// bracket-node id == flat match id so scoring one links to the other. Byes
-// aren't posted (nothing to play). Shaped so the store only adds event/court/
-// score. Used for the full re-sync on every generate / result / swap / clear.
+// Every PLAYABLE match (both sides known), shaped for the flat Match Order —
+// bracket-node id == flat match id, nums mirror the public bracket. Byes and
+// walkovers aren't posted (nothing to play); the reset match posts only once
+// the Comeback champ forces it.
 export function bracketMatchRows(bracket) {
-  const view = resolve(bracket);
-  if (!view) return [];
+  if (!bracket) return [];
+  const { event, r1slots, results } = bracket;
+  const graph = graphFor(event);
+  const state = evalGraph(graph, r1slots, results);
   const rows = [];
-  const results = bracket.results || {};
-  for (const w of view.wr1) {
-    if (!w.contested) continue; // byes have no match to play
+  for (const m of graph.matches) {
+    const st = state.get(m.id);
+    if (!st.contested) continue;
+    if (st.winner && !st.manual) continue; // walkover — never actually played
+    if (m.resetOf && state.get(m.resetOf)?.manual !== 'b') continue;
     rows.push({
-      id: w.id, round: 'R1', num: String(w.m + 1), a: w.slotA.name, b: w.slotB.name,
-      winner: results[w.id] || '', status: results[w.id] ? 'final' : 'scheduled',
+      id: m.id, round: m.roundTag, num: String(m.num),
+      a: st.a.name, b: st.b.name,
+      winner: st.manual || '', status: st.manual ? 'final' : 'scheduled',
     });
   }
-  const post = (m, round) => {
-    if (!m.slotA.name || !m.slotB.name) return; // not yet determined
-    rows.push({
-      id: m.id, round, num: String(m.num), a: m.slotA.name, b: m.slotB.name,
-      winner: results[m.id] || '', status: results[m.id] ? 'final' : 'scheduled',
-    });
-  };
-  view.w2.forEach(m => post(m, 'R2'));
-  view.c1.forEach(m => post(m, `${view.consolLabel} R1`));
   return rows;
 }

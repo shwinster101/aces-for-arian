@@ -527,44 +527,55 @@ function DrawBoard({ event, ops, participants }) {
 
       {!bracket ? (
         <EmptyState icon={Grid3x3} title="No draw generated yet"
-          hint={hasSeeds ? `Tap "Generate draw" to auto-populate the ${isDoubles ? 'compass' : 'double-elimination'} bracket from the seed order — byes go to the top seeds.` : 'Build the seed order above first, then generate the draw.'} />
+          hint={hasSeeds ? `Tap "Generate draw" to auto-populate the full ${isDoubles ? 'compass' : 'double-elimination'} bracket from the seed order — byes go to the top seeds.` : 'Build the seed order above first, then generate the draw.'} />
       ) : (
         <>
           <p className="text-[11px] text-zinc-500 mb-3">
-            {view.size}-{isDoubles ? 'team' : 'player'} {isDoubles ? 'compass draw' : 'double elimination'} · {bracket.fieldCount} entered · {bracket.byeCount} bye{bracket.byeCount === 1 ? '' : 's'}. Tap a side to mark the winner — it advances, and the R1 loser drops to {view.consolLabel}. Drag the grip to swap unseeded entrants and balance the draw.
+            {view.size}-{isDoubles ? 'team' : 'player'} {isDoubles ? 'compass draw — East, with losers routed West → North/South' : 'double elimination — full Comeback backdraw to the Grand Final'} · {view.fieldCount} entered · {view.byeCount} bye{view.byeCount === 1 ? '' : 's'} (walkovers cascade automatically). Tap Won to advance a side — tap it again to un-mark. Drag the grip to swap unseeded entrants.
           </p>
 
+          {/* Round 1 — interactive: drag-balance, rename, mark winners */}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <div className="grid sm:grid-cols-2 gap-2 mb-4">
-              {view.wr1.map(w => (
+              {view.sections[0].matches.map(w => (
                 <div key={w.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
                   {/* Maroon strip + gold estimate — tournament colors */}
                   <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-[#5c1313]/40 border-b border-zinc-800/70">
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{w.m + 1}</span>
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{w.num}</span>
                     {w.bye ? <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>
                       : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{estFor(w.id)}</span>}
                   </div>
-                  <DrawSlot event={event} ops={ops} idx={2 * w.m} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
+                  <DrawSlot event={event} ops={ops} idx={2 * w.k} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
                   <div className="h-px bg-zinc-800/70" />
-                  <DrawSlot event={event} ops={ops} idx={2 * w.m + 1} slot={w.slotB} isWinner={w.winner === 'b'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'b')} />
+                  <DrawSlot event={event} ops={ops} idx={2 * w.k + 1} slot={w.slotB} isWinner={w.winner === 'b'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'b')} />
                 </div>
               ))}
             </div>
           </DndContext>
 
-          {(view.w2.length > 0 || view.c1.length > 0) && (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {view.w2.length > 0 && (
-                <FeederColumn title="Winners — Round 2" matches={view.w2} tone="amber" />
-              )}
-              {view.c1.length > 0 && (
-                <FeederColumn title={`${view.consolLabel} — Round 1`} matches={view.c1} tone="zinc" />
-              )}
-            </div>
-          )}
+          {/* Every later round — winners advance, losers route per the graph */}
+          {view.sections.slice(1).map(sec => {
+            const shown = sec.matches.filter(m => m.active);
+            if (!shown.length) return null;
+            return (
+              <div key={sec.key} className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="h-px w-4 bg-[#5c1313]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{sec.title}</span>
+                  <span className="h-px flex-1 bg-zinc-800" />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {shown.map(m => (
+                    <RoundMatch key={m.id} m={m} est={estFor(m.id)}
+                      onWin={(side) => ops.markBracketWinner(event, m.id, side)} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here</strong> — not only in Scores — so the bracket, the queue, and the public draw stay in step. First round + next round for now; deeper rounds land with the full engine.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here</strong> — not only in Scores — so the bracket, the queue, and the public draw stay in step. The GF reset match appears only if the Comeback champ takes the Grand Final.</p>
     </Card>
   );
 }
@@ -631,28 +642,36 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
   );
 }
 
-// Read-only feeder column — fills as R1 results post ("W of M3" / "L of M3"
-// placeholders until then).
-function FeederColumn({ title, matches, tone }) {
-  const dot = tone === 'amber' ? 'text-[#fbbf24]' : 'text-zinc-500';
-  return (
-    <div>
-      <div className={`text-[10px] font-black uppercase tracking-widest mb-2 ${dot}`}>{title}</div>
-      <div className="space-y-2">
-        {matches.map(m => (
-          <div key={m.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="px-2.5 py-1 border-b border-zinc-800/70 text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600">M{m.num}</div>
-            {[m.slotA, m.slotB].map((s, i) => (
-              <Fragment key={i}>
-                {i === 1 && <div className="h-px bg-zinc-800/70" />}
-                <div className={`px-2.5 py-2 text-sm truncate ${s.name ? 'text-zinc-200 font-bold' : 'text-zinc-600 italic'}`}>
-                  {s.name || s.from}
-                </div>
-              </Fragment>
-            ))}
-          </div>
-        ))}
+// A later-round match card: names fill in as feeders decide ("W of M3" /
+// "L of M12" placeholders until then); Won buttons appear once both sides
+// are known. Winners read gold; a dead side (bye/walkover chain) shows "—".
+function RoundMatch({ m, est, onWin }) {
+  const row = (slot, side) => {
+    const isWinner = m.winner === side;
+    return (
+      <div className={`flex items-center gap-2 px-2.5 py-2 ${isWinner ? 'bg-[#fbbf24]/10' : ''}`}>
+        <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
+          {slot.name || (slot.dead ? '—' : slot.from || '—')}
+        </span>
+        {m.contested && (
+          <button onClick={() => onWin(side)}
+            title={isWinner ? 'Tap again to un-mark' : 'Mark winner'}
+            className={`shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider rounded-md px-2 py-1 min-h-8 transition-colors ${isWinner ? 'bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/40' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700'}`}>
+            {isWinner ? <><Check className="w-3 h-3" /> Won</> : 'Won'}
+          </button>
+        )}
       </div>
+    );
+  };
+  return (
+    <div className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-[#5c1313]/40 border-b border-zinc-800/70">
+        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{m.num}</span>
+        {est && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{est}</span>}
+      </div>
+      {row(m.slotA, 'a')}
+      <div className="h-px bg-zinc-800/70" />
+      {row(m.slotB, 'b')}
     </div>
   );
 }

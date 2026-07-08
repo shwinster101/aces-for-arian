@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL } from '../lib/sheet';
-import { buildDraw, setResult, swapUnseeded, renameSlot, bracketMatchRows } from '../lib/draw';
+import { buildDraw, setResult, clearResult, swapUnseeded, renameSlot, bracketMatchRows } from '../lib/draw';
 import { SCHEDULE_DEFAULTS } from '../lib/schedule';
 
 // Shared-secret gate for the write-back endpoint. Must match the token checked
@@ -321,9 +321,12 @@ export function useOpsStore() {
       const prior = new Map(s.matches.map(m => [m.id, m]));
       const rows = bracketMatchRows(nextBracket).map(r => {
         const p = prior.get(r.id);
+        // Court/score entered on the Scores tab survive the re-sync; a
+        // Scores-set 'live' also survives unless the bracket says final.
+        const status = r.status === 'final' ? 'final' : (p && p.status === 'live' ? 'live' : r.status);
         return {
           id: r.id, event, round: r.round, num: r.num, a: r.a, b: r.b,
-          court: p ? p.court : '', score: p ? p.score : '', status: r.status, winner: r.winner,
+          court: p ? p.court : '', score: p ? p.score : '', status, winner: r.winner,
         };
       });
       const newIds = new Set(rows.map(r => r.id));
@@ -342,9 +345,16 @@ export function useOpsStore() {
   // Regenerate keeps last-minute name fixes.
   const generateBracket = (event, labelFor) =>
     applyBracket(event, s => buildDraw(event, s.seeds[event], { labelFor, overrides: s.brackets[event] ? s.brackets[event].overrides : {} }));
-  // Record a match result -> winner advances, R1 loser drops to consolation.
+  // Record a match result -> winner advances, loser routes to its backdraw
+  // slot. Tapping the SAME side again un-marks it (correction); either way,
+  // downstream results are invalidated by the engine so a changed outcome
+  // can't leave stale advancement behind.
   const markBracketWinner = (event, matchId, side) =>
-    applyBracket(event, s => (s.brackets[event] ? setResult(s.brackets[event], matchId, side) : null));
+    applyBracket(event, s => {
+      const b = s.brackets[event];
+      if (!b) return null;
+      return b.results[matchId] === side ? clearResult(b, matchId) : setResult(b, matchId, side);
+    });
   // Drag-balance: swap two unseeded R1 entrants (no-op unless both draggable).
   const swapBracketSlots = (event, i, j) =>
     applyBracket(event, s => (s.brackets[event] ? swapUnseeded(s.brackets[event], i, j) : null));

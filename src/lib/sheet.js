@@ -378,12 +378,14 @@ export function mapMatches(rows) {
   const iStatus = col("status");
   const iScore = col("score");
   const iWinner = col("winner");
+  const iId = headers.findIndex(h => h === "id"); // exact — avoid matching other headers
   if (iA < 0 || iB < 0) return [];
   return rows.slice(1)
     .filter(r => (r[iA] || r[iB] || "").toString().trim())
     .map(r => {
       const typeRaw = (iEvent >= 0 ? r[iEvent] : "").toString().trim().toLowerCase();
       return {
+        id: iId >= 0 ? (r[iId] || "").toString().trim() : "",
         event: typeRaw.includes("doub") ? "Doubles" : "Singles",
         round: iRound >= 0 ? (r[iRound] || "").toString().trim() : "",
         num: iNum >= 0 ? (r[iNum] || "").toString().trim() : "",

@@ -553,9 +553,9 @@ function Bracket({ rounds, names, highlight, estFor }) {
             {names ? names[ri] : roundLabel(matches.length)}
           </div>
           <div className="flex flex-col justify-around flex-1 gap-1.5">
-            {/* estFor only on round 0 — R1 is the one round whose numbering is
-                guaranteed to match the ops queue (see r1RowsFor in App). */}
-            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} estFor={ri === 0 ? estFor : undefined} />)}
+            {/* Every round can carry an estimate now — engine rows share the
+                public numbering for all rounds (see engineRowsFor in App). */}
+            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} estFor={estFor} />)}
           </div>
         </div>
       ))}
@@ -1364,24 +1364,31 @@ export default function App() {
     singlesMin: config.singlesMin || SCHEDULE_DEFAULTS.singlesMin,
     warmupMin: config.warmupMin != null ? config.warmupMin : SCHEDULE_DEFAULTS.warmupMin,
   };
-  // The committee-posted first round (Matches tab, round R1) keyed by match
-  // number per event. R1 is the ONE round where ops and public numbering are
-  // guaranteed to agree (both count 1..N), so it's the only round we map —
-  // later rounds use different numbering schemes on each side and matching by
-  // bare num would cross-wire them (e.g. ops R2 nums land on Comeback lines).
-  const r1RowsFor = (evt) => new Map(
-    matches
-      .filter(m => (m.event || '') === evt && String(m.round || '').trim().toUpperCase() === 'R1')
-      .map(m => [Number(m.num), m])
-  );
+  // Engine-posted matches (Matches tab) keyed by match number per event. The
+  // ops bracket engine mirrors the public numbering EXACTLY for every round
+  // (see the NUMBERING CONTRACT in src/lib/draw.js), so any engine row maps
+  // 1:1 onto a public bracket line — all rounds, both events. Engine rows are
+  // identified by their id prefix (S-/D-); legacy/hand-typed rows without an
+  // id only map when their round is R1 (the one scheme that was always shared).
+  const engineRowsFor = (evt) => {
+    const prefix = evt === 'Doubles' ? 'D-' : 'S-';
+    return new Map(
+      matches
+        .filter(m => (m.event || '') === evt && (
+          m.id ? String(m.id).startsWith(prefix)
+               : String(m.round || '').trim().toUpperCase() === 'R1'
+        ))
+        .map(m => [Number(m.num), m])
+    );
+  };
 
-  // Overlay the posted R1 matchups onto the seed-derived first round, so the
-  // public draw mirrors EXACTLY what ops saved — drag-balanced placements and
-  // name fixes included. Rows must already be numbered; only round 0 changes.
-  const overlayR1 = (rounds, evt) => {
-    const byNum = r1RowsFor(evt);
+  // Overlay the posted matchups onto EVERY round of a bracket, so the public
+  // draw fills in live as ops marks winners — placements, advancement, and
+  // name fixes all mirror the ops board. Rows must already be numbered.
+  const overlayRounds = (rounds, evt) => {
+    const byNum = engineRowsFor(evt);
     if (!byNum.size) return rounds;
-    const r1 = rounds[0].map(match => {
+    return rounds.map(round => round.map(match => {
       const row = byNum.get(Number(match.num));
       if (!row) return match;
       return {
@@ -1389,15 +1396,14 @@ export default function App() {
         a: { ...match.a, name: row.a || match.a.name },
         b: { ...match.b, name: row.b || match.b.name },
       };
-    });
-    return [r1, ...rounds.slice(1)];
+    }));
   };
 
-  // Estimate label for a first-round bracket line ("~N ahead · ~min · around
-  // H:MM"). Null when that match isn't posted. `now` ticks off the heartbeat.
+  // Estimate label for a bracket line ("~N ahead · ~min · around H:MM").
+  // Null when that match isn't posted. `now` ticks off the heartbeat.
   const estForEvent = (evt) => (n) => {
     if (n == null) return null;
-    const fm = r1RowsFor(evt).get(Number(n));
+    const fm = engineRowsFor(evt).get(Number(n));
     return fm ? estimateLabel(fm, matches, scheduleCfg, now) : null;
   };
 
@@ -1899,16 +1905,16 @@ export default function App() {
                     ['West Draw', singleElim(8, false)],
                     ['North Draw', singleElim(4, false)],
                     ['South Draw', singleElim(4, false)],
-                  ].map(([title, rounds], di) => {
+                  ].map(([title, rounds]) => {
                     const numbered = numberSeq(rounds, next); next = numbered.next;
-                    // Only the East (seeded) draw's R1 maps 1:1 onto the ops
-                    // match numbers — overlay + estimates apply there alone.
-                    const east = di === 0;
+                    // The ops engine numbers the whole compass to match this
+                    // numberSeq chain (East 1-15, West 16-22, North 23-25,
+                    // South 26-28), so every direction overlays + estimates.
                     return (
                       <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                         <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                        <Bracket rounds={east ? overlayR1(numbered.rounds, 'Doubles') : numbered.rounds}
-                          highlight={drawHighlight} estFor={east ? estForEvent('Doubles') : undefined} />
+                        <Bracket rounds={overlayRounds(numbered.rounds, 'Doubles')}
+                          highlight={drawHighlight} estFor={estForEvent('Doubles')} />
                       </div>
                     );
                   });
@@ -1931,24 +1937,35 @@ export default function App() {
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={overlayR1(numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles').map(publicLabel), showByes), [1, 25, 41, 53, 59]), 'Singles')} highlight={drawHighlight} estFor={estForEvent('Singles')} />
+                  <Bracket rounds={overlayRounds(numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles').map(publicLabel), showByes), [1, 25, 41, 53, 59]), 'Singles')} highlight={drawHighlight} estFor={estForEvent('Singles')} />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Comeback Bracket</h4>
                   <Bracket
-                    rounds={numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61])}
+                    rounds={overlayRounds(numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61]), 'Singles')}
                     names={['Comeback R1', 'Comeback R2', 'Comeback R3', 'Comeback R4', 'Comeback R5', 'Comeback R6', 'Comeback R7', 'Comeback Final']}
+                    highlight={drawHighlight} estFor={estForEvent('Singles')}
                   />
                 </div>
 
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                   <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final <span className="text-[10px] font-mono font-normal text-zinc-500">· Match 62 (+ 63 if reset)</span></h4>
                   <div className="flex items-center gap-5 flex-wrap">
-                    <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
-                      <div className="px-3 py-2 text-xs text-zinc-200">Winners Bracket Champion</div>
-                      <div className="px-3 py-2 text-xs text-zinc-200">Comeback Bracket Champion</div>
-                    </div>
+                    {(() => {
+                      // Names fill in from the engine-posted GF row (num 62);
+                      // a posted reset row (63) flips the footnote live.
+                      const gf = engineRowsFor('Singles').get(62);
+                      const reset = engineRowsFor('Singles').get(63);
+                      return (
+                        <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
+                          <div className={`px-3 py-2 text-xs ${gf?.a ? 'text-white font-bold' : 'text-zinc-200'}`}>{gf?.a || 'Winners Bracket Champion'}</div>
+                          <div className={`px-3 py-2 text-xs ${gf?.b ? 'text-white font-bold' : 'text-zinc-200'}`}>{gf?.b || 'Comeback Bracket Champion'}</div>
+                          {gf && <div className="px-3 py-1.5 text-[10px] font-bold text-[#fbbf24]/80">{estForEvent('Singles')(62)}</div>}
+                          {reset && <div className="px-3 py-1.5 text-[10px] font-bold text-[#fbbf24]">Bracket reset — Match 63 is ON</div>}
+                        </div>
+                      );
+                    })()}
                     <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
                       If the Comeback Bracket Champion wins, a deciding "bracket reset" set is played because the Winners Champion has not dropped a match yet.
                     </p>
