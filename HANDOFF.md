@@ -35,7 +35,41 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 ops-interface audit (draw → public)
+## 1. Session Summary — 2026-07-07 FULL bracket engine (all rounds)
+
+`src/lib/draw.js` now models the COMPLETE tournament as a static feeder
+graph evaluated from R1 slots + a results map:
+
+- **Doubles**: full compass — East R16→QF→SF→F; E R1 losers → West (cross-
+  half), E QF losers → North, West R1 losers → South; West/North/South play
+  to their finals.
+- **Singles**: full 32 double elim — Winners W1..F; Comeback L1..L8 with
+  reversed drop-ins (delays rematches); **Grand Final (M62) + bracket reset
+  (M63)**, the reset appearing only if the Comeback champ takes the GF.
+- **Byes cascade as walkovers**: a side whose source can never produce a
+  player is "dead"; live-vs-dead auto-advances (a 4-player field walks the
+  seeds to the semis correctly). Dead lines render "—", aren't posted.
+- **Corrections are safe**: marking a winner twice un-marks it; ANY result
+  change invalidates all downstream results (the engine clears them) so
+  stale advancement can't survive; ops re-marks affected matches.
+- **NUMBERING CONTRACT** (draw.js header): ops match numbers now mirror the
+  public templates exactly for EVERY round (doubles East 1-15 / West 16-22 /
+  North 23-25 / South 26-28; singles winners 1,25,41,53,59 / comeback
+  17,33,45,49,55,57,60,61 / GF 62 / reset 63). Draws are always full size
+  (32/16) for this reason. In App.jsx, `overlayRounds` + `engineRowsFor`
+  (id-prefix S-/D-) fill EVERY public bracket line + estimate chips from
+  posted rows — the public draw now updates live through the whole event,
+  including the GF card (names at 62, reset note at 63).
+- Match Order posts contested matches only (walkovers/byes never post);
+  Scores-set 'live' status now survives bracket re-syncs.
+- Verified 20/20 ops (compass chain E→W→N→S, backdraw chain W1→L1→L2
+  reversed drop, un-mark downstream invalidation, bye cascade to the SFs,
+  contested-only posting) + 8/8 public all-rounds overlay + 9/9 + 11/11
+  regressions.
+
+---
+
+## 1-oa. Session Summary — 2026-07-07 ops-interface audit (draw → public)
 
 Audited the ops→public seams and fixed three interface gaps so "save the
 draw → reveal" displays correctly:
