@@ -538,10 +538,11 @@ function DrawBoard({ event, ops, participants }) {
             <div className="grid sm:grid-cols-2 gap-2 mb-4">
               {view.wr1.map(w => (
                 <div key={w.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 px-2.5 py-1 border-b border-zinc-800/70">
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-600 shrink-0">M{w.m + 1}</span>
+                  {/* Maroon strip + gold estimate — tournament colors */}
+                  <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-[#5c1313]/40 border-b border-zinc-800/70">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{w.m + 1}</span>
                     {w.bye ? <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>
-                      : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/80 truncate">{estFor(w.id)}</span>}
+                      : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{estFor(w.id)}</span>}
                   </div>
                   <DrawSlot event={event} ops={ops} idx={2 * w.m} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
                   <div className="h-px bg-zinc-800/70" />
@@ -563,7 +564,7 @@ function DrawBoard({ event, ops, participants }) {
           )}
         </>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">First round + next round for now — winners advance and R1 losers feed {view ? view.consolLabel : 'consolation'}. Deeper rounds fill in as the full engine lands. R1 posts to the Match Order above (and the public board once draws are revealed).</p>
+      <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here</strong> — not only in Scores — so the bracket, the queue, and the public draw stay in step. First round + next round for now; deeper rounds land with the full engine.</p>
     </Card>
   );
 }
@@ -589,7 +590,7 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
 
   return (
     <div ref={setRefs} style={style}
-      className={`flex items-center gap-2 px-2.5 py-2 ${drop.isOver && draggable ? 'bg-[#fbbf24]/10' : ''} ${isWinner ? 'bg-emerald-500/10' : ''}`}>
+      className={`flex items-center gap-2 px-2.5 py-2 ${drop.isOver && draggable ? 'bg-[#fbbf24]/10' : ''} ${isWinner ? 'bg-[#fbbf24]/10' : ''}`}>
       {draggable && !editing && (
         <button {...drag.attributes} {...drag.listeners} aria-label="Drag to swap"
           className="touch-none cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 shrink-0">
@@ -608,7 +609,9 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
         </>
       ) : (
         <>
-          <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-emerald-300 font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
+          {/* Winner reads GOLD — same convention as the public Live Scores
+              (gold = winner/final, emerald = live). */}
+          <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
             {slot.name || (slot.bye ? 'BYE' : '—')}
           </span>
           {canRename && (
@@ -618,7 +621,7 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
           )}
           {canWin && (
             <button onClick={onWin}
-              className={`shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider rounded-md px-2 py-1 min-h-8 transition-colors ${isWinner ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700'}`}>
+              className={`shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider rounded-md px-2 py-1 min-h-8 transition-colors ${isWinner ? 'bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/40' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700'}`}>
               {isWinner ? <><Check className="w-3 h-3" /> Won</> : 'Won'}
             </button>
           )}
