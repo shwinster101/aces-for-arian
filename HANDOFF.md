@@ -35,7 +35,36 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-07 announcements pass
+## 1. Session Summary — 2026-07-07 bracket engine (ops)
+
+New **bracket engine** — `src/lib/draw.js` (pure) + `store.brackets` +
+`DrawBoard` in `src/admin/sections/Seeding.jsx`. Ops-only.
+
+- **Generate draw from seeds**: `buildDraw(event, seeds)` places entrants by
+  standard `seedOrder` (mirrors the one in `App.jsx`), sizes to the **nearest
+  power of 2** (`nextPow2`) with **byes to the top seeds**, and builds working
+  feeders. Minimal state: R1 slot assignment + a `results` map; every
+  downstream slot is derived by `resolve()` (so re-marking never leaves a
+  stale advanced name).
+- **This build = first round + next round**: winners advance to Winners R2;
+  R1 losers drop to consolation (`Comeback` for singles double-elim, `West`
+  for compass doubles, via `loserRoute` cross-half pairing). Deeper rounds
+  (WB R3+, Comeback R2+, North/South) are the **Friday** build — the feeder
+  model already carries what they need.
+- **Drag-balance**: unseeded, non-bye R1 entrants are drag-swappable
+  (`swapUnseeded`); seeds 1–8 and byes are locked.
+- **Match Order sync**: generate / result / swap / clear RE-SYNC this event's
+  flat `matches` rows (ids prefixed `S-`/`D-`) — contested R1 plus any
+  next-round match whose both sides are known. Court/score entered on the
+  Scores tab survive (merged by id); removed matches get `match-delete`.
+  ⚠️ Those pushes hit the public board once **DRAWS_PUBLIC** is revealed AND
+  the Apps Script is redeployed — inert until then.
+- Verified 12/12 in-browser (seed placement, 12→16 byes+auto-advance, R1→R2
+  advance, R1→Comeback drop, Match Order sync, compass East→West) + drag-swap.
+
+---
+
+## 1-ann. Session Summary — 2026-07-07 announcements pass
 
 **Also 7/7: registration deadline extended to end of day July 8** (owner
 decision). The `regClosed` date constant and every "July 6" copy mention in
