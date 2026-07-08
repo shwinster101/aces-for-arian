@@ -43,6 +43,13 @@ decision). The `regClosed` date constant and every "July 6" copy mention in
 Note: the printed flyer image still says "Register by July 6th" — the site
 copy supersedes it; swap `public/flyer.jpg` if an updated flyer exists.
 
+**Public draws hidden behind `DRAWS_PUBLIC` (const in `App.jsx`, default
+`false`, 7/7).** While false, the public Brackets tab hides BOTH draws (event
+toggle + brackets + find-yourself search + the Rules "See the … bracket →"
+links) behind a "draws post Wednesday, July 8" placeholder; SeedSuggestionBox
+and the live boards stay. **Ops Seeding console is unaffected** — it still
+shows/edits both events. **To reveal: set `DRAWS_PUBLIC = true`, ship.**
+
 New **Announcements** system (weather emphasized), placed by first
 principles: an announcement must reach people who aren't looking for it, so
 it is NOT a tab —

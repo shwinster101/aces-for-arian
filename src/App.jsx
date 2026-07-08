@@ -425,6 +425,12 @@ const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
 // "Seeds Final" row, which overrides this constant).
 const SEEDS_FINAL = false;
 
+// Public draw gate. While false, the public Brackets tab hides BOTH the
+// doubles and singles draws (event toggle + brackets + find-yourself search)
+// behind a "posts tomorrow" placeholder — seeding isn't finalized yet. The
+// ops Seeding console is unaffected either way. Flip to true to publish.
+const DRAWS_PUBLIC = false;
+
 // ==========================================
 // DRAW BUILDERS (drafts — every slot is TBD until registration closes)
 // ==========================================
@@ -1800,18 +1806,29 @@ export default function App() {
                     ? 'Draft brackets. Registration closed July 8 — the committee is finalizing seeds, and the draw fills in when the field locks. Only the top 8 carry a seed number.'
                     : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 8 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
               </p>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
-                <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
-                <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
-              </div>
-              <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
-                placeholder="Find yourself in the draw — type your name"
-                className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
-              <p className="text-[10px] text-zinc-600 mt-1.5">Highlights your line in the brackets below{liveDay ? ' — for your live court, use “Find your match” on the court board' : ''}.</p>
+              {DRAWS_PUBLIC ? (
+                <>
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
+                    <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
+                    <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
+                  </div>
+                  <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
+                    placeholder="Find yourself in the draw — type your name"
+                    className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+                  <p className="text-[10px] text-zinc-600 mt-1.5">Highlights your line in the brackets below{liveDay ? ' — for your live court, use “Find your match” on the court board' : ''}.</p>
+                </>
+              ) : (
+                <div className="mt-5 flex items-start gap-3 bg-[#1c1408] border border-[#fbbf24]/30 rounded-2xl px-4 py-3.5">
+                  <Clock className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    Seeding is being finalized — the full doubles and singles draws post here <strong className="text-white">Wednesday, July 8</strong>. Want a say? <span className="text-[#fbbf24]/90">Suggest the seeds</span> below until the draw locks.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
-            {bracketEvent === 'doubles' && (
+            {DRAWS_PUBLIC && bracketEvent === 'doubles' && (
               <div className="space-y-5">
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -1857,7 +1874,7 @@ export default function App() {
             )}
 
             {/* SUNDAY SINGLES — Double Elimination (32 players) */}
-            {bracketEvent === 'singles' && (
+            {DRAWS_PUBLIC && bracketEvent === 'singles' && (
               <div className="space-y-5">
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -2131,10 +2148,12 @@ export default function App() {
                   <li><strong className="text-zinc-200">Quarterfinals on:</strong> teams may switch to 2-of-3 regular sets if everyone in the round agrees.</li>
                   <li><strong className="text-zinc-200">Prizes:</strong> awarded to the top 3.</li>
                 </ul>
-                <button onClick={() => { setBracketEvent('doubles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
-                  className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
-                  See the doubles bracket →
-                </button>
+                {DRAWS_PUBLIC && (
+                  <button onClick={() => { setBracketEvent('doubles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                    className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                    See the doubles bracket →
+                  </button>
+                )}
               </div>
               <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
                 <div className="w-12 h-12 rounded-xl bg-[#5c1313]/30 text-rose-500 flex items-center justify-center mb-6">
@@ -2148,10 +2167,12 @@ export default function App() {
                   <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
                 </ul>
-                <button onClick={() => { setBracketEvent('singles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
-                  className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
-                  See the singles bracket →
-                </button>
+                {DRAWS_PUBLIC && (
+                  <button onClick={() => { setBracketEvent('singles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                    className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                    See the singles bracket →
+                  </button>
+                )}
               </div>
             </div>
 
