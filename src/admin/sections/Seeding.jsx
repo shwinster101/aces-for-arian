@@ -36,11 +36,13 @@ export default function Seeding({ participants, ops }) {
 
       <Pills value={event} onChange={setEvent} options={EVENTS} />
 
+      {/* Seeding first, then the generated draw directly below it, then the
+          secondary tools (lock, partners) and the raw match order. */}
       <FieldPicker event={event} ops={ops} entrants={entrants} />
       <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
+      <DrawBoard event={event} ops={ops} />
       <FieldLock ops={ops} participants={participants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
-      <DrawBoard event={event} ops={ops} />
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
     </div>
   );
