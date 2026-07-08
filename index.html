@@ -12,20 +12,55 @@
     <meta name="apple-mobile-web-app-title" content="Aces for Arian" />
     <link rel="apple-touch-icon" href="/ar-logo.png" />
     <title>Aces for Arian 2026</title>
+    <!-- Canonical domain: consolidate all SEO signal on acesforarian.com (the
+         Cloudflare *.pages.dev subdomain funnels here) -->
+    <link rel="canonical" href="https://acesforarian.com/" />
     <!-- Social share preview (Open Graph + Twitter) — makes the link render a rich card when texted/posted -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Aces for Arian" />
     <meta property="og:title" content="Aces for Arian 2026 — 5th Annual Memorial Tennis Tournament" />
     <meta property="og:description" content="July 11–12 at Dunlap High School. Singles & doubles to fund the Arian Rahbar Memorial Scholarship. Register, donate, or come watch." />
-    <meta property="og:url" content="https://aces-for-arian.pages.dev/" />
-    <meta property="og:image" content="https://aces-for-arian.pages.dev/photo2.jpg" />
+    <meta property="og:url" content="https://acesforarian.com/" />
+    <meta property="og:image" content="https://acesforarian.com/photo2.jpg" />
     <meta property="og:image:width" content="1600" />
     <meta property="og:image:height" content="1066" />
     <meta property="og:image:alt" content="A player on the Dunlap High School courts at the Aces for Arian tournament" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Aces for Arian 2026 — 5th Annual Memorial Tennis Tournament" />
     <meta name="twitter:description" content="July 11–12 at Dunlap High School. Singles & doubles to fund the Arian Rahbar Memorial Scholarship. Register, donate, or come watch." />
-    <meta name="twitter:image" content="https://aces-for-arian.pages.dev/photo2.jpg" />
+    <meta name="twitter:image" content="https://acesforarian.com/photo2.jpg" />
+    <!-- Structured data: SportsEvent for Google event rich results (dates/venue).
+         Keep name/dates/venue in sync with the .ics in src/App.jsx and Rules copy. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SportsEvent",
+        "name": "Aces for Arian 2026 — 5th Annual Memorial Tennis Tournament",
+        "description": "The 5th annual Aces for Arian tennis tournament. Singles & doubles to fund the Arian Rahbar Memorial Scholarship.",
+        "sport": "Tennis",
+        "startDate": "2026-07-11",
+        "endDate": "2026-07-12",
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "url": "https://acesforarian.com/",
+        "image": "https://acesforarian.com/photo2.jpg",
+        "location": {
+          "@type": "Place",
+          "name": "Dunlap High School",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Dunlap",
+            "addressRegion": "IL",
+            "addressCountry": "US"
+          }
+        },
+        "organizer": {
+          "@type": "Organization",
+          "name": "Aces for Arian",
+          "url": "https://acesforarian.com/"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

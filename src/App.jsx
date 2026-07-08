@@ -107,14 +107,14 @@ function AddToCalendarButton({ className = "" }) {
       'PRODID:-//Aces for Arian//Tournament//EN',
       'CALSCALE:GREGORIAN',
       'BEGIN:VEVENT',
-      'UID:aces-for-arian-2026@aces-for-arian.pages.dev',
+      'UID:aces-for-arian-2026@acesforarian.com',
       'DTSTAMP:20260101T000000Z',
       'DTSTART:20260711T140000Z', // Sat Jul 11, ~9:00 AM CDT
       'DTEND:20260712T220000Z',   // Sun Jul 12, ~5:00 PM CDT
       'SUMMARY:Aces for Arian 2026 — Memorial Tennis Tournament',
       'LOCATION:Dunlap High School\\, Dunlap\\, IL',
-      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~8 AM). Start times vary by final counts. Details: https://aces-for-arian.pages.dev/',
-      'URL:https://aces-for-arian.pages.dev/',
+      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~8 AM). Start times vary by final counts. Details: https://acesforarian.com/',
+      'URL:https://acesforarian.com/',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
@@ -131,7 +131,7 @@ function AddToCalendarButton({ className = "" }) {
 // copy as the desktop fallback. Feeds the field-momentum loop on the Home tab.
 function ShareInvite({ className = "" }) {
   const [copied, setCopied] = useState(false);
-  const url = 'https://aces-for-arian.pages.dev/';
+  const url = 'https://acesforarian.com/';
   const text = 'Play in the 5th Annual Aces for Arian — July 11–12 at Dunlap. Singles, doubles, or both:';
   const onShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
