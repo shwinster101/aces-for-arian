@@ -180,8 +180,18 @@ function writeSubscribe_(payload) {
 var READ_TOKEN = 'a4a-read-8db082a282da9e0b622178164cd9b202'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
 var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces', 'OpsStatus', 'Announcements']; // '' = roster (first tab)
 
+// Email-blast token — gates ONLY the mode=emails read below (the roster's
+// email column for the ops Announce tab's Gmail-BCC list). Deliberately a
+// SEPARATE token from READ_TOKEN/WRITE_TOKEN: it ships in the public admin
+// bundle (src/admin/sections/Announce.jsx), so like the others it is a
+// drive-by deterrent, not a real secret. Rotate it after the event (change
+// here + in Announce.jsx, redeploy New version).
+var EMAILS_TOKEN = 'a4a-mail-766673c3d6e53f1463738ba7';
+
 function doGet(e) {
   var p = (e && e.parameter) || {};
+  // Ops-only email list — its own token, checked inside; never tab-readable.
+  if (p.mode === 'emails') return rosterEmailsOut_(p.token);
   if (p.token !== READ_TOKEN) return csvOut_('');          // fail closed: no/bad token
   var tab = p.tab || '';
   if (READABLE.indexOf(tab) < 0) return csvOut_('');        // not allowlisted
@@ -205,6 +215,36 @@ function filterRosterCols_(values) {
   return values.map(function (row) {
     return row.filter(function (_, i) { return keep[i]; });
   });
+}
+
+// mode=emails: return the roster's email column ONLY — deduped, validated,
+// one address per line, no names or other columns. This is the one sanctioned
+// path for emails to leave the sheet (the ops Announce tab's BCC list); the
+// public read path (tab=...) still strips the email column entirely via
+// filterRosterCols_, and functions/api/sheet.js filters again. Fail-closed:
+// bad token, missing sheet, or no email column -> empty body.
+function rosterEmailsOut_(token) {
+  if (token !== EMAILS_TOKEN) return csvOut_('');
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]; // roster = first tab
+  if (!sheet) return csvOut_('');
+  var rows = sheet.getLastRow(), cols = sheet.getLastColumn();
+  if (rows < 2 || cols < 1) return csvOut_('');
+  var values = sheet.getRange(1, 1, rows, cols).getValues();
+  var idx = -1;
+  for (var i = 0; i < values[0].length; i++) {
+    if (String(values[0][i] || '').trim().toLowerCase().indexOf('email') >= 0) { idx = i; break; }
+  }
+  if (idx < 0) return csvOut_('');
+  var seen = {}, out = [];
+  for (var r = 1; r < values.length; r++) {
+    var v = String(values[r][idx] || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) continue; // skip blanks/junk
+    var k = v.toLowerCase();
+    if (seen[k]) continue;
+    seen[k] = true;
+    out.push(v);
+  }
+  return csvOut_(out.join('\n'));
 }
 
 function filterOpsStatusRows_(values) {
