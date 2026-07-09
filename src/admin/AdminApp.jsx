@@ -14,7 +14,7 @@ import {
 import { ROSTER_CSV_URL, fallbackRoster, parseCSV, mapRoster } from '../lib/sheet';
 import { SHEET_WRITE_URL } from '../lib/sheet';
 import AuthGate from './AuthGate';
-import { isUnlocked, lock } from './auth';
+import { isUnlocked, lock, role } from './auth';
 import { useOpsStore } from './store';
 import { BrandLogo } from './ui';
 import Registrations from './sections/Registrations';
@@ -34,6 +34,11 @@ const TABS = [
   { id: 'announce', label: 'Announce', icon: Megaphone },
   { id: 'merch', label: 'Merch', icon: Package },
 ];
+
+// The volunteer PIN unlocks just the day-of desk + courtside jobs. Draws,
+// announcements (incl. the email list), registrations admin, and merch stay
+// HQ-only. UI-level gate — same deterrent trust model as the PIN itself.
+const DESK_TAB_IDS = new Set(['checkins', 'payments', 'scores']);
 
 // Where each admin section shows up on the public site — drives the contextual
 // "View live ↗" link (deep-links into the public app's hash router) so staff
@@ -56,7 +61,10 @@ export default function AdminApp() {
 }
 
 function OpsConsole({ onLock }) {
-  const [tab, setTab] = useState('registrations');
+  const myRole = role(); // 'hq' | 'desk' — read once; a role change requires re-unlocking
+  const isDesk = myRole === 'desk';
+  const visibleTabs = isDesk ? TABS.filter(t => DESK_TAB_IDS.has(t.id)) : TABS;
+  const [tab, setTab] = useState(isDesk ? 'checkins' : 'registrations');
   const [roster, setRoster] = useState(fallbackRoster);
   const [rosterLive, setRosterLive] = useState(false);
   const [syncedAt, setSyncedAt] = useState(null);
@@ -82,7 +90,7 @@ function OpsConsole({ onLock }) {
     return () => { cancelled = true; };
   }, [refreshKey]);
 
-  const sync = () => { setSpinning(true); setRefreshKey(k => k + 1); };
+  const sync = () => { setSpinning(true); setRefreshKey(k => k + 1); ops.pullDesk(); };
 
   // Merge the live sheet roster with locally-added walk-ups into one ops-facing
   // list, each entry carrying its localStorage overlay (status/check-in/etc).
@@ -105,7 +113,10 @@ function OpsConsole({ onLock }) {
           <div className="flex items-center gap-3 min-w-0">
             <BrandLogo className="w-9 h-9 shrink-0" />
             <div className="min-w-0">
-              <h1 className="text-sm font-black tracking-wide uppercase text-white truncate">Tournament Ops</h1>
+              <h1 className="text-sm font-black tracking-wide uppercase text-white truncate flex items-center gap-2">
+                Tournament Ops
+                {isDesk && <span className="text-[9px] font-black text-[#5c1313] bg-[#fbbf24] px-1.5 py-0.5 rounded">Volunteer</span>}
+              </h1>
               <p className="text-[10px] text-[#fefcbf]/70 truncate">Aces for Arian · July 11–12 · Dunlap HS</p>
             </div>
           </div>
@@ -157,7 +168,7 @@ function OpsConsole({ onLock }) {
       {/* --- TAB NAV --- */}
       <div className="sticky top-[88px] sm:top-[84px] z-30 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-zinc-800">
         <nav className="max-w-6xl mx-auto px-2 sm:px-6 flex gap-1 overflow-x-auto no-scrollbar py-2">
-          {TABS.map(t => {
+          {visibleTabs.map(t => {
             const active = tab === t.id;
             return (
               <button

@@ -37,7 +37,7 @@ export default function Payments({ participants, ops }) {
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Payments" subtitle="Track who's paid the $40 entry (and how) and who's collected their tournament tee. Order quantities live in the Merch tab." />
-      <p className="text-[10px] text-amber-400/70 -mt-1">Device-local — track payments from ONE phone. This tab doesn't sync between devices, so a second device would keep a separate, conflicting list.</p>
+      <p className="text-[10px] text-emerald-400/70 -mt-1">Synced across devices (~30s) via the private ops sheet — safe to run from multiple phones/the laptop at once.</p>
 
       <p className="text-[10px] text-zinc-600 -mt-1">
         Staff reference — accepted methods: <span className="text-zinc-400 font-bold">Venmo @acesforarian</span> (QR/link on the public site) and{' '}

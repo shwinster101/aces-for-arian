@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LockKeyhole, ShieldAlert } from 'lucide-react';
 import { BrandLogo } from './ui';
-import { ADMIN_PIN, unlock } from './auth';
+import { PINS, unlock } from './auth';
 
 export default function AuthGate({ onUnlock }) {
   const [pin, setPin] = useState('');
@@ -9,8 +9,9 @@ export default function AuthGate({ onUnlock }) {
 
   const submit = (e) => {
     e.preventDefault();
-    if (pin.trim() === ADMIN_PIN) {
-      unlock();
+    const entered = pin.trim();
+    if (PINS[entered]) {
+      unlock(entered);
       onUnlock();
     } else {
       setError(true);
