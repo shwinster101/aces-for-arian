@@ -2225,7 +2225,7 @@ export default function App() {
                       scheduled: { label: 'Scheduled', cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' },
                     }[m.status] || { label: m.status, cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' };
                     return (
-                      <div key={i} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
+                      <div key={m.id || i} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
                         <div className="flex items-center justify-between gap-2 mb-2.5">
                           <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 truncate">{meta}</span>
                           <span className={`shrink-0 text-[9px] font-black uppercase tracking-wider border rounded-full px-2 py-0.5 ${badge.cls}`}>{badge.label}</span>

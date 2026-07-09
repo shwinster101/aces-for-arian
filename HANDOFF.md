@@ -35,6 +35,54 @@ checklist for the next auditor).
 
 ---
 
+## 1-wp. Session Summary — 2026-07-09 eve: write-path hardening (lock + atomic bulk replace)
+
+The one remaining P0 before reveal night: every Apps Script handler is a
+full read-modify-write of its tab, and the client fired bursts into it —
+`applyBracket` pushed ~30 individual `match`/`match-delete` POSTs per
+generate, and `updateMatch` POSTed on every keystroke. Concurrent
+executions interleave and can silently drop rows; tonight's two generates
+and Saturday's 5 synced devices are exactly that scenario. Fixed both ends:
+
+- **Apps Script** (`apps-script/ops-write-back.js`): `withLock_` —
+  `LockService.getScriptLock().waitLock(20000)` + try/finally release —
+  wraps the entire doPost mutation switch and `writeSubscribe_`, so writes
+  serialize instead of interleaving. New `matches-replace` handler
+  (`replaceEngineMatches_`): payload `{event, prefix, list}` drops every row
+  whose Event matches AND id starts with the engine prefix (`S-`/`D-`; hand
+  rows survive), appends the fresh list, ONE `writeRows_`.
+  ⚠️ **REQUIRES A REDEPLOY** (Manage deployments → pencil → New version) —
+  and it MUST happen before generating draws: the currently-deployed script
+  silently ignores the unknown `matches-replace` type, so a generate would
+  never reach the sheet until the redeploy. Order: merge → redeploy → generate.
+- **Client** (`src/admin/store.js`): `applyBracket` now sends ONE
+  `matches-replace` (plus the existing `opsdraw` companion) instead of the
+  per-row burst; `updateMatch` debounces the sheet push per match id
+  (trailing 400 ms + pagehide flush via keepalive), so typing a score sends
+  one POST per pause; `removeMatch` cancels any pending debounced push for
+  the deleted id (resurrection hazard); `applyBracket` cancels pending
+  pushes for engine ids it's about to replace (stale-clobber hazard).
+- **React footgun found while verifying (do not reintroduce):** capturing a
+  value by side effect inside a `setStore` updater only works on React's
+  eager first-update path — rapid successive updates defer the updater, so
+  the capture silently misses (typing "6-4" pushed just "6"; hand-row edits
+  pushed nothing; a deferred capture in applyBracket would have pushed an
+  EMPTY list and wiped the event's sheet rows). Both functions now compute
+  payloads OUTSIDE the updater from the closure snapshot.
+- Public Live Scores cards now keyed by `m.id` (stable identity), not index.
+- Verified (Playwright POST interception, 19-team doubles): generate fires
+  exactly ONE `matches-replace` (8 rows: 3 play-ins + 5 contested R1, all
+  `D-` ids), zero `match`/`match-delete` bursts; typing "6-4" → ONE POST
+  carrying "6-4"; hand-row edits still push; delete cancels the pending
+  edit. Regressions all green: verify13 23/23, verify17 6/6, verify19 7/7,
+  verify21 6/6, verify22 6/6, schedule units 16/16.
+- Triage context: this closed out the third external agent report. Its code
+  lives ONLY in its own stale checkout — do NOT merge that checkout; its
+  other findings were already built or already false (see session notes
+  below and docs/next-audit-handoff.md).
+
+---
+
 ## 1. Session Summary — 2026-07-09 PM: multi-device DRAW sync (seed order + bracket)
 
 Owner opened /admin on a second device (2311) and the draw HQ generated
