@@ -35,6 +35,7 @@ export default function CheckIns({ participants, ops }) {
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Day-of Check-in" subtitle="Search a name and tap to mark them arrived. Times are stamped automatically." />
+      <p className="text-[10px] text-amber-400/70 -mt-1">Device-local — run check-ins from ONE phone. This tab doesn't sync between devices, so a second device would keep a separate, conflicting list.</p>
 
       <div className="grid grid-cols-2 gap-2.5">
         <Stat label="Checked in" value={`${checkedInCount} / ${participants.length}`} tone="emerald" />

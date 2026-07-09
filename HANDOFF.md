@@ -35,7 +35,37 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-08 leak fix + locked engine rows + email blast
+## 1. Session Summary — 2026-07-09 external-audit triage + release stabilization
+
+An outside audit of the live site was fact-checked against this repo. Two of
+its P0s were FALSE; the real items shipped:
+
+- **"Live/local source mismatch" — FALSE.** Live bundle `main-7HZghj78.js`
+  is byte-identical to a clean build of `main` @ 182b920 (Vite content-hashes
+  filenames; same name = same bytes). Live == main. The auditor's own
+  checkout was dirty (modified App.jsx/AdminApp.jsx, untracked AGENTS.md /
+  index.html.bak). ⚠️ If that checkout still exists somewhere: never deploy
+  from it; diff and discard its edits.
+- **"Missing merch-tee.jpg" — FALSE.** All four merch images are in
+  `public/`; referenced in the Merch tab.
+- **Domain swap (real item, shipped):** OG/Twitter meta (`index.html`), the
+  share URL, and the .ics DESCRIPTION/URL now point at
+  **https://acesforarian.com/**. The .ics **UID intentionally keeps** the old
+  pages.dev string — it's invisible, and changing a UID makes re-downloaded
+  invites import as duplicate calendar events. pages.dev keeps serving as a
+  fallback; the ONLY pages.dev reference left in the bundle is that UID.
+- **Player checklist (shipped):** Home card under the announcements feed —
+  arrive 15 early / gear / $40 Venmo / draws Thursday afternoon + Brackets
+  tab day-of / late entry via text-or-email. Closed-reg CTA also gained the
+  acesforarian@gmail.com mailto for late entries.
+- **Device-local warnings (shipped):** amber one-liners on ops Check-ins,
+  Payments, and Merch — run each from ONE phone (no cross-device sync).
+  Seeds/draws/scores/announcements DO sync via the sheet; only those three
+  tabs are local.
+
+---
+
+## 1a. Session Summary — 2026-07-08 leak fix + locked engine rows + email blast
 
 **Why:** the owner's screenshot showed the PUBLIC Live Court Board + Live
 Scores displaying real participant names pre-reveal. Root cause: ops draw
