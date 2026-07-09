@@ -287,20 +287,46 @@ export function useOpsStore() {
     });
     return id;
   };
+  // Debounced per-match sheet pushes: typing a score/court/name fires one
+  // POST per pause (trailing ~400ms), not one per keystroke — each POST is a
+  // full read-modify-write server-side, so bursts are what race. Local state
+  // updates immediately; the latest payload per id wins; pagehide flushes
+  // anything pending (pushToSheet is keepalive).
+  const pendingMatchPush = useRef({}); // id -> { timer, payload }
+  const flushMatchPush = (id) => {
+    const p = pendingMatchPush.current[id];
+    if (!p) return;
+    clearTimeout(p.timer);
+    delete pendingMatchPush.current[id];
+    pushToSheet('match', p.payload);
+  };
+  useEffect(() => {
+    const flushAll = () => Object.keys(pendingMatchPush.current).forEach(flushMatchPush);
+    window.addEventListener('pagehide', flushAll);
+    return () => window.removeEventListener('pagehide', flushAll);
+  }, []);
   const updateMatch = (id, patch) => {
-    let nextForSheet = null;
-    setStore(s => {
-      const matches = s.matches.map(m => {
-        if (m.id !== id) return m;
-        const next = { ...m, ...patch };
-        nextForSheet = publicMatchPayload(next);
-        return next;
-      });
-      return { ...s, matches };
-    });
-    if (nextForSheet) pushToSheet('match', nextForSheet);
+    setStore(s => ({ ...s, matches: s.matches.map(m => (m.id === id ? { ...m, ...patch } : m)) }));
+    // Build the sheet payload OUTSIDE the updater: React only invokes updater
+    // functions synchronously on its eager first-update path, so a side-effect
+    // capture inside setStore silently drops rapid successive edits (verified:
+    // typing "6-4" pushed just "6"). The closure `store` is the last committed
+    // snapshot; layering any pending payload + this patch over it covers
+    // same-tick edit runs (payload keys mirror match row keys).
+    const cur = store.matches.find(m => m.id === id);
+    if (!cur) return;
+    const prior = pendingMatchPush.current[id];
+    if (prior) clearTimeout(prior.timer);
+    pendingMatchPush.current[id] = {
+      payload: publicMatchPayload({ ...cur, ...(prior ? prior.payload : null), ...patch }),
+      timer: setTimeout(() => flushMatchPush(id), 400),
+    };
   };
   const removeMatch = (id) => {
+    // Cancel any debounced edit push for this id — if it fired after the
+    // delete below, it would resurrect the row on the sheet.
+    const p = pendingMatchPush.current[id];
+    if (p) { clearTimeout(p.timer); delete pendingMatchPush.current[id]; }
     setStore(s => ({ ...s, matches: s.matches.filter(m => m.id !== id) }));
     // Mirror the delete so a match removed courtside doesn't linger as a ghost
     // on the public Live Scores board (the row is keyed by this same id).
@@ -385,35 +411,45 @@ export function useOpsStore() {
   // from the sheet too, so the public board never keeps a ghost row.
   const applyBracket = (event, compute) => {
     const prefix = event === 'Doubles' ? 'D-' : 'S-';
-    const pushes = [];
-    let nextBracketOut = null, seedsOut = null;
+    // Everything is computed from the closure snapshot OUTSIDE setStore —
+    // capturing values out of an updater is unreliable (React defers updaters
+    // off its eager first-update path; see updateMatch), and a missed capture
+    // here would push an EMPTY list and wipe the event's rows off the sheet.
+    // Each call is one user action (generate/winner/swap/rename/clear), so
+    // the last committed snapshot is the current one.
+    const nextBracket = compute(store);
+    const prior = new Map(store.matches.map(m => [m.id, m]));
+    const rows = bracketMatchRows(nextBracket).map(r => {
+      const p = prior.get(r.id);
+      // Court/score entered on the Scores tab survive the re-sync; a
+      // Scores-set 'live' also survives unless the bracket says final.
+      const status = r.status === 'final' ? 'final' : (p && p.status === 'live' ? 'live' : r.status);
+      return {
+        id: r.id, event, round: r.round, num: r.num, a: r.a, b: r.b,
+        court: p ? p.court : '', score: p ? p.score : '', status, winner: r.winner,
+      };
+    });
     setStore(s => {
-      const nextBracket = compute(s);
-      nextBracketOut = nextBracket;
-      seedsOut = s.seeds[event];
-      const prior = new Map(s.matches.map(m => [m.id, m]));
-      const rows = bracketMatchRows(nextBracket).map(r => {
-        const p = prior.get(r.id);
-        // Court/score entered on the Scores tab survive the re-sync; a
-        // Scores-set 'live' also survives unless the bracket says final.
-        const status = r.status === 'final' ? 'final' : (p && p.status === 'live' ? 'live' : r.status);
-        return {
-          id: r.id, event, round: r.round, num: r.num, a: r.a, b: r.b,
-          court: p ? p.court : '', score: p ? p.score : '', status, winner: r.winner,
-        };
-      });
-      const newIds = new Set(rows.map(r => r.id));
       const kept = s.matches.filter(m => !String(m.id).startsWith(prefix));
-      for (const r of rows) pushes.push({ type: 'match', payload: publicMatchPayload(r) });
-      for (const m of s.matches) {
-        if (String(m.id).startsWith(prefix) && !newIds.has(m.id)) pushes.push({ type: 'match-delete', payload: { id: m.id } });
-      }
       return { ...s, brackets: { ...s.brackets, [event]: nextBracket }, matches: [...kept, ...rows] };
     });
-    pushes.forEach(p => pushToSheet(p.type, p.payload));
+    // The bulk replace below already carries every engine row's current local
+    // state, so any pending debounced edit for these ids is superseded —
+    // cancel it (a late fire would re-push pre-replace fields over the row).
+    Object.keys(pendingMatchPush.current).forEach(pid => {
+      if (pid.startsWith(prefix)) {
+        clearTimeout(pendingMatchPush.current[pid].timer);
+        delete pendingMatchPush.current[pid];
+      }
+    });
+    // ONE atomic bulk write replaces this event's engine rows on the sheet
+    // (replaceEngineMatches_ drops old prefix rows and appends these — the
+    // old per-row match + match-delete burst could interleave server-side and
+    // clobber itself; hand-added rows are untouched by replace semantics).
+    pushToSheet('matches-replace', { event, prefix, list: rows.map(publicMatchPayload) });
     // Share the full draw (seed order + bracket state, incl. winner marks) so
     // every ops device converges on it. A null bracket (clear) syncs too.
-    pushDraw(event, seedsOut, nextBracketOut);
+    pushDraw(event, store.seeds[event], nextBracket);
   };
   // Auto-populate the draw from the current seed list (nearest power of 2,
   // byes to the top seeds) and sync R1 into Match Order. labelFor formats the

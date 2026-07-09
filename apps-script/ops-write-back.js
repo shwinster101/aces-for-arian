@@ -104,34 +104,54 @@ function doPost(e) {
     // Public "notify me next year" capture — no token. Appends to a PRIVATE
     // Subscribers tab that is intentionally absent from the public read allowlist
     // (functions/api/sheet.js), so the emails are never served to the browser.
-    if (body.type === 'subscribe') { writeSubscribe_(body.payload); return ContentService.createTextOutput('ok'); }
+    // Locked like the ops writes below — it mutates a tab via the same
+    // read-modify-write pattern.
+    if (body.type === 'subscribe') { withLock_(function () { writeSubscribe_(body.payload); }); return ContentService.createTextOutput('ok'); }
     // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
     // Obfuscation only (the token ships in the public bundle), but it stops
     // drive-by writes from anyone who merely opens /admin.html.
     if (body.token !== 'a4a-ea5316b9f5d5b04e49115a20') {
       return ContentService.createTextOutput('forbidden');
     }
-    switch (body.type) {
-      case 'seeds':        writeSeeds_(body.payload); break;
-      case 'court-board':  writeCourtBoard_(body.payload); break;
-      case 'match':        writeMatch_(body.payload); break;
-      case 'match-delete': deleteMatch_(body.payload); break;
-      case 'aces':         writeAces_(body.payload); break;
-      case 'status':       writeStatus_(body.payload); break;
-      case 'config':       writeConfig_(body.payload); break;
-      case 'announce':        writeAnnounce_(body.payload); break;
-      case 'announce-delete': deleteAnnounce_(body.payload); break;
-      case 'opsdesk':      writeOpsDesk_(body.payload); break;
-      case 'walkup':       writeWalkup_(body.payload); break;
-      case 'walkup-delete':deleteWalkup_(body.payload); break;
-      case 'opsdraw':      writeOpsDraw_(body.payload); break;
-    }
+    // EVERY tab mutation runs under the script lock. Each handler does a full
+    // read-modify-write of its tab; without the lock, two concurrent
+    // executions (a burst of pushes from one device, or five ops devices at
+    // once) interleave and silently drop rows. A waitLock timeout throws into
+    // the outer catch — consistent with the fire-and-forget contract.
+    withLock_(function () {
+      switch (body.type) {
+        case 'seeds':        writeSeeds_(body.payload); break;
+        case 'court-board':  writeCourtBoard_(body.payload); break;
+        case 'match':        writeMatch_(body.payload); break;
+        case 'match-delete': deleteMatch_(body.payload); break;
+        case 'matches-replace': replaceEngineMatches_(body.payload); break;
+        case 'aces':         writeAces_(body.payload); break;
+        case 'status':       writeStatus_(body.payload); break;
+        case 'config':       writeConfig_(body.payload); break;
+        case 'announce':        writeAnnounce_(body.payload); break;
+        case 'announce-delete': deleteAnnounce_(body.payload); break;
+        case 'opsdesk':      writeOpsDesk_(body.payload); break;
+        case 'walkup':       writeWalkup_(body.payload); break;
+        case 'walkup-delete':deleteWalkup_(body.payload); break;
+        case 'opsdraw':      writeOpsDraw_(body.payload); break;
+      }
+    });
   } catch (err) {
     // Apps Script web apps can't hand a readable response back to a
     // mode:'no-cors' fetch anyway, so there's no one to tell — just don't
     // let a bad payload 500 the endpoint for the next request.
   }
   return ContentService.createTextOutput('ok');
+}
+
+// Serialize tab mutations: acquire the script-wide lock, run fn, always
+// release. waitLock throws on timeout — callers let it bubble to doPost's
+// outer catch (the client can't read the response anyway; the next push or
+// poll re-converges state).
+function withLock_(fn) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try { fn(); } finally { lock.releaseLock(); }
 }
 
 // Public "got an idea?" box on the site -> emails the owner. Runs as the owner,
@@ -400,6 +420,31 @@ function writeMatch_(patch) {
   if ('winner' in patch) next[8] = patch.winner;
   if (idx >= 0) rows[idx] = next; else rows.push(next);
   writeRows_(sheet, rows);
+}
+
+// One POST replaces ALL of one event's ENGINE rows (ids starting with the
+// event's prefix, 'S-'/'D-') in a single atomic write — sent by the ops
+// bracket sync (applyBracket) instead of the old burst of ~30 individual
+// match/match-delete POSTs that could interleave and clobber themselves.
+// Hand-added rows (non-prefix ids) and the other event's rows survive
+// untouched. Single edits still use writeMatch_/deleteMatch_.
+function replaceEngineMatches_(payload) {
+  if (!payload || !payload.event || !payload.prefix) return;
+  var sheet = sheetByName_('Matches', MATCH_HEADERS);
+  var rows = readRows_(sheet);
+  var ev = String(payload.event).trim().toLowerCase();
+  var prefix = String(payload.prefix);
+  var idCol = MATCH_HEADERS.length - 1;
+  var keep = rows.filter(function (r) {
+    var sameEvent = String(r[0] || '').trim().toLowerCase() === ev;
+    var engineId = String(r[idCol] || '').indexOf(prefix) === 0;
+    return !(sameEvent && engineId);
+  });
+  var fresh = (payload.list || []).map(function (m) {
+    return [m.event || payload.event, m.round || '', m.num || '', m.a || '', m.b || '',
+            m.court || '', m.status || 'scheduled', m.score || '', m.winner || '', m.id || ''];
+  });
+  writeRows_(sheet, keep.concat(fresh));
 }
 
 // The Live Ace Tracker sends its current absolute total on every +1/-1 tap

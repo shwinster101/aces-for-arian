@@ -28,7 +28,7 @@ export default defineConfig([
   {
     files: ['apps-script/**/*.js'],
     languageOptions: {
-      globals: { SpreadsheetApp: 'readonly', ContentService: 'readonly', MailApp: 'readonly' },
+      globals: { SpreadsheetApp: 'readonly', ContentService: 'readonly', MailApp: 'readonly', LockService: 'readonly' },
     },
     rules: { 'no-unused-vars': 'off' },
   },
