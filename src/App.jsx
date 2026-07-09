@@ -26,6 +26,8 @@ import {
 } from './lib/sheet';
 import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/entrants';
 import { estimateLabel, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
+import CompassDraw from './CompassDraw';
+import TeamTracker from './TeamTracker';
 import {
   Trophy, 
   Award, 
@@ -432,11 +434,14 @@ const REGISTER_FORM_URL = "https://forms.gle/rLnyakinZfkSePpv7";
 // "Seeds Final" row, which overrides this constant).
 const SEEDS_FINAL = false;
 
-// Public draw gate. While false, the public Brackets tab hides BOTH the
-// doubles and singles draws (event toggle + brackets + find-yourself search)
-// behind a "posts tomorrow" placeholder — seeding isn't finalized yet. The
-// ops Seeding console is unaffected either way. Flip to true to publish.
-const DRAWS_PUBLIC = false;
+// Public draw gate — PER EVENT. While an event is false, its draw stays
+// hidden (bracket, event button, and every match-derived surface: live
+// boards, Live Scores, find-my-match, team tracker — those all filter to
+// public events so ops-pushed rows for a hidden event can never leak names).
+// The ops Seeding console is unaffected either way. Doubles revealed
+// 2026-07-09; flip Singles to true to publish the Sunday draw.
+const DRAWS_PUBLIC = { Doubles: true, Singles: false };
+const anyDrawsPublic = DRAWS_PUBLIC.Doubles || DRAWS_PUBLIC.Singles;
 
 // ==========================================
 // DRAW BUILDERS (drafts — every slot is TBD until registration closes)
@@ -502,11 +507,6 @@ function losersBracket32() {
 // numbers (used to mirror the PrintYourBrackets 1–62 singles scheme).
 function numberRounds(rounds, starts) {
   return rounds.map((matches, ri) => { let n = starts[ri]; return matches.map(m => ({ ...m, num: n++ })); });
-}
-// numberSeq: number sequentially across all rounds from `start`; returns { rounds, next }.
-function numberSeq(rounds, start) {
-  let n = start;
-  return { rounds: rounds.map(ms => ms.map(m => ({ ...m, num: n++ }))), next: n };
 }
 
 const roundLabel = (matches) =>
@@ -1116,7 +1116,7 @@ function NotifyMeBox({ source = 'site' }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => tabForSlug((typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')) || 'home');
-  const [bracketEvent, setBracketEvent] = useState('doubles');
+  const [bracketEvent, setBracketEvent] = useState(DRAWS_PUBLIC.Doubles ? 'doubles' : 'singles');
   const [drawQuery, setDrawQuery] = useState(''); // "find yourself in the draw" highlight
   const drawHighlight = drawQuery.trim().length >= 2 ? drawQuery.trim().toLowerCase() : '';
   // Randomize which photo set lands on the left vs. right on each visit.
@@ -1392,20 +1392,24 @@ export default function App() {
   // opens first), so the stable structure is: matches currently ON a court
   // (live), plus an ordered "up next" queue by play order (match number). Final
   // matches drop off; entering a score advances the queue automatically.
-  const livePlaying = matches
+  // LEAK GATE: every name-bearing public surface reads from publicMatches —
+  // rows whose event is revealed. Ops pushes rows for BOTH events while
+  // building draws; a hidden event's rows must be invisible everywhere
+  // (boards, scores, search, tracker) until its DRAWS_PUBLIC flag flips.
+  // Polling keeps running, so a reveal lights everything up at once.
+  const publicMatches = useMemo(() => matches.filter(m => DRAWS_PUBLIC[m.event]), [matches]);
+
+  const livePlaying = publicMatches
     .filter(m => m.status === 'live')
     .sort((a, b) => playPos(a) - playPos(b));
-  const upNextQueue = matches
+  const upNextQueue = publicMatches
     .filter(m => m.status !== 'live' && m.status !== 'final')
     .sort((a, b) => playPos(a) - playPos(b)); // play order: doubles play-ins (M29+) queue first
   const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
   // The board is entirely match-derived: live once matches are posted, else a
-  // pre-tournament placeholder. HARD GATE: no participant names render on any
-  // public surface until DRAWS_PUBLIC — ops generating/testing the draw pushes
-  // real rows to the sheet, and pre-reveal those must stay invisible here
-  // (polling keeps running so everything lights up the moment we flip).
-  const useMatchBoard = DRAWS_PUBLIC && matchesLive && matches.length > 0;
+  // pre-tournament placeholder.
+  const useMatchBoard = anyDrawsPublic && matchesLive && publicMatches.length > 0;
   const boardLive = useMatchBoard;
   const boardFresh = matchesFresh;
   const boardUpdated = matchesUpdated;
@@ -1431,7 +1435,7 @@ export default function App() {
   const engineRowsFor = (evt) => {
     const prefix = evt === 'Doubles' ? 'D-' : 'S-';
     return new Map(
-      matches
+      publicMatches
         .filter(m => (m.event || '') === evt && (
           m.id ? String(m.id).startsWith(prefix)
                : String(m.round || '').trim().toUpperCase() === 'R1'
@@ -1462,15 +1466,15 @@ export default function App() {
   const estForEvent = (evt) => (n) => {
     if (n == null) return null;
     const fm = engineRowsFor(evt).get(Number(n));
-    return fm ? estimateLabel(fm, matches, scheduleCfg, now) : null;
+    return fm ? estimateLabel(fm, publicMatches, scheduleCfg, now) : null;
   };
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
-    ? matches.filter(m => `${m.a || ''} ${m.b || ''}`.toLowerCase().includes(matchQuery.trim().toLowerCase()))
+    ? publicMatches.filter(m => `${m.a || ''} ${m.b || ''}`.toLowerCase().includes(matchQuery.trim().toLowerCase()))
     : [];
   const matchWhere = (m) => ({
-    label: estimateLabel(m, matches, scheduleCfg, now),
+    label: estimateLabel(m, publicMatches, scheduleCfg, now),
     cls: m.status === 'live' ? 'text-emerald-400'
       : m.status === 'final' ? 'text-[#fbbf24]'
       : queuePos.get(m) === 1 ? 'text-emerald-400/80'
@@ -1922,6 +1926,19 @@ export default function App() {
           // the live boards jump above the brackets so "which court am I on?"
           // is the first thing on the tab instead of ten phone-screens down.
           // Same section cards either way — only the order changes.
+
+          // Doubles compass field sizing — shared by the compass canvas and
+          // the team tracker. A 17+ team field adds play-ins (numbered M29+
+          // to keep the East 1-15 … South 26-28 contract with the ops
+          // engine); host lines (seeds 16-pIns+1..16) stay open on the East
+          // template until the play-in result posts.
+          const dTeamsRaw = seedNamesFrom(seeds, 'Doubles');
+          const dCount = seedsLive ? dTeamsRaw.length : 16;
+          const dPIns = seedsLive ? Math.max(0, Math.min(dTeamsRaw.length - 16, 8)) : 0;
+          const dTeams = dTeamsRaw.map(publicLabel);
+          const dEastNames = dTeamsRaw.slice(0, 16).map((n, i) => (dPIns > 0 && i + 1 > 16 - dPIns ? null : publicLabel(n)));
+          const publicEvents = ['Doubles', 'Singles'].filter(e => DRAWS_PUBLIC[e]);
+
           const introAndDraws = (
             <>
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
@@ -1933,11 +1950,14 @@ export default function App() {
                     ? 'Draft brackets. Registration closed July 8 — the committee is finalizing seeds, and the draw fills in when the field locks. Only the top 8 carry a seed number.'
                     : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 8 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
               </p>
-              {DRAWS_PUBLIC ? (
+              {anyDrawsPublic ? (
                 <>
                   <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
-                    <button onClick={() => setBracketEvent('doubles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'doubles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Saturday Doubles</button>
-                    <button onClick={() => setBracketEvent('singles')} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === 'singles' ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>Sunday Singles</button>
+                    {[['doubles', 'Saturday Doubles', DRAWS_PUBLIC.Doubles], ['singles', 'Sunday Singles', DRAWS_PUBLIC.Singles]].map(([id, label, pub]) => pub ? (
+                      <button key={id} onClick={() => setBracketEvent(id)} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === id ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>{label}</button>
+                    ) : (
+                      <span key={id} className="whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl bg-[#111] text-zinc-600 border border-zinc-800/60 cursor-default select-none">{label} <span className="normal-case tracking-normal font-semibold text-zinc-500">· posts Saturday</span></span>
+                    ))}
                   </div>
                   <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
                     placeholder="Find yourself in the draw — type your name"
@@ -1954,29 +1974,33 @@ export default function App() {
               )}
             </div>
 
+            {/* Follow my team — dropdown tracker: results, live court, next
+                match, and the projected win/lose paths with times. Options
+                come from PUBLIC events only (leak gate). */}
+            {anyDrawsPublic && (
+              <TeamTracker
+                seeds={seeds}
+                matches={publicMatches}
+                events={publicEvents}
+                labelFor={publicLabel}
+                sched={scheduleCfg}
+                now={now}
+                pInsFor={(evt) => (evt === 'Doubles' ? dPIns : 0)}
+                onHighlight={setDrawQuery}
+              />
+            )}
+
             {/* Planned round times — sits right under the draws intro so it
                 shows pre- and post-reveal (times only, no names). */}
             <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
 
-            {/* SATURDAY DOUBLES — Compass Draw. 16 East lines; a 17+ team
-                field adds a Play-in Round of 32 (numbered M29+ to keep the
-                East 1-15 … South 26-28 contract with the ops engine) whose
-                winners take the last East lines — every registered team is
-                in the championship draw. */}
-            {DRAWS_PUBLIC && bracketEvent === 'doubles' && (() => {
-              const teams = seedNamesFrom(seeds, 'Doubles');
-              const dCount = seedsLive ? teams.length : 16;
-              const pIns = seedsLive ? Math.max(0, Math.min(teams.length - 16, 8)) : 0;
-              // Play-in host lines (seeds 16-pIns+1..16) stay TBD on the East
-              // template until ops posts the play-in result (overlay fills
-              // them); their teams appear in the play-in card instead.
-              const eastNames = teams.slice(0, 16).map((n, i) => (pIns > 0 && i + 1 > 16 - pIns ? null : publicLabel(n)));
-              const playInRounds = pIns > 0 ? [Array.from({ length: pIns }, (_, k) => ({
-                num: 29 + k,
-                a: { seed: 16 - k, name: publicLabel(teams[16 - k - 1]) },
-                b: { seed: 17 + k, name: publicLabel(teams[16 + k]) },
-              }))] : null;
-              return (
+            {/* SATURDAY DOUBLES — the compass draw as ONE spatial canvas
+                (the 2025 printed-sheet look): East center→right to the gold
+                champion cell, West mirrored to the left, North above, South
+                below, play-ins top-left. Lines fill from the same
+                engineRowsFor num-join as before (NUMBERING CONTRACT: East
+                1-15, West 16-22, North 23-25, South 26-28, play-ins 29+). */}
+            {DRAWS_PUBLIC.Doubles && bracketEvent === 'doubles' && (
               <div className="space-y-5">
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -1984,13 +2008,13 @@ export default function App() {
                     <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · {dCount} Teams</h3>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    {pIns > 0
+                    {dPIns > 0
                       ? 'Every team plays at least twice, and everyone in the Round of 16 is guaranteed 3+ matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.'
                       : 'Every team is guaranteed at least 3 matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.'}
                   </p>
-                  {pIns > 0 && (
+                  {dPIns > 0 && (
                     <p className="text-xs text-zinc-500 leading-relaxed max-w-2xl mt-2">
-                      With {dCount} teams, the draw opens with {pIns} play-in match{pIns === 1 ? '' : 'es'} (Round of 32) — the winners take the last East lines, everyone else starts straight in the Round of 16, and play-in teams that fall short rotate into the Play-in Consolation for their second match.
+                      With {dCount} teams, the draw opens with {dPIns} play-in match{dPIns === 1 ? '' : 'es'} (Round of 32) — the winners take the last East lines, everyone else starts straight in the Round of 16, and play-in teams that fall short rotate into the Play-in Consolation for their second match.
                     </p>
                   )}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
@@ -2008,62 +2032,22 @@ export default function App() {
                   </div>
                 </div>
 
-                {playInRounds && (
-                  <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Play-in — Round of 32</h4>
-                    <Bracket rounds={overlayRounds(playInRounds, 'Doubles')}
-                      names={['First on court Saturday']} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
-                  </div>
-                )}
-
-                {/* Play-in consolation — losers pair up (an odd loser meets
-                    the first consolation winner) so every team plays at
-                    least twice. Numbered right after the play-ins; the lines
-                    fill from the ops engine like every other round. */}
-                {pIns >= 2 && (() => {
-                  const pcCount = Math.floor(pIns / 2) + (pIns % 2 === 1 ? 1 : 0);
-                  const pcRounds = [Array.from({ length: pcCount }, (_, k) => ({ num: 29 + pIns + k, a: {}, b: {} }))];
-                  return (
-                    <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                      <h4 className="text-sm font-black text-white uppercase tracking-wider mb-1">Play-in Consolation</h4>
-                      <p className="text-[11px] text-zinc-500 mb-4">Play-in first-round teams rotate here — everyone plays at least twice.</p>
-                      <Bracket rounds={overlayRounds(pcRounds, 'Doubles')}
-                        names={['After the play-ins']} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
-                    </div>
-                  );
-                })()}
-
-                {(() => {
-                  let next = 1;
-                  return [
-                    // A full/overflow field has no byes in East (the play-ins
-                    // absorb the overflow), so bye rendering is off when
-                    // play-ins exist — host lines read TBD, not BYE.
-                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, eastNames, showByes && pIns === 0)],
-                    ['West Draw', singleElim(8, false)],
-                    ['North Draw', singleElim(4, false)],
-                    ['South Draw', singleElim(4, false)],
-                  ].map(([title, rounds]) => {
-                    const numbered = numberSeq(rounds, next); next = numbered.next;
-                    // The ops engine numbers the whole compass to match this
-                    // numberSeq chain (East 1-15, West 16-22, North 23-25,
-                    // South 26-28; play-ins append at 29+), so every
-                    // direction overlays + estimates.
-                    return (
-                      <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
-                        <Bracket rounds={overlayRounds(numbered.rounds, 'Doubles')}
-                          highlight={drawHighlight} estFor={estForEvent('Doubles')} />
-                      </div>
-                    );
-                  });
-                })()}
+                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-4 md:p-6">
+                  <CompassDraw
+                    eastNames={dEastNames}
+                    teams={dTeams}
+                    pIns={dPIns}
+                    rowsByNum={engineRowsFor('Doubles')}
+                    estFor={estForEvent('Doubles')}
+                    highlight={drawHighlight}
+                    showByes={showByes && dPIns === 0}
+                  />
+                </div>
               </div>
-              );
-            })()}
+            )}
 
             {/* SUNDAY SINGLES — Double Elimination (32 players) */}
-            {DRAWS_PUBLIC && bracketEvent === 'singles' && (
+            {DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
               <div className="space-y-5">
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -2203,8 +2187,8 @@ export default function App() {
               )}
             </div>
 
-            {/* Live scores — only once draws are revealed AND ops has posted a match */}
-            {DRAWS_PUBLIC && matchesLive && matches.length > 0 && (
+            {/* Live scores — only revealed events, only once ops has posted a match */}
+            {anyDrawsPublic && matchesLive && publicMatches.length > 0 && (
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                   <div className="flex items-center gap-2">
@@ -2217,7 +2201,7 @@ export default function App() {
                   Match results as they're posted courtside — <span className="text-emerald-400 font-semibold">live</span> matches update in real time, and <span className="text-[#fbbf24] font-semibold">winners</span> are highlighted once a match goes final.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {matches.map((m, i) => {
+                  {publicMatches.map((m, i) => {
                     const meta = [m.event, m.round && `Rd ${m.round}`, m.num && `M${m.num}`, m.court && `Court ${m.court}`].filter(Boolean).join(' · ');
                     const badge = {
                       live: { label: 'Live', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
@@ -2348,7 +2332,7 @@ export default function App() {
                   <li><strong className="text-zinc-200">Quarterfinals on:</strong> teams may switch to 2-of-3 regular sets if everyone in the round agrees.</li>
                   <li><strong className="text-zinc-200">Prizes:</strong> awarded to the top 3.</li>
                 </ul>
-                {DRAWS_PUBLIC && (
+                {DRAWS_PUBLIC.Doubles && (
                   <button onClick={() => { setBracketEvent('doubles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
                     className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
                     See the doubles bracket →
@@ -2367,7 +2351,7 @@ export default function App() {
                   <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
                 </ul>
-                {DRAWS_PUBLIC && (
+                {DRAWS_PUBLIC.Singles && (
                   <button onClick={() => { setBracketEvent('singles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
                     className="mt-5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">
                     See the singles bracket →

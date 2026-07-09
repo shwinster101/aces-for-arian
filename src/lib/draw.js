@@ -129,8 +129,10 @@ export function buildDraw(event, seedList, opts = {}) {
 // STATIC FEEDER GRAPH — one match descriptor per playable match, in
 // evaluation (and play) order. aFrom/bFrom are either { slot } (an R1 slot
 // index) or { kind: 'winner'|'loser', ref: <matchId> }.
+// Exported for read-only public consumers (src/lib/compass.js derives the
+// "follow my team" win/lose routing from it) — single source of truth.
 // ---------------------------------------------------------------------------
-function graphFor(event, pIns = 0) {
+export function graphFor(event, pIns = 0) {
   const matches = [];
   const sections = [];
   let section = null;
