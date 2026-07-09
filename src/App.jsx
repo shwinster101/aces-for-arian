@@ -51,7 +51,9 @@ import {
   Grid3x3,
   Search,
   Utensils,
-  Info
+  Info,
+  ListChecks,
+  Check
 } from 'lucide-react';
 
 // ==========================================
@@ -107,14 +109,17 @@ function AddToCalendarButton({ className = "" }) {
       'PRODID:-//Aces for Arian//Tournament//EN',
       'CALSCALE:GREGORIAN',
       'BEGIN:VEVENT',
+      // UID stays on the original domain ON PURPOSE: it's an invisible
+      // identifier, and changing it would make a re-downloaded invite import
+      // as a duplicate event instead of updating the one people already added.
       'UID:aces-for-arian-2026@aces-for-arian.pages.dev',
       'DTSTAMP:20260101T000000Z',
       'DTSTART:20260711T140000Z', // Sat Jul 11, ~9:00 AM CDT
       'DTEND:20260712T220000Z',   // Sun Jul 12, ~5:00 PM CDT
       'SUMMARY:Aces for Arian 2026 — Memorial Tennis Tournament',
       'LOCATION:Dunlap High School\\, Dunlap\\, IL',
-      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~8 AM). Start times vary by final counts. Details: https://aces-for-arian.pages.dev/',
-      'URL:https://aces-for-arian.pages.dev/',
+      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~8 AM). Start times vary by final counts. Details: https://acesforarian.com/',
+      'URL:https://acesforarian.com/',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
@@ -131,7 +136,7 @@ function AddToCalendarButton({ className = "" }) {
 // copy as the desktop fallback. Feeds the field-momentum loop on the Home tab.
 function ShareInvite({ className = "" }) {
   const [copied, setCopied] = useState(false);
-  const url = 'https://aces-for-arian.pages.dev/';
+  const url = 'https://acesforarian.com/';
   const text = 'Play in the 5th Annual Aces for Arian — July 11–12 at Dunlap. Singles, doubles, or both:';
   const onShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -167,7 +172,9 @@ function RegisterCTA({ closed, label = 'Register Here!', className = '' }) {
   return (
     <div className="text-left text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 leading-relaxed max-w-xs">
       <span className="block text-zinc-200 font-black uppercase tracking-wider text-[10px] mb-0.5">Sign-ups closed July 8</span>
-      Want in late? Text a coordinator first — the{' '}
+      Want in late? Text a coordinator or email{' '}
+      <a href="mailto:acesforarian@gmail.com?subject=Late%20registration%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">acesforarian@gmail.com</a>{' '}
+      first — the{' '}
       <a href={REGISTER_FORM_URL} target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">registration form</a>{' '}
       stays open for approved additions.
     </div>
@@ -1671,6 +1678,28 @@ export default function App() {
 
             {/* Announcements feed — weather first-class; hidden when empty */}
             <AnnouncementsFeed items={announcements} now={now} />
+
+            {/* Player checklist — the "what do I do now?" card for a player
+                scanning on a phone the week of the tournament. */}
+            <div className="mx-auto w-full max-w-xl bg-[#151515] border border-zinc-800 rounded-3xl p-5 sm:p-6">
+              <h2 className="text-sm font-black text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-[#fbbf24]" /> Player checklist
+              </h2>
+              <ul className="space-y-2 text-[13px] text-zinc-300 leading-relaxed">
+                {[
+                  <>Arrive <strong className="text-white">15 minutes</strong> before your first match — Dunlap HS courts.</>,
+                  <>Bring your racquet, water, and court shoes.</>,
+                  <>Haven't paid? <strong className="text-white">$40 via Venmo</strong> (see the Scholarship tab) or cash at the desk.</>,
+                  <>Draws &amp; schedule post <strong className="text-white">Thursday afternoon</strong> — day-of, your court and time live in the <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 font-semibold transition-colors">Brackets tab</button>.</>,
+                  <>Joining late? Text a coordinator or email <a href="mailto:acesforarian@gmail.com?subject=Late%20registration%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">acesforarian@gmail.com</a>.</>,
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             {/* Next steps: reassurance, quick actions, discreet payment note */}
             <div className="mx-auto w-full max-w-xl text-center space-y-3">

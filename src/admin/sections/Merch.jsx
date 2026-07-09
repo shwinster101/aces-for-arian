@@ -58,6 +58,7 @@ export default function Merch({ participants, ops }) {
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Merch & Inventory"
         subtitle="Shirt sizes requested at registration drive the order count. Track how many of each item you've ordered and what's left in the gear locker." />
+      <p className="text-[10px] text-amber-400/70 -mt-1">Device-local — run inventory from ONE phone. This tab doesn't sync between devices.</p>
 
       <p className="text-[10px] text-zinc-600 -mt-1">
         Extra gear (below) is sold <span className="text-zinc-400 font-bold">per item via Venmo @acesforarian</span> on the public Merch tab — buyers are asked to put the item name in their Venmo note. Check Venmo activity/notifications to match payments to orders and keep "In stock" current; the scholarship totals update from it.
