@@ -35,6 +35,43 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd2. Session Summary — 2026-07-09 late: post-reveal polish (owner phone review)
+
+Owner reviewed the live reveal on his phone; five fixes shipped in one pass:
+
+- **Times, not "Scheduled"**: `matchEstimate` (src/lib/schedule.js) no longer
+  adds warm-up — wave 0 anchors at FIRST SERVE, so times read 9:00 not 9:10
+  (flyer language, owner call). New `startClockLabel` ("~9:00 AM") is the
+  shared compact time: Live Scores' scheduled badge, Up-next rows, and the
+  compass match tokens all use it. `warmupMin` still parsed, now unused.
+- **Brackets tab is ONE fixed flow** (no more liveDay reorder): draw sheet at
+  the very top (Tournament Draws card = title + event chips + canvas +
+  compact legend BELOW the sheet; seeding blurb deleted) → Follow-my-team
+  (the free-text highlight input now lives INSIDE the tracker card, BELOW
+  the dropdown) → Live Court Board → Live Scores → round-times banner →
+  suggest box → ace tracker → legacy link.
+- **Up next = actually playable**: new `isReadyRow` (schedule.js) — a row
+  with a placeholder side ("W of M31"/TBD) never takes a queue slot (M5
+  waiting on M3 → M6 is next); a "waiting on earlier-round results" note
+  counts the blocked ones. Live Scores now sorts live → queue(playPos) →
+  finals instead of sheet order.
+- **Compass canvas reworked from first principles** (CompassDraw.jsx): the
+  estimate SENTENCES under lines are gone — each match carries ONE token
+  hugging its connector ("M2 · ~9:00 AM" / "M1 · Ct 3 LIVE" / bare "M2").
+  Band layout kills the dead zones: play-ins + consolation panels top-left
+  with NORTH beside them (top-right), West|East main band, South tucked
+  under West. ROW_H 26→22 (lib/compass.js), stronger ink/rules
+  (#171310/#57534e) for sunlight + Fit legibility, seed badges moved to the
+  line's RIGHT edge so names align flush-left, TBD lines render as blank
+  rules (sheet-style), panels are two rules + one meta line.
+- Singles chip text "posts Saturday" → "posts Sat" (was overflowing).
+- Verified: compass suite grew to 45/45 (order, tracker-holds-search,
+  9:00-AM badges, ready-queue skip + note, no blurb), engine contract 24/24,
+  HQ round-trip 15/15, lint/build clean. Same reveal gates; no data-layer
+  changes beyond schedule.js estimates.
+
+---
+
 ## 1-cd. Session Summary — 2026-07-09 night: public compass canvas + team tracker + PER-EVENT reveal
 
 Owner asked for the public doubles view to read like the **2025 printed

@@ -24,7 +24,7 @@ function loadSel() {
   } catch { return null; }
 }
 
-export default function TeamTracker({ seeds, matches, events, labelFor, sched, now, pInsFor, onHighlight }) {
+export default function TeamTracker({ seeds, matches, events, labelFor, sched, now, pInsFor, onHighlight, query = '', onQuery }) {
   const groups = teamOptions(seeds, matches, events, labelFor);
   const [sel, setSel] = useState(loadSel);
 
@@ -128,6 +128,20 @@ export default function TeamTracker({ seeds, matches, events, labelFor, sched, n
               No match posted for <span className="text-zinc-300 font-semibold">{active.label}</span> yet — your first match and the projected path appear here the moment the desk posts the draw.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Free-text fallback BELOW the tracker (owner call: "Follow my team"
+          leads; typing any name just lights up the draw sheet). */}
+      {onQuery && (
+        <div className="mt-4 pt-4 border-t border-zinc-800/60">
+          <input
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder="Or type any name to light it up on the draw"
+            className="w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors"
+          />
+          <p className="text-[10px] text-zinc-600 mt-1.5">Highlights the matching lines on the draw sheet above and auto-scrolls to them.</p>
         </div>
       )}
     </div>

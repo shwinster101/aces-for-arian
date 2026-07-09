@@ -12,7 +12,8 @@ export const SCHEDULE_DEFAULTS = {
   doublesMin: 40,   // Fast-4 best-of-3 doubles match — rough average
   singlesMin: 50,   // 6-/8-game singles match — rough average (varies by round)
   qfMin: 60,        // QF onward: 8-game pro set, with ad — ~1 hr each
-  warmupMin: 10,    // one-time warm-up before the very first matches
+  warmupMin: 10,    // on-court warm-up; parsed from Config for compat but NOT
+                    // added to estimates — first-wave times read 9:00, not 9:10
 };
 
 // First-serve anchors — the highest-leverage matches go on court at these
@@ -85,9 +86,10 @@ export function matchEstimate(match, allMatches, sched, nowMs = Date.now()) {
   ).length;
 
   const wave = Math.floor(ahead / courts);
-  // Warm-up only applies at the very start of the day (nothing decided yet).
-  const anyStarted = allMatches.some(o => isLive(o) || isFinal(o));
-  const waitMin = wave * matchMin + (anyStarted ? 0 : s.warmupMin);
+  // Wave 0 anchors at FIRST SERVE (9:00/8:00) — warm-up happens on court and
+  // is deliberately NOT added, so the published times match the flyer
+  // ("first matches 9:00 AM"), owner call 2026-07-09.
+  const waitMin = wave * matchMin;
   // Project from first serve until the day actually starts, then from now —
   // so a player checking pre-event sees real clock times counting from 9/8 AM.
   const ds = dayStartMs(match.event);
@@ -208,6 +210,24 @@ export function waitsOnLabel(nums, allMatches, event, sched, nowMs = Date.now())
   if (worstMs) return `${tag} · ~${clock(new Date(worstMs))}`;
   return unposted ? tag : `${tag} · about now`;
 }
+
+// Projected start time only — "~9:00 AM" — for a scheduled match; null for
+// live/final (those states carry their own display). The compact form the
+// Live Scores badge, the Up-next queue, and the compass match tokens share.
+export function startClockLabel(match, allMatches, sched, nowMs = Date.now()) {
+  const e = matchEstimate(match, allMatches, sched, nowMs);
+  if (e.status === 'final' || e.status === 'live') return null;
+  return `~${clock(e.startAt)}`;
+}
+
+// A posted row is PLAYABLE only when both sides are real teams — a hand-typed
+// placeholder side ("W of M31", "TBD") means it still waits on an upstream
+// result and must not occupy an Up-next slot (M5 waits on M3 → M6 is next).
+const placeholderName = (s) => {
+  const v = (s || '').trim();
+  return !v || /^[WL]\s*of\s*M?\d+$/i.test(v) || /^tbd$/i.test(v);
+};
+export const isReadyRow = (m) => !placeholderName(m && m.a) && !placeholderName(m && m.b);
 
 // Short human label. courtName lets callers show the actual court for a live
 // match ("On court 5"); falls back to "On court".
