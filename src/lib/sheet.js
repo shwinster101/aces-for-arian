@@ -198,9 +198,13 @@ export function mapRoster(rows) {
       const partner = (events.includes("Doubles") && optedIn(partnerRaw))
         ? partnerRaw.replace(/\b\w/g, c => c.toUpperCase())
         : "";
+      // Blank out a non-answer class year ("N/A", "none", "-", …) so it renders
+      // empty everywhere instead of a literal "N/A". `declined` deliberately
+      // does NOT match "Alumni", which stays a valid class label.
+      const classYearRaw = iClass >= 0 ? (r[iClass] || "").trim() : "";
       return {
         name: r[iName].trim(),
-        classYear: iClass >= 0 ? (r[iClass] || "").trim() : "",
+        classYear: declined(classYearRaw) ? "" : classYearRaw,
         events,
         partner,
         status: verified ? "Verified" : "Pending",
