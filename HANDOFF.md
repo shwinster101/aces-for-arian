@@ -35,6 +35,70 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd. Session Summary — 2026-07-09 night: public compass canvas + team tracker + PER-EVENT reveal
+
+Owner asked for the public doubles view to read like the **2025 printed
+spreadsheet compass** and for a per-team schedule dropdown. Built as a
+presentational/derived layer only — zero changes to the write path, ops
+engine semantics, or the numbering contract.
+
+- **⚠️ REVEAL CHANGE — deploying this reveals the doubles draw.**
+  `DRAWS_PUBLIC` (App.jsx) is now PER EVENT: `{ Doubles: true, Singles:
+  false }` (owner's call). Singles stays hidden — its event button reads
+  "posts Saturday", and EVERY name-bearing surface (court board, Live
+  Scores, find-my-match, tracker options) now reads from `publicMatches`
+  (rows filtered to revealed events), so ops-pushed `S-` rows can't leak
+  before the singles flip. To reveal singles: set `Singles: true`, ship.
+- **Compass canvas** (`src/CompassDraw.jsx` + pure model in
+  `src/lib/compass.js`): replaces the four stacked doubles bracket cards
+  with ONE spatial paper-white canvas — East center→right into a gold
+  champion cell, West mirrored right→left, North above, South below,
+  play-in + consolation panels top-left, gold center banner. Sheet-style
+  lines (names on underline rules), scores ride top-right of the advancing
+  line once the feeder goes final, live lines tint emerald with court
+  chips, estimate chips per posted match, find-yourself highlight + auto
+  scroll-to-line. Connectors are border-only CSS-grid items on integer row
+  math (East leaves 2i+1, QF 4j+2, SF 8j+4, F 16j+8 — midpoints land
+  exactly), so the whole canvas zooms with one `transform: scale()`.
+  Mobile: Fit (whole sheet on one phone screen) / 100% toggle + direction
+  jump chips. `theme` prop has paper/dark token sets (paper default).
+  Line resolution precedence: posted-row overlay (same engineRowsFor
+  num-join as before) → derived winner/loser from a FINAL feeder row
+  (fills champion/West/N/S winner cells) → template seed → dimmed "(bye)"
+  walkover → "W/L of Mx" placeholder → TBD. Ops corrections self-heal
+  (model recomputed from rows every render).
+- **Follow-my-team tracker** (`src/TeamTracker.jsx`, Brackets tab under
+  the intro card): dropdown of every entrant in PUBLIC events (seeds ∪
+  posted-row names, deduped), persisted per device (`a4a-follow`).
+  Shows played (stakes label + score + W/L), live court, next posted match
+  with estimate, AND projected paths — "Win → M9 · Championship QF / Lose
+  → M16 · West — placement" with `waitsOnLabel` times — derived by
+  scanning the ops engine's own feeder graph (`graphFor`, now exported
+  from draw.js — the ONLY draw.js diff) so routing can never drift from
+  the ops bracket. Selecting also sets the draw highlight → compass lights
+  up + scrolls to the line.
+- App.jsx: doubles field sizing (`dTeams/dPIns/dEastNames`) hoisted to the
+  draws-tab IIFE (shared by canvas + tracker); the old per-direction
+  `Bracket` cards + `numberSeq` removed (singles still uses
+  `Bracket`/`numberRounds`, pixel-unchanged). RoundTimesBanner still gets
+  ALL matches by design (times only, no names — pre-reveal safe).
+- **Verified** (Playwright fixture harness over `**/api/sheet*` against a
+  prod preview build, scratchpad-only per repo convention): 38/38 —
+  20-team pre-play (play-ins M29-32 + consolation M33-34, "W of M29" host
+  lines, "L of Mx" West leaves, doubles-only tracker options, ZERO singles
+  names), mid-day (live court meta, QF/West overlay, champion cell from
+  M15, scores under advancing lines, tracker branches + persistence,
+  singles `S-` live row renders NOWHERE), 14-team+seedsFinal (BYEs +
+  "(bye)" walkover into QF, no panels), mobile 390px (fit-no-overflow,
+  100% pans, jump chips). Screenshots eyeballed: connector elbows exact,
+  no text collisions (a score/meta collision was found this way and
+  fixed — scores pinned inside their own cell). Lint + build clean.
+- Post-reveal runbook reminder: the sheet's Matches tab still carries any
+  old test rows — before merging, Clear + Regenerate per event from ops
+  (per the §1a runbook) so the revealed board opens clean.
+
+---
+
 ## 1-wp. Session Summary — 2026-07-09 eve: write-path hardening (lock + atomic bulk replace)
 
 The one remaining P0 before reveal night: every Apps Script handler is a
