@@ -255,6 +255,9 @@ export function mapConfig(rows) {
     } else if (/sing/.test(key) && /min/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n > 0) out.singlesMin = n;
+    } else if (/(qf|quarter|pro.?set)/.test(key) && /min/.test(key)) {
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n > 0) out.qfMin = n;
     } else if (/warm/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n >= 0) out.warmupMin = n;

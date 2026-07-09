@@ -795,8 +795,9 @@ function ScheduleCard({ ops }) {
       <p className="text-[11px] text-zinc-500 mb-3">Drives the “~N ahead · ~min · around H:MM” note players see on the draw and in Find-my-match. Rough estimates — tune as the day runs.</p>
       <div className="flex flex-wrap items-start gap-4">
         {field('Courts', 'courts', 'in play')}
-        {field('Doubles min', 'doublesMin', 'per match')}
-        {field('Singles min', 'singlesMin', 'per match')}
+        {field('Doubles min', 'doublesMin', 'R1 per match')}
+        {field('Singles min', 'singlesMin', 'R1 per match')}
+        {field('QF+ min', 'qfMin', '8-game pro set')}
         {field('Warm-up min', 'warmupMin', 'first match')}
       </div>
       <p className="text-[10px] text-zinc-600 mt-3">Saved to this device and pushed to the public Config (needs the latest Apps Script deployed to persist for visitors).</p>

@@ -461,7 +461,7 @@ export function useOpsStore() {
   // persists after the Apps Script redeploy; defaults apply until then).
   const setSchedule = (patch) => {
     const clean = {};
-    for (const k of ['courts', 'doublesMin', 'singlesMin', 'warmupMin']) {
+    for (const k of ['courts', 'doublesMin', 'singlesMin', 'qfMin', 'warmupMin']) {
       if (patch[k] === '' || patch[k] === undefined) continue;
       const n = parseInt(patch[k], 10);
       if (!isNaN(n) && n >= 0) clean[k] = n;
