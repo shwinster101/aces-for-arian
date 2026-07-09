@@ -27,6 +27,18 @@ const CATEGORY_ICONS = {
 
 const MAX_LEN = 400;
 
+// One-tap starting points for the most common under-pressure post: a status
+// change while people are asking in person. Each just pre-fills category +
+// message into the SAME composer/Post flow below — nothing new to learn,
+// nothing posts until you hit Post, and the text stays editable (add a
+// resume time, etc.) before it goes out.
+const STATUS_PRESETS = [
+  { label: 'On time', category: 'schedule', message: 'Play is on schedule — no delays right now.' },
+  { label: 'Delayed', category: 'schedule', message: 'Matches are running behind — updates here as the schedule firms up.' },
+  { label: 'Paused for rain', category: 'weather', message: 'Play is paused for rain. Stay near the courts — updates here as soon as we resume.' },
+  { label: 'Resumed', category: 'schedule', message: 'Play has resumed — courts are back on.' },
+];
+
 // Staff announcements — weather delays, schedule changes, round calls, court
 // moves, lost & found. Posts land in the public Announcements tab (via the
 // 'announce' write-back) and surface as the site-wide banner + Home feed.
@@ -42,12 +54,27 @@ export default function Announce({ ops }) {
     setMessage('');
   };
 
+  const applyPreset = (preset) => {
+    setCategory(preset.category);
+    setMessage(preset.message);
+  };
+
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Announcements" subtitle="Post site-wide updates — weather delays, schedule changes, round calls, court moves, lost & found. The newest post becomes the banner on every public page." />
 
       <Card className="p-4 sm:p-5">
         <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Megaphone className="w-4 h-4 text-[#fbbf24]" /> New announcement</h3>
+
+        <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5">Quick status — fills in below, still needs Post</div>
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {STATUS_PRESETS.map((preset) => (
+            <button key={preset.label} onClick={() => applyPreset(preset)}
+              className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#111] text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] transition-colors">
+              {preset.label}
+            </button>
+          ))}
+        </div>
 
         <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5">Category</div>
         <div className="flex flex-wrap gap-1.5 mb-4">

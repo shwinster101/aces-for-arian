@@ -1687,7 +1687,8 @@ export default function App() {
               </h2>
               <ul className="space-y-2 text-[13px] text-zinc-300 leading-relaxed">
                 {[
-                  <>Arrive <strong className="text-white">15 minutes</strong> before your first match — Dunlap HS courts.</>,
+                  <>First matches: <strong className="text-white">Sat 9:00 AM</strong> (Doubles) · <strong className="text-white">Sun 8:00 AM</strong> (Singles) — Dunlap HS courts.</>,
+                  <>Arrive <strong className="text-white">15 minutes</strong> before your first match.</>,
                   <>Bring your racquet, water, and court shoes.</>,
                   <>Haven't paid? <strong className="text-white">$40 via Venmo</strong> (see the Scholarship tab) or cash at the desk.</>,
                   <>Draws &amp; schedule post <strong className="text-white">Thursday afternoon</strong> — day-of, your court and time live in the <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 font-semibold transition-colors">Brackets tab</button>.</>,
