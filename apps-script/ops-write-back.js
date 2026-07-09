@@ -578,6 +578,7 @@ function writeConfig_(payload) {
   upsert(/court/, 'courts', payload.courts);
   upsert(/doub.*min/, 'doubles match min', payload.doublesMin);
   upsert(/sing.*min/, 'singles match min', payload.singlesMin);
+  upsert(/(qf|quarter).*min/, 'qf match min', payload.qfMin);
   upsert(/warm/, 'warmup min', payload.warmupMin);
   // Yes/no flags get their own upsert (the numeric one above would mangle
   // them). "seeds final" flips the public board to Final Seeds and turns

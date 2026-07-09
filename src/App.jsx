@@ -25,7 +25,7 @@ import {
   mapAnnouncements,
 } from './lib/sheet';
 import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/entrants';
-import { estimateLabel, playPos, SCHEDULE_DEFAULTS } from './lib/schedule';
+import { estimateLabel, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
 import {
   Trophy, 
   Award, 
@@ -811,6 +811,46 @@ function AnnouncementBanner({ item, now, onOpen, onDismiss }) {
   );
 }
 
+// Approximate championship round times (QF / SF / Final), projected from
+// first serve (Sat doubles 9:00, Sun singles 8:00). Computed from the posted
+// match counts (byes shrink early rounds), round-aware (QF onward = 8-game
+// pro sets). Times only, no names — safe to show pre-reveal; hidden until the
+// draw is generated. `now` is a heartbeat dep so it refreshes.
+function RoundTimesBanner({ matches, sched, now }) {
+  const clock = (d) => (d ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null);
+  const rows = [
+    { ev: 'Doubles', label: 'Sat · Doubles', first: '9:00 AM' },
+    { ev: 'Singles', label: 'Sun · Singles', first: '8:00 AM' },
+  ]
+    .map(r => ({ ...r, m: roundMilestones(matches, r.ev, sched, now) }))
+    .filter(r => r.m);
+  if (!rows.length) return null;
+  const cell = (lbl, d) => (
+    <span className="whitespace-nowrap"><span className="text-zinc-500">{lbl} </span><span className="text-zinc-200 font-semibold">{d ? `~${clock(d)}` : '—'}</span></span>
+  );
+  return (
+    <div className="bg-[#151515] border border-[#fbbf24]/20 rounded-2xl px-5 py-4">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Clock className="w-4 h-4 text-[#fbbf24]" />
+        <h4 className="text-xs font-black text-white uppercase tracking-wider">Planned round times</h4>
+        <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 bg-zinc-800/60 border border-zinc-700 rounded px-1.5 py-0.5">approximate</span>
+      </div>
+      <div className="space-y-1.5">
+        {rows.map(({ ev, label, first, m }) => (
+          <div key={ev} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="font-black uppercase tracking-wider text-[#fbbf24] w-28 shrink-0">{label}</span>
+            <span className="text-[10px] text-zinc-600">first serve {first}</span>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+              {cell('QF', m.QF)}{cell('SF', m.SF)}{cell('Final', m.F)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Quarterfinals onward are 8-game pro sets (~{sched.qfMin} min). Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
+    </div>
+  );
+}
+
 // Full feed on Home — newest first; hidden entirely when there's nothing to say.
 function AnnouncementsFeed({ items, now }) {
   if (!items.length) return null;
@@ -1371,6 +1411,7 @@ export default function App() {
     courts: config.courts || SCHEDULE_DEFAULTS.courts,
     doublesMin: config.doublesMin || SCHEDULE_DEFAULTS.doublesMin,
     singlesMin: config.singlesMin || SCHEDULE_DEFAULTS.singlesMin,
+    qfMin: config.qfMin || SCHEDULE_DEFAULTS.qfMin,
     warmupMin: config.warmupMin != null ? config.warmupMin : SCHEDULE_DEFAULTS.warmupMin,
   };
   // Engine-posted matches (Matches tab) keyed by match number per event. The
@@ -1904,6 +1945,10 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* Planned round times — sits right under the draws intro so it
+                shows pre- and post-reveal (times only, no names). */}
+            <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
 
             {/* SATURDAY DOUBLES — Compass Draw. 16 East lines; a 17+ team
                 field adds a Play-in Round of 32 (numbered M29+ to keep the
