@@ -35,7 +35,27 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-09 multi-device ops sync + volunteer PIN
+## 1. Session Summary — 2026-07-09 PM: announcements were blanked by the CF roster guard
+
+Owner posted two announcements from ops; public feed kept showing fallbacks.
+Diagnosis (via the check-deploy CI probe, since the sandbox can't reach the
+live site): writes were FINE — both posts were in the sheet's Announcements
+tab — but `/api/sheet?tab=Announcements` returned 0 bytes. Root cause:
+`looksLikeRoster` in `functions/api/sheet.js` fingerprinted any response
+whose header contains "timestamp" as a gviz missing-tab roster leak and
+failed closed — and the Announcements schema (Id|Timestamp|…) legitimately
+carries one. Fix: drop "timestamp" from ROSTER_MARKERS (email / phone
+number / payment method remain — distinctive to the Form-responses roster).
+Verified by node-invoking the function with stubbed fetch/caches (pass-
+through, roster-fallback still blanked, OpsStatus scrub + roster PII strip
+unaffected). Lesson recorded: every Playwright run stubs `/api/sheet`, so
+the CF function is the ONE hop the suites never exercise — the check-deploy
+workflow now probes the real data endpoints (+ an Apps Script announce
+write/delete round-trip) on demand via workflow_dispatch.
+
+---
+
+## 1-pin. Session Summary — 2026-07-09 multi-device ops sync + volunteer PIN
 
 Day-of ops runs on ~5 devices (volunteer phones, the owner's HQ phone, the
 check-in laptop). Check-in/payment/shirt/walk-up state was device-local by
