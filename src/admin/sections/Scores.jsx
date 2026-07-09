@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Trophy, Zap } from 'lucide-react';
+import { playPos } from '../../lib/schedule';
 import { Card, PageHeader, Pills, TextInput, Select, EmptyState } from '../ui';
 
 const EVENTS = [
@@ -22,7 +23,7 @@ export default function Scores({ ops }) {
     return ops.store.matches
       .filter(m => m.event === event)
       .filter(m => statusFilter === 'all' || m.status === statusFilter)
-      .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+      .sort((a, b) => playPos(a) - playPos(b)); // play order: doubles play-ins (M29+) go first
   }, [ops.store.matches, event, statusFilter]);
 
   return (

@@ -18,6 +18,19 @@ const num = (m) => Number(m && m.num) || 0;
 const isFinal = (m) => (m && m.status) === 'final';
 const isLive = (m) => (m && m.status) === 'live';
 
+// PLAY position — the order matches actually go on court. Doubles play-ins
+// and their consolation are numbered M29+ to protect the public bracket
+// numbering contract (East 1-15 … South 26-28), but the play-ins go on
+// court FIRST — so the M29+ block sorts ahead of M1 for queueing and
+// estimates. (The consolation only becomes playable once the play-ins are
+// final, so its early slot just means "fit it in ASAP", which is right —
+// those teams are standing around waiting.) Everything else plays in
+// number order.
+export const playPos = (m) => {
+  const n = num(m);
+  return n >= 29 && /doub/i.test((m && m.event) || '') ? n - 100 : n;
+};
+
 // Match length for a match's event.
 export function matchMinFor(event, sched) {
   const s = { ...SCHEDULE_DEFAULTS, ...(sched || {}) };
@@ -33,15 +46,16 @@ export function matchEstimate(match, allMatches, sched, nowMs = Date.now()) {
   const courts = Math.max(1, Number(s.courts) || 1);
   const matchMin = Math.max(1, matchMinFor(match.event, s));
 
-  // Matches ahead = every non-final match with a lower play position, within
-  // the same event (a day runs one event). Live matches count — they hold
+  // Matches ahead = every non-final match with a lower PLAY position (see
+  // playPos — play-ins queue first despite their M29+ numbers), within the
+  // same event (a day runs one event). Live matches count — they hold
   // courts. This match's own position is excluded.
-  const mine = num(match);
+  const mine = playPos(match);
   const ahead = allMatches.filter(o =>
     o !== match &&
     (o.event || '') === (match.event || '') &&
     !isFinal(o) &&
-    num(o) > 0 && num(o) < mine
+    num(o) > 0 && playPos(o) < mine
   ).length;
 
   const wave = Math.floor(ahead / courts);
@@ -54,6 +68,30 @@ export function matchEstimate(match, allMatches, sched, nowMs = Date.now()) {
 const clock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 // Round a minutes figure to a friendly 5-min step for display.
 const round5 = (m) => Math.round(m / 5) * 5;
+
+// Label for a line WAITING on upstream matches (a bye holder whose opponent
+// hasn't emerged, a play-in host line, any later round): "Waits on M2 ·
+// ~9:40" — the latest blocker's start plus one match length (half a match if
+// it's already live). `nums` are the blocking match numbers; blockers not
+// posted yet keep the bare "Waits on M2" tag.
+export function waitsOnLabel(nums, allMatches, event, sched, nowMs = Date.now()) {
+  if (!nums || !nums.length) return null;
+  const byNum = new Map((allMatches || []).filter(x => (x.event || '') === event).map(x => [num(x), x]));
+  let worstMs = 0;
+  let unposted = false;
+  for (const n of nums) {
+    const fm = byNum.get(n);
+    if (!fm) { unposted = true; continue; }
+    if (isFinal(fm)) continue;
+    const mm = matchMinFor(event, sched) * 60000;
+    const e = matchEstimate(fm, allMatches, sched, nowMs);
+    const finish = e.status === 'live' ? nowMs + mm / 2 : e.startAt.getTime() + mm;
+    worstMs = Math.max(worstMs, finish);
+  }
+  const tag = `Waits on M${nums.join(' & M')}`;
+  if (worstMs) return `${tag} · ~${clock(new Date(worstMs))}`;
+  return unposted ? tag : `${tag} · about now`;
+}
 
 // Short human label. courtName lets callers show the actual court for a live
 // match ("On court 5"); falls back to "On court".
