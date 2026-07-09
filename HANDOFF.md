@@ -35,7 +35,43 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-09 PM: announcements were blanked by the CF roster guard
+## 1. Session Summary — 2026-07-09 PM: multi-device DRAW sync (seed order + bracket)
+
+Owner opened /admin on a second device (2311) and the draw HQ generated
+wasn't there — Seed Order + Draw Board were empty. Cause: the earlier
+multi-device sync covered only check-in/payment/shirt/walk-ups; seeds and
+the bracket engine state live in localStorage and were never pulled back.
+
+Fix — extend the SAME private opsdesk channel to carry the draw:
+- Apps Script: new private `OpsDraw` tab (`Event | Seeds | Bracket |
+  UpdatedAt`, JSON), `opsdraw` doPost upsert-by-event, and the
+  `mode=opsdesk` GET now also returns `draw: [{event, seeds, bracket,
+  updatedAt}]`. ⚠️ REQUIRES A REDEPLOY (Manage deployments → New version).
+- store.js: `pushDraw(event, seeds, bracket)` fires from `applyBracket`
+  (generate/mark/swap/rename/clear — so winner marks sync too) and the
+  debounced seeds effect. Committee `notes` are STRIPPED before the push
+  (`seedsForSync`); only display-safe seed order + bracket (names/results/
+  overrides, already public via SeedBoardPublic/Matches) cross the wire.
+  `pullDesk` hydrates seeds + bracket + re-derives the flat Match Order rows
+  for any event this device hasn't edited within the 45 s guard.
+- SAFETY (verified): a device only pushes on a real user action, so a fresh
+  pull-only device fires ZERO opsdraw pushes and can never clobber HQ's draw
+  with empty state; hydration also updates `pushedSeeds.current` so it can't
+  trigger a re-push. Conflict model is last-write-wins by whoever POSTed most
+  recently — so DRIVE THE DRAW FROM ONE DEVICE (HQ); other devices are
+  read/score. The bracket blob is JSON-safe (results/overrides are plain
+  objects, graph is re-derived at render).
+- Verified via Playwright two-device round-trip: device A generates → its
+  opsdraw push is captured → fed to a fresh device B, whose Seed Order +
+  Draw Board populate; plus a clobber-safety test (0 pushes from B) and the
+  full 23-check pre-reveal + 6-check play-in-band regressions.
+- Court/score typed on the SCORES tab (not the Draw board) are match-row
+  fields not in the bracket blob — those still don't cross devices; winner
+  marks (made on the Draw board) DO, since they're in the bracket `results`.
+
+---
+
+## 1-cf. Session Summary — 2026-07-09 PM: announcements were blanked by the CF roster guard
 
 Owner posted two announcements from ops; public feed kept showing fallbacks.
 Diagnosis (via the check-deploy CI probe, since the sandbox can't reach the
