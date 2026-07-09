@@ -21,6 +21,18 @@ jobs:
             echo "HTTP $code"
             grep -o 'src="/assets/[^"]*"' page.html || echo "(no asset script tags found in response)"
           done
+      - name: Probe live data endpoints (announcements pipeline)
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          for tab in Announcements Config OpsStatus Matches; do
+            echo "===== /api/sheet?tab=$tab"
+            curl -sS -m 20 -A "$UA" -D headers.txt -o body.txt "https://acesforarian.com/api/sheet?tab=$tab" || echo "(curl failed)"
+            grep -i 'cache-control\|cf-cache-status\|^HTTP' headers.txt || true
+            echo "bytes: $(wc -c < body.txt) · lines: $(wc -l < body.txt)"
+            # Bodies only for the tabs that are public-by-design content;
+            # OpsStatus/Matches carry participant names — counts are enough.
+            if [ "$tab" = "Announcements" ] || [ "$tab" = "Config" ]; then head -c 600 body.txt; echo; fi
+          done
       - name: Freshness marker in the main bundle
         run: |
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
