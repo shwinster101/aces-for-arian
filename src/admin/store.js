@@ -9,6 +9,22 @@ import { SCHEDULE_DEFAULTS } from '../lib/schedule';
 // here AND in the Apps Script, then redeploying the script (New version).
 const WRITE_TOKEN = 'a4a-ea5316b9f5d5b04e49115a20';
 
+// Multi-device ops sync (check-in/payment/shirt/walk-ups) — must match
+// OPSDESK_TOKEN in apps-script/ops-write-back.js. Same deterrent-only trust
+// model as WRITE_TOKEN; rotate both together after the event.
+const OPSDESK_TOKEN = 'a4a-desk-2f9b6a1e4c7d0358b1a9e6f2';
+// Only these overlay fields leave the device — check-in/payment/shirt state,
+// the day-of desk data shared across the ~5 ops devices (volunteer phones,
+// HQ phone, the check-in laptop). `notes` (free-text committee commentary)
+// and `regStatus`/`partner` stay local/on their own existing pipelines.
+const SYNCED_OVERLAY_FIELDS = ['checkedIn', 'checkedInAt', 'paid', 'paymentMethod', 'shirt', 'shirtSize'];
+// How often a device polls the shared desk state while the tab is visible.
+const DESK_POLL_MS = 25000;
+// A field this device edited in the last N seconds wins over an incoming
+// poll result for that SAME field — protects a just-tapped toggle from
+// flickering back if the poll response was already in flight when we wrote.
+const LOCAL_EDIT_GUARD_MS = 45000;
+
 // ==========================================
 // OPS DATA STORE — localStorage-backed overlay
 // ==========================================
@@ -147,25 +163,43 @@ export function useOpsStore() {
 
   const getOverlay = (name) => ({ ...emptyOverlay(), ...store.participants[name] });
 
-  // Check-in / payment / shirt / walk-up overlay stays LOCAL to this device.
-  // We deliberately do NOT push it: the Apps Script ignores those types anyway
-  // (writing them into the raw Form-responses tab by name-match is fragile —
-  // see that file's bottom note), and not sending them keeps payment/check-in
-  // data off the wire. A shared multi-device ops state would need its own
-  // private "Ops" tab/backend with explicit columns, not this overlay.
+  // Per-name/id timestamps of this device's OWN edits, checked by the poll
+  // merge below so a fresh tap can't be flickered back by an in-flight GET
+  // that started before the tap landed server-side. Refs (not state) — purely
+  // internal bookkeeping, shouldn't trigger a render.
+  const localOverlayEditAt = useRef({});
+  const localWalkupEditAt = useRef({});
+
+  // Check-in/payment/shirt fields (SYNCED_OVERLAY_FIELDS) are pushed to the
+  // private OpsDesk tab so every ops device sees the same day-of desk state
+  // (see writeOpsDesk_ in apps-script/ops-write-back.js — per-field upsert,
+  // so this device's edit can't stomp a different field another device just
+  // set for the same person). `notes`/`regStatus`/`partner` stay local only.
   const setOverlay = (name, patch) => {
     setStore(s => {
       const merged = { ...emptyOverlay(), ...s.participants[name], ...patch };
       return { ...s, participants: { ...s.participants, [name]: merged } };
     });
+    const synced = {};
+    for (const k of SYNCED_OVERLAY_FIELDS) if (k in patch) synced[k] = patch[k];
+    if (Object.keys(synced).length) {
+      localOverlayEditAt.current[name] = Date.now();
+      pushToSheet('opsdesk', { name, fields: synced });
+    }
   };
 
   const addWalkUp = (entry) => {
     const row = { id: nextId(), name: '', classYear: '', events: 'Supporter', partner: '', ...entry };
     setStore(s => ({ ...s, added: [...s.added, row] }));
+    localWalkupEditAt.current[row.id] = Date.now();
+    pushToSheet('walkup', row);
     return row.id;
   };
-  const removeWalkUp = (id) => setStore(s => ({ ...s, added: s.added.filter(r => r.id !== id) }));
+  const removeWalkUp = (id) => {
+    setStore(s => ({ ...s, added: s.added.filter(r => r.id !== id) }));
+    localWalkupEditAt.current[id] = Date.now();
+    pushToSheet('walkup-delete', { id });
+  };
 
   // Accepts either a list or an updater `(prevList) => nextList` — mirrors
   // React's setState contract so callers never compute "next" from a closure
@@ -427,6 +461,63 @@ export function useOpsStore() {
     setStore(s => ({ ...s, emails: s.emails.filter(e => e.toLowerCase() !== String(email).toLowerCase()) }));
   const clearEmails = () => setStore(s => ({ ...s, emails: [] }));
 
+  // --- Multi-device desk sync (GET mode=opsdesk, own token) ----------------
+  // Pulls the shared check-in/payment/shirt/walk-up state written by
+  // writeOpsDesk_/writeWalkup_ and merges it in. A name/id this device edited
+  // within LOCAL_EDIT_GUARD_MS is left alone for this tick — protects a
+  // just-tapped toggle from being flickered back by a GET that was already in
+  // flight when the tap landed server-side; the next poll (after the guard
+  // window) picks up whatever's on the sheet, including this device's own
+  // edit once it's landed. A failed/blocked fetch is a silent no-op — every
+  // device already works fully offline against localStorage.
+  const [deskSync, setDeskSync] = useState({ at: 0, ok: false });
+  const pullDesk = async () => {
+    if (!SHEET_WRITE_URL) return;
+    try {
+      const res = await fetch(`${SHEET_WRITE_URL}?mode=opsdesk&token=${OPSDESK_TOKEN}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const { desk, walkups } = await res.json();
+      const now = Date.now();
+      setStore(s => {
+        const participants = { ...s.participants };
+        for (const row of desk || []) {
+          const editedAt = localOverlayEditAt.current[row.name] || 0;
+          if (now - editedAt < LOCAL_EDIT_GUARD_MS) continue; // this device's own recent edit wins
+          const prior = participants[row.name] || emptyOverlay();
+          participants[row.name] = {
+            ...emptyOverlay(), ...prior,
+            checkedIn: row.checkedIn, checkedInAt: row.checkedInAt || null,
+            paid: row.paid, paymentMethod: row.paymentMethod || '',
+            shirt: row.shirt, shirtSize: row.shirtSize || prior.shirtSize || '',
+          };
+        }
+        const recentIds = new Set(
+          Object.entries(localWalkupEditAt.current).filter(([, t]) => now - t < LOCAL_EDIT_GUARD_MS).map(([id]) => id)
+        );
+        const serverAdded = (walkups || [])
+          .filter(w => !recentIds.has(w.id))
+          .map(w => ({ id: w.id, name: w.name, classYear: w.classYear, events: w.events, partner: w.partner }));
+        const localRecent = s.added.filter(w => recentIds.has(w.id));
+        return { ...s, participants, added: [...serverAdded, ...localRecent] };
+      });
+      setDeskSync({ at: Date.now(), ok: true });
+    } catch {
+      setDeskSync(d => ({ ...d, ok: false }));
+    }
+  };
+
+  // Poll while the tab is visible (a backgrounded phone shouldn't burn
+  // battery/data polling a screen nobody's looking at); pull once immediately
+  // and again on every return to the foreground.
+  useEffect(() => {
+    let timer = null;
+    const tick = () => { pullDesk(); timer = setTimeout(tick, DESK_POLL_MS); };
+    const onVisible = () => { if (document.visibilityState === 'visible') { clearTimeout(timer); tick(); } };
+    if (document.visibilityState === 'visible') tick();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, []);
+
   const exportJSON = () => JSON.stringify(store, null, 2);
 
   // Wipe everything this device has stored (check-ins, payments, walk-ups,
@@ -445,6 +536,7 @@ export function useOpsStore() {
   return {
     store,
     lastPushAt,
+    deskSync, pullDesk,
     getOverlay, setOverlay,
     addWalkUp, removeWalkUp,
     setSeeds,

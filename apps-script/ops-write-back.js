@@ -27,9 +27,16 @@
 //   • Registration status -> writes display-safe Name | Status rows to
 //                       "OpsStatus" so the public roster can show confirmed
 //                       entries without touching raw Form responses.
-//   • Check-ins / payments / walk-ups are intentionally NOT handled here —
-//                       see the note at the bottom of this file for why, and
-//                       what it would take to add them safely.
+//   • Check-ins / payments / shirts / walk-ups -> mirrored into PRIVATE
+//                       "OpsDesk" / "OpsWalkups" tabs (never in READABLE, so
+//                       they never flow through the public Cloudflare read
+//                       path) so the ~5 ops devices — volunteer phones, the
+//                       HQ phone, the check-in laptop — see the same
+//                       check-in/payment/shirt state. Read back via
+//                       mode=opsdesk (own token, JSON out). Per-field
+//                       last-write-wins: a device only sends the fields it
+//                       actually changed, so two devices editing different
+//                       fields for the same person can't clobber each other.
 //
 // All three target tabs are created automatically (with the right header
 // row) the first time the matching edit comes through, so you don't have to
@@ -114,7 +121,9 @@ function doPost(e) {
       case 'config':       writeConfig_(body.payload); break;
       case 'announce':        writeAnnounce_(body.payload); break;
       case 'announce-delete': deleteAnnounce_(body.payload); break;
-      // 'participant' / 'walk-up': see the note at the bottom of this file.
+      case 'opsdesk':      writeOpsDesk_(body.payload); break;
+      case 'walkup':       writeWalkup_(body.payload); break;
+      case 'walkup-delete':deleteWalkup_(body.payload); break;
     }
   } catch (err) {
     // Apps Script web apps can't hand a readable response back to a
@@ -188,10 +197,20 @@ var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 
 // here + in Announce.jsx, redeploy New version).
 var EMAILS_TOKEN = 'a4a-mail-766673c3d6e53f1463738ba7';
 
+// Multi-device ops sync token — gates ONLY the mode=opsdesk read below (the
+// private check-in/payment/shirt/walk-up state shared across the ~5 ops
+// devices: volunteer phones, HQ phone, the check-in laptop). Same trust
+// model as EMAILS_TOKEN — ships in the admin bundle, drive-by deterrent
+// only. Rotate after the event (here + in src/admin/store.js).
+var OPSDESK_TOKEN = 'a4a-desk-2f9b6a1e4c7d0358b1a9e6f2';
+
 function doGet(e) {
   var p = (e && e.parameter) || {};
   // Ops-only email list — its own token, checked inside; never tab-readable.
   if (p.mode === 'emails') return rosterEmailsOut_(p.token);
+  // Ops-only desk sync (check-in/payment/shirt/walk-ups) — own token, JSON
+  // out, never tab-readable (OpsDesk/OpsWalkups are absent from READABLE).
+  if (p.mode === 'opsdesk') return opsDeskOut_(p.token);
   if (p.token !== READ_TOKEN) return csvOut_('');          // fail closed: no/bad token
   var tab = p.tab || '';
   if (READABLE.indexOf(tab) < 0) return csvOut_('');        // not allowlisted
@@ -275,6 +294,10 @@ function csvOut_(text) {
   return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.CSV);
 }
 
+function jsonOut_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
 function rowsToCsv_(rows) {
   return rows.map(function (r) {
     return r.map(function (f) {
@@ -299,6 +322,10 @@ var MATCH_HEADERS = ['Event', 'Round', 'Num', 'Player A', 'Player B', 'Court', '
 var ACES_HEADERS  = ['Count'];
 var OPSSTATUS_HEADERS = ['Name', 'Status'];
 var ANNOUNCE_HEADERS = ['Id', 'Timestamp', 'Event', 'Category', 'Message'];
+// PRIVATE — never added to READABLE. Holds check-in/payment/shirt state for
+// the multi-device ops sync (see mode=opsdesk / writeOpsDesk_ below).
+var OPSDESK_HEADERS = ['Name', 'CheckedIn', 'CheckedInAt', 'Paid', 'PayMethod', 'ShirtGiven', 'ShirtSize', 'UpdatedAt'];
+var OPSWALKUP_HEADERS = ['Id', 'Name', 'ClassYear', 'Events', 'Partner'];
 
 // --------------------------------------------------------------------------
 // WHY SEEDS ARE SANITIZED HERE, NOT JUST CLIENT-SIDE
@@ -406,6 +433,84 @@ function writeStatus_(payload) {
   }
   if (idx >= 0) rows[idx] = [name, status]; else rows.push([name, status]);
   writeRows_(sheet, rows);
+}
+
+// --------------------------------------------------------------------------
+// MULTI-DEVICE OPS SYNC — check-in / payment / shirt / walk-ups
+// --------------------------------------------------------------------------
+// The dedicated private tab the note below (and at the bottom of this file)
+// calls for. OpsDesk holds ONE row per person; a device only ever sends the
+// fields that actually changed (see setOverlay in src/admin/store.js), and
+// this upsert only overwrites THOSE columns — so two devices editing
+// different fields for the same person (one taps check-in, another marks
+// paid) can't clobber each other. Last write wins PER FIELD, not per row.
+function writeOpsDesk_(payload) {
+  var name = payload && payload.name ? String(payload.name).trim() : '';
+  var fields = (payload && payload.fields) || {};
+  if (!name) return;
+  var sheet = sheetByName_('OpsDesk', OPSDESK_HEADERS);
+  var rows = readRows_(sheet);
+  var key = name.toLowerCase();
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === key) { idx = i; break; }
+  }
+  var next = idx >= 0 ? rows[idx].slice() : [name, '', '', '', '', '', '', ''];
+  next[0] = name;
+  if ('checkedIn' in fields)    next[1] = fields.checkedIn ? 'Y' : '';
+  if ('checkedInAt' in fields)  next[2] = fields.checkedInAt || '';
+  if ('paid' in fields)         next[3] = fields.paid ? 'Y' : '';
+  if ('paymentMethod' in fields) next[4] = fields.paymentMethod || '';
+  if ('shirt' in fields)        next[5] = fields.shirt ? 'Y' : '';
+  if ('shirtSize' in fields)    next[6] = fields.shirtSize || '';
+  next[7] = new Date().toISOString();
+  if (idx >= 0) rows[idx] = next; else rows.push(next);
+  writeRows_(sheet, rows);
+}
+
+// Walk-ups (day-of entrants added at the desk) upsert by the admin's local
+// id, same pattern as writeMatch_ — so a rename/event-change on one device
+// updates the same row everywhere instead of creating a duplicate.
+function writeWalkup_(payload) {
+  var id = payload && payload.id ? String(payload.id) : '';
+  if (!id) return;
+  var sheet = sheetByName_('OpsWalkups', OPSWALKUP_HEADERS);
+  var rows = readRows_(sheet);
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '') === id) { idx = i; break; }
+  }
+  var next = [id, payload.name || '', payload.classYear || '', payload.events || '', payload.partner || ''];
+  if (idx >= 0) rows[idx] = next; else rows.push(next);
+  writeRows_(sheet, rows);
+}
+
+function deleteWalkup_(payload) {
+  var id = payload && payload.id ? String(payload.id) : '';
+  if (!id) return;
+  var sheet = sheetByName_('OpsWalkups', OPSWALKUP_HEADERS);
+  var rows = readRows_(sheet).filter(function (r) { return String(r[0] || '') !== id; });
+  writeRows_(sheet, rows);
+}
+
+// mode=opsdesk: JSON snapshot of both private tabs for the polling devices.
+// Fail-closed on a bad/missing token; empty tabs return empty arrays (not an
+// error) so a fresh deploy with no data yet doesn't look like a failure.
+function opsDeskOut_(token) {
+  if (token !== OPSDESK_TOKEN) return jsonOut_({ desk: [], walkups: [] });
+  var deskSheet = sheetByName_('OpsDesk', OPSDESK_HEADERS);
+  var deskRows = readRows_(deskSheet).map(function (r) {
+    return {
+      name: r[0] || '', checkedIn: r[1] === 'Y', checkedInAt: r[2] || '',
+      paid: r[3] === 'Y', paymentMethod: r[4] || '', shirt: r[5] === 'Y',
+      shirtSize: r[6] || '', updatedAt: r[7] || '',
+    };
+  });
+  var walkupSheet = sheetByName_('OpsWalkups', OPSWALKUP_HEADERS);
+  var walkupRows = readRows_(walkupSheet).map(function (r) {
+    return { id: r[0] || '', name: r[1] || '', classYear: r[2] || '', events: r[3] || '', partner: r[4] || '' };
+  });
+  return jsonOut_({ desk: deskRows, walkups: walkupRows });
 }
 
 // Staff-set scholarship meter — upserts raised/goal into the Config tab (Key |
@@ -525,30 +630,20 @@ function writeRows_(sheet, rows) {
 }
 
 // --------------------------------------------------------------------------
-// WHY CHECK-IN / PAYMENT / WALK-UP DETAILS AREN'T HANDLED HERE
+// WHY CHECK-IN / PAYMENT / WALK-UP STATE LIVES IN ITS OWN TABS, NOT THE ROSTER
 // --------------------------------------------------------------------------
-// Those events carry per-player overlay data — checked-in, paid, shirt size,
-// and walk-up entries. They are operational/private, not public roster state.
+// Check-in/paid/shirt/walk-up state is per-player overlay data — operational
+// and private, not public roster state — so it does NOT get written into the
+// raw Form-responses roster tab. Writing into that tab from a script would be
+// risky: Forms owns its shape (a new submission can append a column and
+// silently shift "column N is Status" writes into the wrong cell), matching
+// a write-back to "the same person" by name alone is fragile with duplicate/
+// changed names, and the admin's overlay model doesn't map 1:1 onto the
+// sheet's single free-text Status column anyway.
 //
-// That roster tab is the raw Google Form responses sheet. Writing into it
-// from a script is riskier than the three tabs above:
-//   • Forms own that sheet's shape — a new submission can append a column,
-//     and a script that "knows" column N is Status can silently start
-//     writing into the wrong cell after that happens.
-//   • Matching a write back to "the same person" by name alone is fragile
-//     with duplicate/changed names, and a bad match overwrites a stranger's
-//     row.
-//   • The admin's overlay model (paid/shirt/checkedIn/walk-ups) doesn't
-//     map 1:1 onto the sheet's single free-text Status column, so closing
-//     this loop cleanly really wants either (a) dedicated columns added to
-//     the form-responses sheet on purpose, or (b) the admin reading its
-//     overlay back from a separate "Ops" tab instead of localStorage —
-//     which is a real architecture change (shared state + conflict handling
-//     across devices), not a quick write-back addition.
-//
-// Net effect: check-in / payment / walk-up changes stay local to each admin
-// device for now. Public confirmed-entry status is the one deliberately shared
-// registration field, written to OpsStatus as Name | Status. If you want paid
-// or check-in state synced across devices too, the safest path is a dedicated
-// private Ops tab/backend with explicit columns and conflict rules — not the
-// raw Form-responses sheet.
+// Instead it lives in the dedicated PRIVATE "OpsDesk" / "OpsWalkups" tabs
+// above (writeOpsDesk_ / writeWalkup_ / opsDeskOut_) — explicit columns, an
+// upsert-by-name (or by walk-up id) contract, and per-field last-write-wins
+// so two devices editing different fields for the same person never clobber
+// each other. Neither tab is ever added to READABLE, so this state can't
+// flow through the public Cloudflare read path even by mistake.

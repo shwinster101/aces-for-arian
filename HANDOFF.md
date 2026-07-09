@@ -35,7 +35,64 @@ checklist for the next auditor).
 
 ---
 
-## 1. Session Summary — 2026-07-09 external-audit triage + release stabilization
+## 1. Session Summary — 2026-07-09 multi-device ops sync + volunteer PIN
+
+Day-of ops runs on ~5 devices (volunteer phones, the owner's HQ phone, the
+check-in laptop). Check-in/payment/shirt/walk-up state was device-local by
+design (see the old "why check-in isn't handled" note in
+`apps-script/ops-write-back.js`) — that note itself named the fix: "a
+dedicated private Ops tab with explicit columns and conflict rules." Built
+that.
+
+- **Two-tier PIN** (`src/admin/auth.js`): `2311` → `'hq'` (all 7 tabs),
+  `0526` → `'desk'` (Check-ins/Payments/Scores & Courts only — volunteer
+  tier). Both remain client-side deterrents (static bundle, same trust model
+  as before) — `role()` derives from the stored PIN so a rotated/removed PIN
+  falls back to locked. `AdminApp.jsx` filters `TABS` and shows a
+  "Volunteer" tag in the header for the desk role.
+- **Private sync tabs** (`apps-script/ops-write-back.js`): NEW `OpsDesk`
+  (Name | CheckedIn | CheckedInAt | Paid | PayMethod | ShirtGiven |
+  ShirtSize | UpdatedAt) and `OpsWalkups` — **neither is ever added to
+  `READABLE`**, so this state can't flow through the public Cloudflare read
+  path even by mistake. `writeOpsDesk_` upserts by name and only overwrites
+  the columns a device actually sent (`fields`), so two devices editing
+  different fields for the same person can't clobber each other — per-field
+  last-write-wins, not per-row. `writeWalkup_`/`deleteWalkup_` upsert/delete
+  by the admin's local walk-up id. Read back via `mode=opsdesk` (own
+  `OPSDESK_TOKEN`, JSON out via new `jsonOut_`).
+  ⚠️ **Requires the Apps Script redeployed** (Manage deployments → New
+  version) — same drill as the email-blast token two days ago.
+- **Store** (`src/admin/store.js`): `setOverlay` now pushes ONLY the synced
+  subset of a patch (`checkedIn/checkedInAt/paid/paymentMethod/shirt/
+  shirtSize` — `SYNCED_OVERLAY_FIELDS`; `notes`/`regStatus`/`partner` stay
+  local) as `{ type: 'opsdesk', payload: { name, fields } }`; `addWalkUp`/
+  `removeWalkUp` push `walkup`/`walkup-delete`. A poll (`pullDesk`, every
+  25 s while the tab is visible, plus on every return to foreground and on
+  the header's manual Sync button) GETs `mode=opsdesk` and merges the result
+  in. **Local-edit guard**: a name/walk-up id this device touched in the
+  last 45 s is left alone for that poll tick, so a just-tapped toggle can't
+  be flickered back by a GET that was already in flight — the next poll
+  picks up the merged state once it's landed server-side. A failed/blocked
+  fetch is a silent no-op; every device still works fully offline exactly
+  like before.
+- **Check-in page** (`src/admin/sections/CheckIns.jsx`): each row now shows
+  a shirt-size badge (`overlay.shirtSize || registered shirtSize`) plus a
+  synced "Shirt given" toggle using the SAME `overlay.shirt` field Payments
+  already used — so the two tabs can never disagree about who's gotten
+  their tee. New "Shirts given" stat. Amber "device-local, ONE phone" notes
+  on Check-ins/Payments replaced with "Synced across devices (~30 s)";
+  Merch's stays device-local by choice (inventory counts are a planning
+  tool, not day-of desk state, per owner's scope call).
+- ⚠️ Both `OPSDESK_TOKEN` and the two PINs ship in the admin bundle —
+  deterrents only. Rotate all three after the event.
+- ⚠️ The browser→script.google.com GET (`mode=opsdesk`) can't be exercised
+  from this sandbox (network policy blocks it) — same caveat as
+  `mode=emails` two days ago. Verify on a real phone once redeployed;
+  everything gracefully degrades to local-only behavior if it fails.
+
+---
+
+## 1b. Session Summary — 2026-07-09 external-audit triage + release stabilization
 
 An outside audit of the live site was fact-checked against this repo. Two of
 its P0s were FALSE; the real items shipped:
