@@ -1898,7 +1898,7 @@ export default function App() {
                 <div className="mt-5 flex items-start gap-3 bg-[#1c1408] border border-[#fbbf24]/30 rounded-2xl px-4 py-3.5">
                   <Clock className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
                   <p className="text-xs text-zinc-300 leading-relaxed">
-                    Seeding is being finalized — the full doubles and singles draws post here the <strong className="text-white">morning of Thursday, July 9</strong>. Want a say? <span className="text-[#fbbf24]/90">Suggest the seeds</span> below until the draw locks.
+                    Seeding is being finalized — the full doubles and singles draws post here <strong className="text-white">Thursday afternoon (July 9)</strong>. Want a say? <span className="text-[#fbbf24]/90">Suggest the seeds</span> below until the draw locks.
                   </p>
                 </div>
               )}
