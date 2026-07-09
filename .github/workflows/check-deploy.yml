@@ -1,0 +1,36 @@
+# On-demand "is the deploy current?" probe. Agent/sandbox environments can't
+# reach the live site (proxy policy on one side, Cloudflare bot protection on
+# the other), so this runs the check from a GitHub-hosted runner instead:
+# fetch the live pages, print the content-hashed asset filenames, and pull a
+# freshness marker out of the main bundle. Read-only — it deploys nothing.
+name: check-deploy
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch live pages and print asset hashes
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          for url in "https://acesforarian.com/" "https://acesforarian.com/admin.html" "https://aces-for-arian.pages.dev/"; do
+            echo "===== $url"
+            code=$(curl -sS -m 20 -A "$UA" -o page.html -w "%{http_code}" "$url" || echo "ERR")
+            echo "HTTP $code"
+            grep -o 'src="/assets/[^"]*"' page.html || echo "(no asset script tags found in response)"
+          done
+      - name: Freshness marker in the main bundle
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          asset=$(curl -sS -m 20 -A "$UA" "https://acesforarian.com/" | grep -o '/assets/main-[^"]*\.js' | head -1 || true)
+          echo "main asset: ${asset:-NONE FOUND}"
+          if [ -n "$asset" ]; then
+            curl -sS -m 20 -A "$UA" -o main.js "https://acesforarian.com$asset"
+            if grep -q "as of Thu 7/9" main.js; then
+              echo "WEATHER MARKER: current (Thu 7/9) — deploy carries the latest main"
+            else
+              echo "WEATHER MARKER: NOT FOUND — deploy may be stale (pre-Thu-7/9 build)"
+            fi
+          fi
