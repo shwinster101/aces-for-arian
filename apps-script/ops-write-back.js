@@ -124,6 +124,7 @@ function doPost(e) {
       case 'opsdesk':      writeOpsDesk_(body.payload); break;
       case 'walkup':       writeWalkup_(body.payload); break;
       case 'walkup-delete':deleteWalkup_(body.payload); break;
+      case 'opsdraw':      writeOpsDraw_(body.payload); break;
     }
   } catch (err) {
     // Apps Script web apps can't hand a readable response back to a
@@ -493,11 +494,40 @@ function deleteWalkup_(payload) {
   writeRows_(sheet, rows);
 }
 
-// mode=opsdesk: JSON snapshot of both private tabs for the polling devices.
-// Fail-closed on a bad/missing token; empty tabs return empty arrays (not an
-// error) so a fresh deploy with no data yet doesn't look like a failure.
+// The generated draw (seed order + bracket engine state) for one event —
+// authored on the HQ device, read back by every other ops device so a phone
+// or laptop opening /admin.html sees the SAME draw instead of an empty board.
+// One row per event; Seeds/Bracket are JSON strings. Nothing here is more
+// sensitive than the already-public seed board + Live Scores (display names,
+// seed order, results) — committee `notes` are stripped client-side before
+// the push, so they never reach this tab.
+var OPSDRAW_HEADERS = ['Event', 'Seeds', 'Bracket', 'UpdatedAt'];
+
+function writeOpsDraw_(payload) {
+  var event = payload && payload.event ? String(payload.event).trim() : '';
+  if (event !== 'Singles' && event !== 'Doubles') return;
+  var sheet = sheetByName_('OpsDraw', OPSDRAW_HEADERS);
+  var rows = readRows_(sheet);
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim() === event) { idx = i; break; }
+  }
+  var next = [
+    event,
+    JSON.stringify(payload.seeds || []),
+    payload.bracket ? JSON.stringify(payload.bracket) : '',
+    new Date().toISOString(),
+  ];
+  if (idx >= 0) rows[idx] = next; else rows.push(next);
+  writeRows_(sheet, rows);
+}
+
+// mode=opsdesk: JSON snapshot of the private ops tabs for the polling devices
+// (desk overlay + walk-ups + the generated draw). Fail-closed on a bad/missing
+// token; empty tabs return empty arrays (not an error) so a fresh deploy with
+// no data yet doesn't look like a failure.
 function opsDeskOut_(token) {
-  if (token !== OPSDESK_TOKEN) return jsonOut_({ desk: [], walkups: [] });
+  if (token !== OPSDESK_TOKEN) return jsonOut_({ desk: [], walkups: [], draw: [] });
   var deskSheet = sheetByName_('OpsDesk', OPSDESK_HEADERS);
   var deskRows = readRows_(deskSheet).map(function (r) {
     return {
@@ -510,7 +540,14 @@ function opsDeskOut_(token) {
   var walkupRows = readRows_(walkupSheet).map(function (r) {
     return { id: r[0] || '', name: r[1] || '', classYear: r[2] || '', events: r[3] || '', partner: r[4] || '' };
   });
-  return jsonOut_({ desk: deskRows, walkups: walkupRows });
+  var drawSheet = sheetByName_('OpsDraw', OPSDRAW_HEADERS);
+  var drawRows = readRows_(drawSheet).map(function (r) {
+    var seeds, bracket;
+    try { seeds = r[1] ? JSON.parse(r[1]) : []; } catch (e1) { seeds = []; }
+    try { bracket = r[2] ? JSON.parse(r[2]) : null; } catch (e2) { bracket = null; }
+    return { event: r[0] || '', seeds: seeds, bracket: bracket, updatedAt: r[3] || '' };
+  }).filter(function (d) { return d.event === 'Singles' || d.event === 'Doubles'; });
+  return jsonOut_({ desk: deskRows, walkups: walkupRows, draw: drawRows });
 }
 
 // Staff-set scholarship meter — upserts raised/goal into the Config tab (Key |

@@ -169,6 +169,23 @@ export function useOpsStore() {
   // internal bookkeeping, shouldn't trigger a render.
   const localOverlayEditAt = useRef({});
   const localWalkupEditAt = useRef({});
+  // Per-event timestamp of this device's own draw edits (generate/mark/seed…),
+  // so an in-flight poll can't flicker a just-made change back. Same guard the
+  // desk overlay uses.
+  const localDrawEditAt = useRef({});
+
+  // The generated draw (seed order + bracket) is shared across ops devices via
+  // the private OpsDraw tab so a phone/laptop opening /admin sees HQ's draw
+  // instead of an empty board. Committee `notes` are stripped here — only the
+  // display-safe seed order (already public on SeedBoardPublic) crosses the
+  // wire, alongside the bracket engine state (names/results/overrides, all
+  // display-safe). A device only ever pushes on a real user action, so a
+  // fresh (pull-only) device can never clobber HQ's draw with empty state.
+  const seedsForSync = (list) => (list || []).map(r => ({ id: r.id, rank: r.rank, name: r.name }));
+  const pushDraw = (event, seeds, bracket) => {
+    localDrawEditAt.current[event] = Date.now();
+    pushToSheet('opsdraw', { event, seeds: seedsForSync(seeds), bracket: bracket || null });
+  };
 
   // Check-in/payment/shirt fields (SYNCED_OVERLAY_FIELDS) are pushed to the
   // private OpsDesk tab so every ops device sees the same day-of desk state
@@ -239,13 +256,22 @@ export function useOpsStore() {
     const send = () => {
       if (sent) return;
       sent = true;
-      changed.forEach(ev => pushToSheet('seeds', { event: ev, list: store.seeds[ev].map(({ name }) => ({ name })) }));
+      changed.forEach(ev => {
+        pushToSheet('seeds', { event: ev, list: store.seeds[ev].map(({ name }) => ({ name })) });
+        // Mirror the seed order to the private ops-draw sync too, so a second
+        // device's Seed Order card fills in (the public 'seeds' push above is
+        // Name/Event/Rank only and feeds the PUBLIC board, not the ops console).
+        pushDraw(ev, store.seeds[ev], store.brackets[ev]);
+      });
       pushedSeeds.current = { ...pushedSeeds.current, ...Object.fromEntries(changed.map(ev => [ev, store.seeds[ev]])) };
     };
     const t = setTimeout(send, 400);
     const flush = () => { clearTimeout(t); send(); };
     window.addEventListener('pagehide', flush);
     return () => { clearTimeout(t); window.removeEventListener('pagehide', flush); };
+    // Intentionally debounced on seed changes ONLY; it reads the current
+    // brackets/pushDraw at run time, which is the state as of this seed edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.seeds]);
 
   const addMatch = (event) => {
@@ -360,8 +386,11 @@ export function useOpsStore() {
   const applyBracket = (event, compute) => {
     const prefix = event === 'Doubles' ? 'D-' : 'S-';
     const pushes = [];
+    let nextBracketOut = null, seedsOut = null;
     setStore(s => {
       const nextBracket = compute(s);
+      nextBracketOut = nextBracket;
+      seedsOut = s.seeds[event];
       const prior = new Map(s.matches.map(m => [m.id, m]));
       const rows = bracketMatchRows(nextBracket).map(r => {
         const p = prior.get(r.id);
@@ -382,6 +411,9 @@ export function useOpsStore() {
       return { ...s, brackets: { ...s.brackets, [event]: nextBracket }, matches: [...kept, ...rows] };
     });
     pushes.forEach(p => pushToSheet(p.type, p.payload));
+    // Share the full draw (seed order + bracket state, incl. winner marks) so
+    // every ops device converges on it. A null bracket (clear) syncs too.
+    pushDraw(event, seedsOut, nextBracketOut);
   };
   // Auto-populate the draw from the current seed list (nearest power of 2,
   // byes to the top seeds) and sync R1 into Match Order. labelFor formats the
@@ -476,7 +508,7 @@ export function useOpsStore() {
     try {
       const res = await fetch(`${SHEET_WRITE_URL}?mode=opsdesk&token=${OPSDESK_TOKEN}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const { desk, walkups } = await res.json();
+      const { desk, walkups, draw } = await res.json();
       const now = Date.now();
       setStore(s => {
         const participants = { ...s.participants };
@@ -500,6 +532,37 @@ export function useOpsStore() {
         const localRecent = s.added.filter(w => recentIds.has(w.id));
         return { ...s, participants, added: [...serverAdded, ...localRecent] };
       });
+      // Hydrate the shared draw (seed order + bracket) for any event this
+      // device hasn't edited within the guard window — this is what makes a
+      // fresh device show HQ's draw. Suppress the seeds effect from re-pushing
+      // the hydrated list (update pushedSeeds.current), and re-derive the flat
+      // Match Order rows locally WITHOUT pushing (no churn).
+      if (Array.isArray(draw) && draw.length) {
+        setStore(s => {
+          let seeds = s.seeds, brackets = s.brackets, matches = s.matches;
+          for (const d of draw) {
+            const ev = d.event;
+            if (ev !== 'Singles' && ev !== 'Doubles') continue;
+            if (now - (localDrawEditAt.current[ev] || 0) < LOCAL_EDIT_GUARD_MS) continue;
+            const serverSeeds = (Array.isArray(d.seeds) ? d.seeds : [])
+              .map(r => ({ id: r.id || nextId(), rank: r.rank, name: r.name, notes: '' }));
+            const serverBracket = d.bracket || null;
+            pushedSeeds.current = { ...pushedSeeds.current, [ev]: serverSeeds }; // don't re-push a hydrated list
+            seeds = { ...seeds, [ev]: serverSeeds };
+            brackets = { ...brackets, [ev]: serverBracket };
+            const prefix = ev === 'Doubles' ? 'D-' : 'S-';
+            const prior = new Map(matches.map(m => [m.id, m]));
+            const rows = serverBracket ? bracketMatchRows(serverBracket).map(r => {
+              const p = prior.get(r.id);
+              const status = r.status === 'final' ? 'final' : (p && p.status === 'live' ? 'live' : r.status);
+              return { id: r.id, event: ev, round: r.round, num: r.num, a: r.a, b: r.b,
+                court: p ? p.court : '', score: p ? p.score : '', status, winner: r.winner };
+            }) : [];
+            matches = [...matches.filter(m => !String(m.id).startsWith(prefix)), ...rows];
+          }
+          return { ...s, seeds, brackets, matches };
+        });
+      }
       setDeskSync({ at: Date.now(), ok: true });
     } catch {
       setDeskSync(d => ({ ...d, ok: false }));
