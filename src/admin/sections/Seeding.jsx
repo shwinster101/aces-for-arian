@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, SearchBox, Toggle } from '../ui';
 import { nextId, isEngineRow } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
-import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, ambiguousLooseKeys, shortLabel, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
+import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, firstName, ambiguousLooseKeys, shortLabel, shortName, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot } from '../../lib/draw';
 import { estimateLabel, SCHEDULE_DEFAULTS } from '../../lib/schedule';
 
@@ -357,6 +357,17 @@ function PartnerAssignments({ participants, ops }) {
     [participants]
   );
   const allNames = useMemo(() => doublesPlayers.map(p => p.name), [doublesPlayers]);
+  // Two players sharing a first name ("Ethan McRaevan" / "Ethan K.") read as
+  // identical at a glance in a scrolled/truncated list — an easy misclick
+  // when hand-picking a partner. Label just those rows with the short
+  // "First L." form (unique first+last-initial combo) instead of the full
+  // name; everyone else keeps their full name as-is. Matching itself is
+  // untouched — the input below still reads/writes full names.
+  const dupeFirstNames = useMemo(() => {
+    const counts = new Map();
+    for (const p of doublesPlayers) counts.set(firstName(p.name), (counts.get(firstName(p.name)) || 0) + 1);
+    return new Set([...counts].filter(([, n]) => n > 1).map(([k]) => k));
+  }, [doublesPlayers]);
   const flags = useMemo(() => doublesPartnerFlags(participants), [participants]);
   // Who lists this (partner-less) player as THEIR partner — so "no partner"
   // rows that are actually covered by the other half's registration read as
@@ -386,7 +397,9 @@ function PartnerAssignments({ participants, ops }) {
             return (
               <div key={p.name} className="bg-[#111] border border-zinc-800 rounded-xl px-3 py-2.5">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-bold text-zinc-200 truncate flex-1">{p.name}</span>
+                  <span className="text-sm font-bold text-zinc-200 truncate flex-1" title={dupeFirstNames.has(firstName(p.name)) ? p.name : undefined}>
+                    {dupeFirstNames.has(firstName(p.name)) ? shortName(p.name, p.classYear) : p.name}
+                  </span>
                   <span className="text-zinc-600 text-xs shrink-0">w/</span>
                   <input list="doubles-names" value={p.overlay.partner || p.partner || ''}
                     onChange={(e) => ops.setOverlay(p.name, { partner: e.target.value })}
