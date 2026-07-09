@@ -21,6 +21,41 @@ jobs:
             echo "HTTP $code"
             grep -o 'src="/assets/[^"]*"' page.html || echo "(no asset script tags found in response)"
           done
+      - name: Probe live data endpoints (announcements pipeline)
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          for tab in Announcements Config OpsStatus Matches; do
+            echo "===== /api/sheet?tab=$tab"
+            curl -sS -m 20 -A "$UA" -D headers.txt -o body.txt "https://acesforarian.com/api/sheet?tab=$tab" || echo "(curl failed)"
+            grep -i 'cache-control\|cf-cache-status\|^HTTP' headers.txt || true
+            echo "bytes: $(wc -c < body.txt) · lines: $(wc -l < body.txt)"
+            # Bodies only for the tabs that are public-by-design content;
+            # OpsStatus/Matches carry participant names — counts are enough.
+            if [ "$tab" = "Announcements" ] || [ "$tab" = "Config" ]; then head -c 600 body.txt; echo; fi
+          done
+      - name: Probe Apps Script write path (announce round-trip)
+        run: |
+          # Tokens below are already committed in this public repo (deterrents,
+          # not secrets) — using them here adds zero exposure.
+          EXEC="https://script.google.com/macros/s/AKfycby1CP-FQNwOoKYkDiiFEzoUbrEkg2427Iyt4x_GXwjeVsB9rlOPMYJOZQiygkI5fDbM7Q/exec"
+          WRITE="a4a-ea5316b9f5d5b04e49115a20"
+          READ="a4a-read-8db082a282da9e0b622178164cd9b202"
+          echo "===== anonymous-access check (bad-token GET should give empty JSON, not a Google login page)"
+          curl -sSL -m 20 -o resp.txt -w "final URL: %{url_effective}\nHTTP %{http_code}\n" "$EXEC?mode=opsdesk&token=nope"
+          head -c 200 resp.txt; echo
+          echo "===== write probe: post a throwaway announcement"
+          PID="probe-$(date +%s)"
+          curl -sSL -m 20 -o /dev/null -w "POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
+            -d "{\"type\":\"announce\",\"token\":\"$WRITE\",\"payload\":{\"id\":\"$PID\",\"ts\":\"$(date -u +%FT%TZ)\",\"event\":\"Both\",\"category\":\"general\",\"message\":\"Connectivity test - ignore.\"}}" "$EXEC"
+          sleep 3
+          echo "===== read back Announcements via doGet"
+          curl -sSL -m 20 "$EXEC?tab=Announcements&token=$READ" | head -c 400; echo
+          echo "===== delete the probe row"
+          curl -sSL -m 20 -o /dev/null -w "POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
+            -d "{\"type\":\"announce-delete\",\"token\":\"$WRITE\",\"payload\":{\"id\":\"$PID\"}}" "$EXEC"
+          sleep 2
+          echo "===== confirm gone"
+          curl -sSL -m 20 "$EXEC?tab=Announcements&token=$READ" | head -c 400; echo
       - name: Freshness marker in the main bundle
         run: |
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"

@@ -37,7 +37,11 @@ function isPublicRosterCol(header) {
 // not-yet-created tab (Config / Photos / SeedBoardPublic pre-publish) would leak
 // the roster. Detect that fallback by the roster's signature header columns and
 // fail closed (return empty → callers fall back to their static defaults).
-const ROSTER_MARKERS = ["email", "phone number", "timestamp", "payment method"];
+// "timestamp" is deliberately NOT a marker: the Announcements tab's own schema
+// is Id|Timestamp|Event|Category|Message, and fingerprinting on it blanked
+// every announcement read (found live 7/9). The remaining PII-question markers
+// are distinctive to the Form-responses roster and can't appear on served tabs.
+const ROSTER_MARKERS = ["email", "phone number", "payment method"];
 function looksLikeRoster(csv) {
   const firstLine = (csv.split("\n", 1)[0] || "").toLowerCase();
   return ROSTER_MARKERS.some((m) => firstLine.includes(m));
