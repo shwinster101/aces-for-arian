@@ -25,7 +25,7 @@ import {
   mapAnnouncements,
 } from './lib/sheet';
 import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/entrants';
-import { estimateLabel, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
+import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
 import CompassDraw from './CompassDraw';
 import TeamTracker from './TeamTracker';
 import {
@@ -1402,9 +1402,16 @@ export default function App() {
   const livePlaying = publicMatches
     .filter(m => m.status === 'live')
     .sort((a, b) => playPos(a) - playPos(b));
+  // Up next = matches that can ACTUALLY go on the next open court: not
+  // live/final AND both sides are real teams (isReadyRow) — a row still
+  // waiting on an upstream result (e.g. M5 waiting on M3's winner) never
+  // occupies a queue slot; the next playable match takes it. Play order via
+  // playPos (doubles play-ins queue first despite their M29+ numbers).
   const upNextQueue = publicMatches
-    .filter(m => m.status !== 'live' && m.status !== 'final')
-    .sort((a, b) => playPos(a) - playPos(b)); // play order: doubles play-ins (M29+) queue first
+    .filter(m => m.status !== 'live' && m.status !== 'final' && isReadyRow(m))
+    .sort((a, b) => playPos(a) - playPos(b));
+  const waitingUpstream = publicMatches
+    .filter(m => m.status !== 'live' && m.status !== 'final' && !isReadyRow(m)).length;
   const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
   // The board is entirely match-derived: live once matches are posted, else a
@@ -1467,6 +1474,13 @@ export default function App() {
     if (n == null) return null;
     const fm = engineRowsFor(evt).get(Number(n));
     return fm ? estimateLabel(fm, publicMatches, scheduleCfg, now) : null;
+  };
+  // Compact projected-start clock ("~9:00 AM") for a bracket line — the only
+  // schedule ink the compass sheet carries per match.
+  const clockForEvent = (evt) => (n) => {
+    if (n == null) return null;
+    const fm = engineRowsFor(evt).get(Number(n));
+    return fm ? startClockLabel(fm, publicMatches, scheduleCfg, now) : null;
   };
 
   // "Find my match" — look up the player's posted matches and say where/when.
@@ -1939,85 +1953,51 @@ export default function App() {
           const dEastNames = dTeamsRaw.slice(0, 16).map((n, i) => (dPIns > 0 && i + 1 > 16 - dPIns ? null : publicLabel(n)));
           const publicEvents = ['Doubles', 'Singles'].filter(e => DRAWS_PUBLIC[e]);
 
-          const introAndDraws = (
-            <>
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
-              <p className="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                {seedsFinal
-                  ? "Final draws. The top 8 are seeded (seeds 1–4 can't meet before the semifinals; 5–8 are slated for the quarterfinals) and open lines are byes — top seeds get the byes first."
-                  : regClosed
-                    ? 'Draft brackets. Registration closed July 8 — the committee is finalizing seeds, and the draw fills in when the field locks. Only the top 8 carry a seed number.'
-                    : 'Draft brackets. Seeds and matchups are placeholders until registration closes July 8 — slots fill in as players are confirmed. Only the top 8 carry a seed number.'}
-              </p>
-              {anyDrawsPublic ? (
-                <>
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar pt-5">
+          // THE DRAW LEADS THE PAGE (owner call 2026-07-09): sheet canvas at
+          // the very top, Follow-my-team right under it (with the free-text
+          // highlight box inside, BELOW the tracker), then the live boards.
+          // No seeding blurb, no phase reordering — one fixed flow.
+          const drawsTop = (
+            <div className="bg-[#151515] border border-zinc-800 p-5 md:p-7 rounded-3xl">
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
+                {anyDrawsPublic && (
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar">
                     {[['doubles', 'Saturday Doubles', DRAWS_PUBLIC.Doubles], ['singles', 'Sunday Singles', DRAWS_PUBLIC.Singles]].map(([id, label, pub]) => pub ? (
-                      <button key={id} onClick={() => setBracketEvent(id)} className={`whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === id ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>{label}</button>
+                      <button key={id} onClick={() => setBracketEvent(id)} className={`whitespace-nowrap px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition ${bracketEvent === id ? 'bg-[#fbbf24] text-black shadow-lg shadow-amber-500/10' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`}>{label}</button>
                     ) : (
-                      <span key={id} className="whitespace-nowrap px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl bg-[#111] text-zinc-600 border border-zinc-800/60 cursor-default select-none">{label} <span className="normal-case tracking-normal font-semibold text-zinc-500">· posts Saturday</span></span>
+                      <span key={id} className="whitespace-nowrap px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl bg-[#111] text-zinc-600 border border-zinc-800/60 cursor-default select-none">{label} <span className="normal-case tracking-normal font-semibold text-zinc-500">· posts Sat</span></span>
                     ))}
                   </div>
-                  <input value={drawQuery} onChange={(e) => setDrawQuery(e.target.value)}
-                    placeholder="Find yourself in the draw — type your name"
-                    className="mt-3 w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
-                  <p className="text-[10px] text-zinc-600 mt-1.5">Highlights your line in the brackets below{liveDay ? ' — for your live court, use “Find your match” on the court board' : ''}.</p>
-                </>
-              ) : (
-                <div className="mt-5 flex items-start gap-3 bg-[#1c1408] border border-[#fbbf24]/30 rounded-2xl px-4 py-3.5">
+                )}
+              </div>
+              {!anyDrawsPublic && (
+                <div className="flex items-start gap-3 bg-[#1c1408] border border-[#fbbf24]/30 rounded-2xl px-4 py-3.5">
                   <Clock className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
                   <p className="text-xs text-zinc-300 leading-relaxed">
                     Seeding is being finalized — the full doubles and singles draws post here <strong className="text-white">Thursday evening (July 9)</strong>. Want a say? <span className="text-[#fbbf24]/90">Suggest the seeds</span> below until the draw locks.
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Follow my team — dropdown tracker: results, live court, next
-                match, and the projected win/lose paths with times. Options
-                come from PUBLIC events only (leak gate). */}
-            {anyDrawsPublic && (
-              <TeamTracker
-                seeds={seeds}
-                matches={publicMatches}
-                events={publicEvents}
-                labelFor={publicLabel}
-                sched={scheduleCfg}
-                now={now}
-                pInsFor={(evt) => (evt === 'Doubles' ? dPIns : 0)}
-                onHighlight={setDrawQuery}
-              />
-            )}
-
-            {/* Planned round times — sits right under the draws intro so it
-                shows pre- and post-reveal (times only, no names). */}
-            <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
-
-            {/* SATURDAY DOUBLES — the compass draw as ONE spatial canvas
-                (the 2025 printed-sheet look): East center→right to the gold
-                champion cell, West mirrored to the left, North above, South
-                below, play-ins top-left. Lines fill from the same
-                engineRowsFor num-join as before (NUMBERING CONTRACT: East
-                1-15, West 16-22, North 23-25, South 26-28, play-ins 29+). */}
-            {DRAWS_PUBLIC.Doubles && bracketEvent === 'doubles' && (
-              <div className="space-y-5">
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Award className="w-5 h-5 text-[#fbbf24]" />
-                    <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · {dCount} Teams</h3>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    {dPIns > 0
-                      ? 'Every team plays at least twice, and everyone in the Round of 16 is guaranteed 3+ matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.'
-                      : 'Every team is guaranteed at least 3 matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.'}
+              {/* SATURDAY DOUBLES — the compass sheet (2025 printed look).
+                  Lines fill from the engineRowsFor num-join (NUMBERING
+                  CONTRACT: East 1-15, West 16-22, North 23-25, South 26-28,
+                  play-ins 29+). Legend rides BELOW the sheet. */}
+              {DRAWS_PUBLIC.Doubles && bracketEvent === 'doubles' && (
+                <>
+                  <CompassDraw
+                    eastNames={dEastNames}
+                    teams={dTeams}
+                    pIns={dPIns}
+                    rowsByNum={engineRowsFor('Doubles')}
+                    clockFor={clockForEvent('Doubles')}
+                    highlight={drawHighlight}
+                    showByes={showByes && dPIns === 0}
+                  />
+                  <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
+                    Compass draw · {dCount} teams — every team plays at least twice{dPIns > 0 ? ` (the ${dPIns} play-ins open the day at 9:00; winners take the open East lines)` : ''}, and everyone in the Round of 16 is guaranteed 3+ matches. If a round does not go your way, you rotate into a new direction with another path to compete.
                   </p>
-                  {dPIns > 0 && (
-                    <p className="text-xs text-zinc-500 leading-relaxed max-w-2xl mt-2">
-                      With {dCount} teams, the draw opens with {dPIns} play-in match{dPIns === 1 ? '' : 'es'} (Round of 32) — the winners take the last East lines, everyone else starts straight in the Round of 16, and play-in teams that fall short rotate into the Play-in Consolation for their second match.
-                    </p>
-                  )}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
                     {[
                       ['East', 'Championship path — every team starts here', 'text-[#fbbf24]'],
                       ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
@@ -2030,22 +2010,32 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </>
+              )}
+            </div>
+          );
 
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-4 md:p-6">
-                  <CompassDraw
-                    eastNames={dEastNames}
-                    teams={dTeams}
-                    pIns={dPIns}
-                    rowsByNum={engineRowsFor('Doubles')}
-                    estFor={estForEvent('Doubles')}
-                    highlight={drawHighlight}
-                    showByes={showByes && dPIns === 0}
-                  />
-                </div>
-              </div>
-            )}
+          // Follow my team — dropdown tracker + the free-text highlight box
+          // (tracker ABOVE the search bar, owner call). PUBLIC events only.
+          const tracker = anyDrawsPublic && (
+            <TeamTracker
+              seeds={seeds}
+              matches={publicMatches}
+              events={publicEvents}
+              labelFor={publicLabel}
+              sched={scheduleCfg}
+              now={now}
+              pInsFor={(evt) => (evt === 'Doubles' ? dPIns : 0)}
+              onHighlight={setDrawQuery}
+              query={drawQuery}
+              onQuery={setDrawQuery}
+            />
+          );
 
+          // Singles draw cards — unchanged view, still gated hidden until the
+          // Sunday reveal (flip DRAWS_PUBLIC.Singles).
+          const singlesDraws = (
+            <>
             {/* SUNDAY SINGLES — Double Elimination (32 players) */}
             {DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
               <div className="space-y-5">
@@ -2170,13 +2160,17 @@ export default function App() {
                   ) : (
                     <div className="space-y-1.5">
                       {upNextQueue.slice(0, 8).map((m, i) => (
-                        <div key={i} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                        <div key={m.id || `q${i}`} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
                           <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black ${i === 0 ? 'bg-[#fbbf24] text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>{i + 1}</span>
                           <span className="text-sm text-zinc-200 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
-                          {i === 0 && <span className="ml-auto shrink-0 text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
+                          <span className="ml-auto shrink-0 flex items-center gap-2">
+                            {i === 0 && <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
+                            <span className="text-[10px] font-bold text-[#fbbf24]/80">{startClockLabel(m, publicMatches, scheduleCfg, now)}</span>
+                          </span>
                         </div>
                       ))}
-                      {upNextQueue.length > 8 && <p className="text-[10px] text-zinc-600 pl-1 pt-1">+{upNextQueue.length - 8} more in the queue</p>}
+                      {upNextQueue.length > 8 && <p className="text-[10px] text-zinc-600 pl-1 pt-1">+{upNextQueue.length - 8} more ready in the queue</p>}
+                      {waitingUpstream > 0 && <p className="text-[10px] text-zinc-600 pl-1 pt-0.5">{waitingUpstream} more waiting on earlier-round results — they join the queue the moment both teams are known.</p>}
                     </div>
                   )}
                 </>
@@ -2201,12 +2195,19 @@ export default function App() {
                   Match results as they're posted courtside — <span className="text-emerald-400 font-semibold">live</span> matches update in real time, and <span className="text-[#fbbf24] font-semibold">winners</span> are highlighted once a match goes final.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {publicMatches.map((m, i) => {
+                  {/* Play order, not sheet order: live courts first, then the
+                      queue by playPos, finals last. A scheduled match's badge
+                      is its projected start time (anchored at first serve —
+                      9:00 Sat doubles / 8:00 Sun singles), not "Scheduled". */}
+                  {[...publicMatches].sort((a, b) => {
+                    const rank = (s) => (s === 'live' ? 0 : s === 'final' ? 2 : 1);
+                    return rank(a.status) - rank(b.status) || playPos(a) - playPos(b);
+                  }).map((m, i) => {
                     const meta = [m.event, m.round && `Rd ${m.round}`, m.num && `M${m.num}`, m.court && `Court ${m.court}`].filter(Boolean).join(' · ');
                     const badge = {
                       live: { label: 'Live', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                       final: { label: 'Final', cls: 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20' },
-                      scheduled: { label: 'Scheduled', cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' },
+                      scheduled: { label: startClockLabel(m, publicMatches, scheduleCfg, now) || 'Scheduled', cls: 'text-[#fbbf24]/90 bg-[#fbbf24]/10 border-[#fbbf24]/20' },
                     }[m.status] || { label: m.status, cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' };
                     return (
                       <div key={m.id || i} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
@@ -2265,11 +2266,18 @@ export default function App() {
             </button>
           );
 
+          // ONE fixed flow, both phases (owner call): the draw sheet leads,
+          // Follow-my-team right under it, then the live boards.
           return (
             <div className="space-y-6 animate-fade-in">
-              {liveDay
-                ? <>{liveBoards}{aceTracker}{introAndDraws}{legacyLink}</>
-                : <>{introAndDraws}{suggestBox}{liveBoards}{aceTracker}{legacyLink}</>}
+              {drawsTop}
+              {singlesDraws}
+              {tracker}
+              {liveBoards}
+              <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
+              {suggestBox}
+              {aceTracker}
+              {legacyLink}
             </div>
           );
         })()}

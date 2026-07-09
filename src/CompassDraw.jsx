@@ -1,48 +1,49 @@
 // ==========================================
 // COMPASS DRAW CANVAS — the 2025 printed-sheet look, live
 // ==========================================
-// One spatial canvas: East flows left→right from the center column to a gold
-// champion cell; West mirrors it right→left; North sits above, South below —
-// the same geography as the 2025 Google-Sheet compass players already know.
-// Names sit on underline rules (no boxes), winners advance with the score
-// printed under the advancing name, connectors are border-only grid items
-// (integer row math from lib/compass.js — no SVG, no measurement), so the
-// whole canvas zooms with a single CSS transform. Paper-light by default for
-// sunlight readability courtside; a dark token set is one prop away.
-// Purely presentational: all data arrives resolved via buildCompassModel.
+// One spatial canvas mirroring the 2025 Google-Sheet compass players know:
+// East flows left→right from the center into a gold champion cell, West
+// mirrors it right→left, North rides the top band beside the play-ins,
+// South tucks under West. First principles of the printed sheet: names sit
+// on strong underline rules, matches read as PAIRS (elbow connectors group
+// them), the only ink besides names is a single compact token per match
+// ("M2 · ~9:00" / "M1 · Ct 3 LIVE") hugging the connector, and scores ride
+// the advancing line. Connectors are border-only grid items on integer row
+// math (lib/compass.js) — no SVG, no measurement — so the whole canvas zooms
+// with one CSS transform. Paper-light for sunlight; dark tokens one prop away.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { buildCompassModel, COL_W, ROW_H } from './lib/compass';
 import { SEED_CUT } from './lib/entrants';
 
 const HDR = 1; // header row offset — model rows are 1-based below the column headers
-const GAP = 40;
-const PAD = 24;
+const GAP = 32;
+const PAD = 20;
 const WEST_W = 4 * COL_W;
 const EAST_W = 5 * COL_W;
-const CANVAS_W = PAD * 2 + WEST_W + GAP + EAST_W; // 1672
-const NORTH_OFF = WEST_W + GAP + COL_W;           // over East QF/SF
-const SOUTH_OFF = 96;                             // under the West bracket
+const CANVAS_W = PAD * 2 + WEST_W + GAP + EAST_W; // 1640
 
 const THEMES = {
   paper: {
-    '--cd-canvas': '#faf7f0', '--cd-ink': '#1c1917', '--cd-faint': 'rgba(28,25,23,0.45)',
-    '--cd-rule': '#a8a29e', '--cd-gold': '#a16207', '--cd-gold-bg': '#fbbf24',
-    '--cd-hit': 'rgba(251,191,36,0.4)', '--cd-live': '#047857', '--cd-live-bg': 'rgba(4,120,87,0.08)',
-    '--cd-panel': '#f4efe4', '--cd-border': '#d6d3d1',
+    '--cd-canvas': '#faf7f0', '--cd-ink': '#171310', '--cd-faint': 'rgba(23,19,16,0.52)',
+    '--cd-rule': '#57534e', '--cd-gold': '#996c00', '--cd-gold-bg': '#fbbf24',
+    '--cd-hit': 'rgba(251,191,36,0.45)', '--cd-live': '#047857', '--cd-live-bg': 'rgba(4,120,87,0.09)',
+    '--cd-panel': '#f3ede1', '--cd-border': '#d8d2c4',
   },
   dark: {
-    '--cd-canvas': '#101010', '--cd-ink': '#e4e4e7', '--cd-faint': 'rgba(228,228,231,0.4)',
-    '--cd-rule': '#52525b', '--cd-gold': '#fbbf24', '--cd-gold-bg': '#fbbf24',
-    '--cd-hit': 'rgba(251,191,36,0.22)', '--cd-live': '#34d399', '--cd-live-bg': 'rgba(52,211,153,0.08)',
+    '--cd-canvas': '#101010', '--cd-ink': '#e4e4e7', '--cd-faint': 'rgba(228,228,231,0.45)',
+    '--cd-rule': '#71717a', '--cd-gold': '#fbbf24', '--cd-gold-bg': '#fbbf24',
+    '--cd-hit': 'rgba(251,191,36,0.25)', '--cd-live': '#34d399', '--cd-live-bg': 'rgba(52,211,153,0.09)',
     '--cd-panel': '#171717', '--cd-border': '#27272a',
   },
 };
 
-// One draw line: a name sitting on an underline rule, sheet-style.
+// One draw line: a name sitting on an underline rule, sheet-style. Names all
+// start flush-left; the seed badge rides the RIGHT edge so alignment never
+// staggers. The feeder's score is pinned to the empty top half of the cell.
 function LineCell({ l, highlight, mirrored, hdr = HDR }) {
   const hit = !!(highlight && l.kind === 'name' && !l.wo && l.name && l.name.toLowerCase().includes(highlight));
-  const text = l.kind === 'name' ? l.name : l.kind === 'bye' ? 'BYE' : l.kind === 'from' ? l.from : 'TBD';
+  const text = l.kind === 'name' ? l.name : l.kind === 'bye' ? 'BYE' : l.kind === 'from' ? l.from : '';
   const faded = l.kind !== 'name' || l.wo;
   return (
     <div
@@ -54,54 +55,51 @@ function LineCell({ l, highlight, mirrored, hdr = HDR }) {
       }}
       className="relative flex items-end gap-1 px-1.5 min-w-0"
     >
-      {l.seed != null && l.seed <= SEED_CUT && l.kind === 'name' && !l.wo && (
-        <span className="shrink-0 mb-0.5 text-[8px] font-mono font-bold rounded px-1 border" style={{ color: 'var(--cd-gold)', borderColor: 'var(--cd-gold)' }}>{l.seed}</span>
-      )}
       <span
-        className={`text-[10px] leading-tight pb-px truncate ${faded ? 'italic' : hit ? 'font-black' : 'font-semibold'}`}
+        className={`text-[10px] leading-tight pb-px truncate ${faded ? 'italic font-normal' : hit ? 'font-black' : 'font-semibold'}`}
         style={{ color: l.live ? 'var(--cd-live)' : faded ? 'var(--cd-faint)' : 'var(--cd-ink)' }}
         title={l.kind === 'name' ? l.name : undefined}
       >
         {text}{l.wo ? ' (bye)' : ''}
       </span>
-      {l.live && l.court && (
-        <span className="ml-auto shrink-0 mb-0.5 text-[8px] font-black" style={{ color: 'var(--cd-live)' }}>Ct {l.court}</span>
-      )}
-      {/* score of the feeder match rides with the advancing name — pinned to
-          the empty top half of the 26px cell so it can never collide with
-          the match-meta chip that lives in the grid cell below the line */}
+      <span className="ml-auto shrink-0 flex items-end gap-1">
+        {l.live && l.court && (
+          <span className="text-[8px] font-black pb-px" style={{ color: 'var(--cd-live)' }}>Ct {l.court}</span>
+        )}
+        {l.seed != null && l.seed <= SEED_CUT && l.kind === 'name' && !l.wo && (
+          <span className="text-[8px] font-mono font-bold pb-px" style={{ color: 'var(--cd-gold)' }}>{l.seed}</span>
+        )}
+      </span>
       {l.score && (
-        <span className="absolute top-0.5 text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-gold)', [mirrored ? 'left' : 'right']: '6px' }}>{l.score}</span>
+        <span className="absolute top-0 text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-gold)', [mirrored ? 'left' : 'right']: '6px' }}>{l.score}</span>
       )}
     </div>
   );
 }
 
-// Match number + live/estimate chip on the spare row under the lower feeder.
-function MetaCell({ m, estFor, mirrored, hdr = HDR }) {
-  let text = null;
-  let color = 'var(--cd-gold)';
-  if (m.live) { text = m.court ? `Court ${m.court} · LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
-  else if (m.posted && !m.final && estFor) text = estFor(m.num);
+// ONE compact token per match — "M2 · ~9:00 AM" scheduled, "M1 · Ct 3 LIVE"
+// live, bare "M2" otherwise — hugging the connector edge so it reads as the
+// pair's metadata, never as a third line of text.
+function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
+  let extra = null, color = 'var(--cd-faint)';
+  if (m.live) { extra = m.court ? `Ct ${m.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
+  else if (m.posted && !m.final && clockFor) { const c = clockFor(m.num); if (c) { extra = c; color = 'var(--cd-gold)'; } }
   return (
     <div
-      style={{ gridColumn: m.col, gridRow: m.row + hdr, justifyContent: mirrored ? 'flex-end' : 'flex-start' }}
-      className="flex items-start gap-1.5 px-1.5 pt-0.5 min-w-0"
+      style={{ gridColumn: m.col, gridRow: m.row + hdr, justifyContent: mirrored ? 'flex-start' : 'flex-end' }}
+      className="flex items-start gap-1 px-2 pt-px min-w-0"
     >
-      <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: 'var(--cd-faint)' }}>M{m.num}</span>
-      {text && <span className="text-[8px] font-bold truncate" style={{ color }} title={text}>{text}</span>}
+      <span className="text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-faint)' }}>M{m.num}</span>
+      {extra && <span className="text-[8px] font-mono font-bold whitespace-nowrap" style={{ color }}>· {extra}</span>}
     </div>
   );
 }
 
-// One direction's bracket as a single CSS grid — lines, elbow connectors
-// (border-right, or border-LEFT when mirrored for West), metas, and captions
-// all placed by integer (row, col) from the model.
-function DirectionGrid({ g, estFor, highlight }) {
+function DirectionGrid({ g, clockFor, highlight }) {
   return (
     <div className="grid" style={{ gridTemplateColumns: `repeat(${g.cols}, ${COL_W}px)`, gridAutoRows: `${ROW_H}px` }}>
       {g.headers.map((h, i) => (
-        <div key={`h${i}`} style={{ gridColumn: i + 1, gridRow: 1, textAlign: g.mirrored ? 'right' : 'left' }} className="px-1.5 text-[9px] font-black uppercase tracking-widest self-center truncate" >
+        <div key={`h${i}`} style={{ gridColumn: i + 1, gridRow: 1, textAlign: g.mirrored ? 'right' : 'left' }} className="px-1.5 text-[8px] font-bold uppercase tracking-[0.14em] self-center truncate">
           <span style={{ color: 'var(--cd-faint)' }}>{h}</span>
         </div>
       ))}
@@ -115,9 +113,9 @@ function DirectionGrid({ g, estFor, highlight }) {
           }}
         />
       ))}
-      {g.metas.map((m) => <MetaCell key={m.key} m={m} estFor={estFor} mirrored={g.mirrored} />)}
+      {g.metas.map((m) => <MetaCell key={m.key} m={m} clockFor={clockFor} mirrored={g.mirrored} />)}
       {g.winner && (
-        <div style={{ gridColumn: g.winner.col, gridRow: g.winner.row + HDR, textAlign: g.mirrored ? 'right' : 'left' }} className="px-1.5 pt-0.5 text-[8px] font-black uppercase tracking-widest" >
+        <div style={{ gridColumn: g.winner.col, gridRow: g.winner.row + HDR, textAlign: g.mirrored ? 'right' : 'left' }} className="px-1.5 pt-0.5 text-[8px] font-black uppercase tracking-widest">
           <span style={{ color: 'var(--cd-gold)' }}>{g.winner.caption}</span>
         </div>
       )}
@@ -134,31 +132,29 @@ function DirectionGrid({ g, estFor, highlight }) {
   );
 }
 
-// Play-in / consolation panels — compact pairs in the sheet's top-left slot
-// (play-ins go on court first, so first-read position).
-function PairPanel({ dataDir, title, sub, items, estFor, highlight }) {
+// Play-in / consolation panels — the sheet's top-left slot (first on court).
+// Two rules per match, one compact meta line, no prose.
+function PairPanel({ dataDir, title, items, clockFor, highlight }) {
   if (!items || !items.length) return null;
   return (
-    <div data-dir={dataDir} className="rounded-xl border px-3 pt-2 pb-3" style={{ background: 'var(--cd-panel)', borderColor: 'var(--cd-border)' }}>
-      <div className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--cd-ink)' }}>{title}</div>
-      {sub && <div className="text-[8px] mb-1.5" style={{ color: 'var(--cd-faint)' }}>{sub}</div>}
-      <div className="flex flex-wrap gap-x-6 gap-y-3">
+    <div data-dir={dataDir} className="rounded-lg border px-3 pt-1.5 pb-2.5 shrink-0" style={{ background: 'var(--cd-panel)', borderColor: 'var(--cd-border)' }}>
+      <div className="text-[9px] font-black uppercase tracking-[0.14em] mb-1.5" style={{ color: 'var(--cd-faint)' }}>{title}</div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
         {items.map((p) => {
-          let metaText = null;
-          let metaColor = 'var(--cd-gold)';
-          if (p.meta.live) { metaText = p.meta.court ? `Court ${p.meta.court} · LIVE` : 'LIVE'; metaColor = 'var(--cd-live)'; }
-          else if (p.meta.posted && !p.meta.final && estFor) metaText = estFor(p.num);
+          let extra = null, color = 'var(--cd-gold)';
+          if (p.meta.live) { extra = p.meta.court ? `Ct ${p.meta.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
+          else if (p.meta.posted && !p.meta.final && clockFor) extra = clockFor(p.num);
           return (
             <div key={p.num} style={{ width: COL_W }}>
               <div className="grid" style={{ gridTemplateColumns: `${COL_W}px`, gridAutoRows: `${ROW_H}px` }}>
                 <LineCell l={p.a} highlight={highlight} hdr={0} />
                 <LineCell l={p.b} highlight={highlight} hdr={0} />
               </div>
-              <div className="flex items-baseline gap-1.5 pt-1 min-w-0">
+              <div className="flex items-baseline gap-1 pt-0.5 min-w-0">
                 <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: 'var(--cd-faint)' }}>M{p.num}</span>
-                {metaText && <span className="text-[8px] font-bold truncate" style={{ color: metaColor }} title={metaText}>{metaText}</span>}
+                {extra && <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color }}>· {extra}</span>}
+                {p.note && <span className="text-[8px] truncate" style={{ color: 'var(--cd-faint)' }} title={p.note}>· {p.note}</span>}
               </div>
-              {p.note && <div className="text-[8px] truncate" style={{ color: 'var(--cd-faint)' }} title={p.note}>{p.note}</div>}
             </div>
           );
         })}
@@ -169,9 +165,9 @@ function PairPanel({ dataDir, title, sub, items, estFor, highlight }) {
 
 function DirLabel({ children, caption }) {
   return (
-    <div className="flex items-baseline gap-3 mb-1">
-      <span className="text-2xl font-black uppercase tracking-wide" style={{ color: 'var(--cd-ink)' }}>{children}</span>
-      {caption && <span className="text-[9px] font-semibold" style={{ color: 'var(--cd-faint)' }}>{caption}</span>}
+    <div className="flex items-baseline gap-2.5 mb-0.5">
+      <span className="text-xl font-black uppercase tracking-wide leading-none" style={{ color: 'var(--cd-ink)' }}>{children}</span>
+      {caption && <span className="text-[8px] font-semibold" style={{ color: 'var(--cd-faint)' }}>{caption}</span>}
     </div>
   );
 }
@@ -181,7 +177,7 @@ const JUMPS = [
 ];
 
 export default function CompassDraw({
-  eastNames, teams, pIns = 0, rowsByNum, estFor, highlight = '', showByes = false,
+  eastNames, teams, pIns = 0, rowsByNum, clockFor, highlight = '', showByes = false,
   theme = 'paper', title = 'Aces for Arian 2026 Doubles',
 }) {
   // Cheap to rebuild every render (a few hundred tiny objects); rowsByNum is
@@ -191,7 +187,7 @@ export default function CompassDraw({
   const canvasRef = useRef(null);
   const [fit, setFit] = useState(true);
   const [scale, setScale] = useState(1);
-  const [natH, setNatH] = useState(1500);
+  const [natH, setNatH] = useState(1300);
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -246,45 +242,50 @@ export default function CompassDraw({
         </div>
         <span className="text-[10px] text-zinc-600 ml-auto hidden md:block">Fit shows the whole sheet — 100% to read, drag to pan.</span>
       </div>
-      <div ref={wrapRef} className="overflow-auto rounded-2xl border border-zinc-800 max-h-[80vh] overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div ref={wrapRef} className="overflow-auto rounded-2xl border border-zinc-800 max-h-[82vh] overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div style={{ width: CANVAS_W * scale, height: natH * scale }}>
           <div
             ref={canvasRef}
             className="relative"
             style={{ width: CANVAS_W, padding: PAD, transform: `scale(${scale})`, transformOrigin: 'top left', background: 'var(--cd-canvas)', ...(THEMES[theme] || THEMES.paper) }}
           >
-            <div className="flex justify-center mb-5">
-              <div className="px-6 py-2 rounded font-black uppercase tracking-widest text-sm text-center" style={{ background: 'var(--cd-gold-bg)', color: '#3b2405' }}>
+            {/* Top band: gold banner over [play-ins | consolation | North].
+                North lives up here (right side) like the sheet's top row —
+                no dead band between the panels and the main draws. */}
+            <div className="flex justify-center mb-3">
+              <div className="px-6 py-1.5 rounded font-black uppercase tracking-widest text-sm text-center" style={{ background: 'var(--cd-gold-bg)', color: '#3b2405' }}>
                 {title} · Compass Draw
               </div>
             </div>
-
-            {model.playIns.length > 0 && (
-              <div className="flex items-start gap-6 mb-5">
-                <PairPanel dataDir="playin" title="Play-in — Round of 32" sub="First on court Saturday — winners take the open East lines" items={model.playIns} estFor={estFor} highlight={highlight} />
-                <PairPanel title="Play-in Consolation" sub="Play-in first-round teams rotate here — everyone plays at least twice" items={model.consolation} estFor={estFor} highlight={highlight} />
+            <div className="flex items-end gap-5 mb-4">
+              {model.playIns.length > 0 && (
+                <div className="flex flex-col gap-2 shrink-0" style={{ maxWidth: 4 * COL_W + 120 }}>
+                  <PairPanel dataDir="playin" title="Play-ins · first on court Saturday" items={model.playIns} clockFor={clockFor} highlight={highlight} />
+                  <PairPanel title="Play-in consolation · everyone plays twice" items={model.consolation} clockFor={clockFor} highlight={highlight} />
+                </div>
+              )}
+              <div data-dir="north" className="ml-auto shrink-0" style={{ width: 3 * COL_W, marginRight: COL_W }}>
+                <DirLabel caption="East quarterfinal exits — placement path">North</DirLabel>
+                <DirectionGrid g={model.north} clockFor={clockFor} highlight={highlight} />
               </div>
-            )}
-
-            <div data-dir="north" className="mb-3" style={{ marginLeft: NORTH_OFF, width: 3 * COL_W }}>
-              <DirLabel caption="East quarterfinal exits — placement path">North</DirLabel>
-              <DirectionGrid g={model.north} estFor={estFor} highlight={highlight} />
             </div>
 
+            {/* Main band: West mirrored ← | → East to the champion cell */}
             <div className="flex items-start" style={{ gap: GAP }}>
               <div data-dir="west">
                 <DirLabel caption="East Round-of-16 exits — second path">West</DirLabel>
-                <DirectionGrid g={model.west} estFor={estFor} highlight={highlight} />
+                <DirectionGrid g={model.west} clockFor={clockFor} highlight={highlight} />
               </div>
               <div data-dir="east">
                 <DirLabel caption="Championship path — every team starts here">East</DirLabel>
-                <DirectionGrid g={model.east} estFor={estFor} highlight={highlight} />
+                <DirectionGrid g={model.east} clockFor={clockFor} highlight={highlight} />
               </div>
             </div>
 
-            <div data-dir="south" className="mt-3" style={{ marginLeft: SOUTH_OFF, width: 3 * COL_W }}>
+            {/* Bottom band: South tucked under the West bracket */}
+            <div data-dir="south" className="-mt-1" style={{ marginLeft: COL_W, width: 3 * COL_W }}>
               <DirLabel caption="Opening West-round exits — final placement path">South</DirLabel>
-              <DirectionGrid g={model.south} estFor={estFor} highlight={highlight} />
+              <DirectionGrid g={model.south} clockFor={clockFor} highlight={highlight} />
             </div>
           </div>
         </div>

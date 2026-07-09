@@ -21,7 +21,7 @@ const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
 // rows rA+1..rB, and its output line lands exactly on the midpoint row —
 // integer by construction for every round below.
 export const COL_W = 176;
-export const ROW_H = 26;
+export const ROW_H = 22;
 
 const rowOf = (rows, n) => rows.get(Number(n)) || null;
 const isFinal = (r) => !!r && r.status === 'final' && (r.winner === 'a' || r.winner === 'b');
@@ -195,7 +195,8 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
       num,
       a: resolveLine({ key: `p${k}a`, col: 1, row: 1, seed: hostSeed, tName: teams[hostSeed - 1] || null, nextNum: num, nextSide: 'a' }, rows),
       b: resolveLine({ key: `p${k}b`, col: 1, row: 2, seed: T + 1 + k, tName: teams[T + k] || null, nextNum: num, nextSide: 'b' }, rows),
-      note: `Winner → East M${eastMatch}${opp ? ` vs ${opp}` : ''}`,
+      note: `Winner → East M${eastMatch}`, // opponent already shows on that East line
+      opp,
       meta: meta(1, 1, num, rows),
     });
   }
