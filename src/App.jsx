@@ -25,7 +25,7 @@ import {
   mapAnnouncements,
 } from './lib/sheet';
 import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/entrants';
-import { estimateLabel, SCHEDULE_DEFAULTS } from './lib/schedule';
+import { estimateLabel, playPos, SCHEDULE_DEFAULTS } from './lib/schedule';
 import {
   Trophy, 
   Award, 
@@ -1346,10 +1346,10 @@ export default function App() {
   // matches drop off; entering a score advances the queue automatically.
   const livePlaying = matches
     .filter(m => m.status === 'live')
-    .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+    .sort((a, b) => playPos(a) - playPos(b));
   const upNextQueue = matches
     .filter(m => m.status !== 'live' && m.status !== 'final')
-    .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+    .sort((a, b) => playPos(a) - playPos(b)); // play order: doubles play-ins (M29+) queue first
   const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
   // The board is entirely match-derived: live once matches are posted, else a
@@ -1930,11 +1930,13 @@ export default function App() {
                     <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · {dCount} Teams</h3>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Every team is guaranteed at least 3 matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.
+                    {pIns > 0
+                      ? 'Every team plays at least twice, and everyone in the Round of 16 is guaranteed 3+ matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.'
+                      : 'Every team is guaranteed at least 3 matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.'}
                   </p>
                   {pIns > 0 && (
                     <p className="text-xs text-zinc-500 leading-relaxed max-w-2xl mt-2">
-                      With {dCount} teams, the draw opens with {pIns} play-in match{pIns === 1 ? '' : 'es'} (Round of 32) — the winners take the last East lines, and everyone else starts straight in the Round of 16.
+                      With {dCount} teams, the draw opens with {pIns} play-in match{pIns === 1 ? '' : 'es'} (Round of 32) — the winners take the last East lines, everyone else starts straight in the Round of 16, and play-in teams that fall short rotate into the Play-in Consolation for their second match.
                     </p>
                   )}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
@@ -1959,6 +1961,23 @@ export default function App() {
                       names={['First on court Saturday']} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
                   </div>
                 )}
+
+                {/* Play-in consolation — losers pair up (an odd loser meets
+                    the first consolation winner) so every team plays at
+                    least twice. Numbered right after the play-ins; the lines
+                    fill from the ops engine like every other round. */}
+                {pIns >= 2 && (() => {
+                  const pcCount = Math.floor(pIns / 2) + (pIns % 2 === 1 ? 1 : 0);
+                  const pcRounds = [Array.from({ length: pcCount }, (_, k) => ({ num: 29 + pIns + k, a: {}, b: {} }))];
+                  return (
+                    <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                      <h4 className="text-sm font-black text-white uppercase tracking-wider mb-1">Play-in Consolation</h4>
+                      <p className="text-[11px] text-zinc-500 mb-4">Play-in first-round teams rotate here — everyone plays at least twice.</p>
+                      <Bracket rounds={overlayRounds(pcRounds, 'Doubles')}
+                        names={['After the play-ins']} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
+                    </div>
+                  );
+                })()}
 
                 {(() => {
                   let next = 1;

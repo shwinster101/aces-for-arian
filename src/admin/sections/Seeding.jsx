@@ -8,7 +8,7 @@ import { nextId, isEngineRow } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, firstName, ambiguousLooseKeys, shortLabel, shortName, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot } from '../../lib/draw';
-import { estimateLabel, SCHEDULE_DEFAULTS } from '../../lib/schedule';
+import { estimateLabel, waitsOnLabel, playPos, SCHEDULE_DEFAULTS } from '../../lib/schedule';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -436,7 +436,7 @@ export function DrawEditor({ event, ops, namesInEvent }) {
   // Sorted by match number = playing order (courts are assigned dynamically).
   const matches = ops.store.matches
     .filter(m => m.event === event)
-    .sort((a, b) => (Number(a.num) || 0) - (Number(b.num) || 0));
+    .sort((a, b) => playPos(a) - playPos(b)); // play order: doubles play-ins (M29+) go first
   const datalistId = `draw-names-${event}`;
 
   return (
@@ -550,6 +550,39 @@ function DrawBoard({ event, ops, participants }) {
   // id, so look each R1 match up in the live matches for its status/queue.
   const matchById = useMemo(() => new Map(ops.store.matches.map(m => [m.id, m])), [ops.store.matches]);
   const estFor = (id) => { const fm = matchById.get(id); return fm ? estimateLabel(fm, ops.store.matches, ops.store.schedule) : null; };
+
+  // Bye/feeder-aware scheduling. A line that's waiting on an upstream match
+  // (bye holders whose opponent hasn't emerged, play-in host lines, every
+  // later round) gets "Waits on M2 · ~9:40" — the blocking match's slot plus
+  // one match length — so a team coasting on byes still knows roughly when
+  // they're on. And any match that a REAL team is standing around waiting
+  // for gets a ⚡ flag, so the desk knows which matches to prioritize when
+  // the schedule runs behind.
+  const sched = ops.store.schedule;
+  const waitLabel = (m) => waitsOnLabel(blockerNums(m), ops.store.matches, event, sched);
+  // blocker match num -> nums of matches where a named team is waiting on it
+  const waitedOn = useMemo(() => {
+    const map = new Map();
+    for (const sec of (view ? view.sections : [])) {
+      for (const m of sec.matches) {
+        if (m.contested || m.bye) continue;
+        if (![m.slotA, m.slotB].some(s => s && s.name)) continue;
+        for (const n of blockerNums(m)) {
+          if (!map.has(n)) map.set(n, []);
+          map.get(n).push(m.num);
+        }
+      }
+    }
+    return map;
+  }, [view]);
+  const stripFor = (m) => {
+    const parts = [];
+    const posted = estFor(m.id);
+    if (posted) parts.push(posted);
+    else if (!m.contested && !m.bye) { const wl = waitLabel(m); if (wl) parts.push(wl); }
+    if (!m.winner && waitedOn.has(m.num)) parts.push(`⚡ M${waitedOn.get(m.num).join(', M')} waiting`);
+    return parts.length ? parts.join(' · ') : null;
+  };
   return (
     <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
@@ -603,14 +636,14 @@ function DrawBoard({ event, ops, participants }) {
                         <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-[#5c1313]/40 border-b border-zinc-800/70">
                           <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{w.num}</span>
                           {w.bye ? <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>
-                            : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{estFor(w.id)}</span>}
+                            : stripFor(w) && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{stripFor(w)}</span>}
                         </div>
                         <DrawSlot event={event} ops={ops} idx={2 * w.k} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
                         <div className="h-px bg-zinc-800/70" />
                         <DrawSlot event={event} ops={ops} idx={2 * w.k + 1} slot={w.slotB} isWinner={w.winner === 'b'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'b')} />
                       </div>
                     )) : shown.map(m => (
-                      <RoundMatch key={m.id} m={m} est={estFor(m.id)}
+                      <RoundMatch key={m.id} m={m} est={stripFor(m)}
                         onWin={(side) => ops.markBracketWinner(event, m.id, side)} />
                     ))}
                   </div>
@@ -691,6 +724,15 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
 
 // A later-round match card: names fill in as feeders decide ("W of M3" /
 // "L of M12" placeholders until then); Won buttons appear once both sides
+// Match numbers a resolved-view match is waiting on — parsed from its empty
+// sides' "W of M2" / "L of M29" pointers. Pure helper for the DrawBoard's
+// wait estimates and ⚡ priority flags.
+function blockerNums(m) {
+  return [m.slotA, m.slotB]
+    .map(s => (s && !s.name && s.from ? Number((String(s.from).match(/M(\d+)/) || [])[1]) : null))
+    .filter(Boolean);
+}
+
 // are known. Winners read gold; a dead side (bye/walkover chain) shows "—".
 function RoundMatch({ m, est, onWin }) {
   const row = (slot, side) => {

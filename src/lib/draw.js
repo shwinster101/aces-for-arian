@@ -154,6 +154,21 @@ function graphFor(event, pIns = 0) {
     if (pIns > 0) {
       open('P1', 'Play-in — Round of 32');
       for (let k = 0; k < pIns; k++) add(`D-P1-${k}`, 'Play-in', 29 + k, { slot: 16 + 2 * k }, { slot: 16 + 2 * k + 1 });
+      // Consolation so play-in losers still get a second match ("every team
+      // plays at least twice"). Losers pair up; an odd loser (3+ play-ins)
+      // meets the winner of the first consolation. Numbered after the
+      // play-ins (M29+pIns…). A single play-in (17 teams) has one loser and
+      // no structural opponent — the desk pairs them by hand that day.
+      if (pIns >= 2) {
+        open('PC', 'Play-in Consolation');
+        const pairs = Math.floor(pIns / 2);
+        for (let k = 0; k < pairs; k++) {
+          add(`D-PC-${k}`, 'Play-in Consol', 29 + pIns + k, Lof(`D-P1-${2 * k}`), Lof(`D-P1-${2 * k + 1}`));
+        }
+        if (pIns % 2 === 1) {
+          add(`D-PC-${pairs}`, 'Play-in Consol', 29 + pIns + pairs, Wof('D-PC-0'), Lof(`D-P1-${pIns - 1}`));
+        }
+      }
     }
     open('E1', 'East — Round of 16');
     for (let k = 0; k < 8; k++) add(E(1, k), 'R1', k + 1, { slot: 2 * k }, { slot: 2 * k + 1 });
