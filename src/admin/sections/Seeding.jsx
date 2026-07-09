@@ -574,48 +574,50 @@ function DrawBoard({ event, ops, participants }) {
       ) : (
         <>
           <p className="text-[11px] text-zinc-500 mb-3">
-            {view.size}-{isDoubles ? 'team' : 'player'} {isDoubles ? 'compass draw — East, with losers routed West → North/South' : 'double elimination — full Comeback backdraw to the Grand Final'} · {view.fieldCount} entered · {view.byeCount} bye{view.byeCount === 1 ? '' : 's'} (walkovers cascade automatically). Tap Won to advance a side — tap it again to un-mark. Drag the grip to swap unseeded entrants.
+            {view.size}-{isDoubles ? 'team' : 'player'} {isDoubles ? 'compass draw — East, with losers routed West → North/South' : 'double elimination — full Comeback backdraw to the Grand Final'} · {view.fieldCount} entered
+            {view.pIns > 0 && <> · <strong className="text-[#fbbf24]/90">{view.pIns} play-in{view.pIns === 1 ? '' : 's'}</strong> (Round of 32 — winners take the last East lines)</>}
+            {' '}· {view.byeCount} bye{view.byeCount === 1 ? '' : 's'} (walkovers cascade automatically). Tap Won to advance a side — tap it again to un-mark. Drag the grip to swap unseeded entrants.
           </p>
 
-          {/* Round 1 — interactive: drag-balance, rename, mark winners */}
+          {/* R1-type sections (play-ins first, then Round 1) are interactive —
+              drag-balance, rename, mark winners; later rounds derive their
+              slots and only take winner taps. */}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <div className="grid sm:grid-cols-2 gap-2 mb-4">
-              {view.sections[0].matches.map(w => (
-                <div key={w.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
-                  {/* Maroon strip + gold estimate — tournament colors */}
-                  <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-[#5c1313]/40 border-b border-zinc-800/70">
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{w.num}</span>
-                    {w.bye ? <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>
-                      : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{estFor(w.id)}</span>}
+            {view.sections.map((sec, si) => {
+              const interactive = sec.matches.length > 0 && sec.matches[0].k != null;
+              const shown = sec.matches.filter(m => m.active);
+              if (!shown.length) return null;
+              return (
+                <div key={sec.key} className={si === 0 ? '' : 'mt-4'}>
+                  {(!interactive || view.pIns > 0) && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="h-px w-4 bg-[#5c1313]" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{sec.title}</span>
+                      <span className="h-px flex-1 bg-zinc-800" />
+                    </div>
+                  )}
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {interactive ? shown.map(w => (
+                      <div key={w.id} className="bg-[#111] border border-zinc-800 rounded-xl overflow-hidden">
+                        {/* Maroon strip + gold estimate — tournament colors */}
+                        <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-[#5c1313]/40 border-b border-zinc-800/70">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400 shrink-0">M{w.num}</span>
+                          {w.bye ? <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">Bye</span>
+                            : estFor(w.id) && <span className="text-[9px] font-bold text-[#fbbf24]/90 truncate">{estFor(w.id)}</span>}
+                        </div>
+                        <DrawSlot event={event} ops={ops} idx={2 * w.k} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
+                        <div className="h-px bg-zinc-800/70" />
+                        <DrawSlot event={event} ops={ops} idx={2 * w.k + 1} slot={w.slotB} isWinner={w.winner === 'b'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'b')} />
+                      </div>
+                    )) : shown.map(m => (
+                      <RoundMatch key={m.id} m={m} est={estFor(m.id)}
+                        onWin={(side) => ops.markBracketWinner(event, m.id, side)} />
+                    ))}
                   </div>
-                  <DrawSlot event={event} ops={ops} idx={2 * w.k} slot={w.slotA} isWinner={w.winner === 'a'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'a')} />
-                  <div className="h-px bg-zinc-800/70" />
-                  <DrawSlot event={event} ops={ops} idx={2 * w.k + 1} slot={w.slotB} isWinner={w.winner === 'b'} canWin={w.contested} onWin={() => ops.markBracketWinner(event, w.id, 'b')} />
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </DndContext>
-
-          {/* Every later round — winners advance, losers route per the graph */}
-          {view.sections.slice(1).map(sec => {
-            const shown = sec.matches.filter(m => m.active);
-            if (!shown.length) return null;
-            return (
-              <div key={sec.key} className="mt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="h-px w-4 bg-[#5c1313]" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{sec.title}</span>
-                  <span className="h-px flex-1 bg-zinc-800" />
-                </div>
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {shown.map(m => (
-                    <RoundMatch key={m.id} m={m} est={estFor(m.id)}
-                      onWin={(side) => ops.markBracketWinner(event, m.id, side)} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
         </>
       )}
       <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here</strong> — not only in Scores — so the bracket, the queue, and the public draw stay in step. The GF reset match appears only if the Comeback champ takes the Grand Final.</p>
@@ -636,7 +638,9 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
   const setRefs = (el) => { drag.setNodeRef(el); drop.setNodeRef(el); };
   const style = drag.transform ? { transform: `translate(${drag.transform.x}px, ${drag.transform.y}px)`, zIndex: 20, position: 'relative' } : undefined;
   const seeded = slot.name && slot.seed <= SEED_CUT;
-  const canRename = !!slot.name && !slot.bye;
+  // Derived slots (play-in host lines) have no canonical key — the name is
+  // owned by the play-in participants, so no rename pencil here.
+  const canRename = !!slot.name && !slot.bye && !!slot.key;
 
   const startEdit = () => { setDraft(slot.name || ''); setEditing(true); };
   const commit = () => { ops.renameBracketSlot(event, idx, draft); setEditing(false); };
@@ -666,7 +670,7 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
           {/* Winner reads GOLD — same convention as the public Live Scores
               (gold = winner/final, emerald = live). */}
           <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
-            {slot.name || (slot.bye ? 'BYE' : '—')}
+            {slot.name || (slot.bye ? 'BYE' : slot.from || '—')}
           </span>
           {canRename && (
             <button onClick={startEdit} aria-label="Edit name" className="shrink-0 min-h-8 px-1 text-zinc-600 hover:text-[#fbbf24] transition-colors">

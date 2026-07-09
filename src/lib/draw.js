@@ -46,6 +46,14 @@ export function loserRoute(size, m) {
   return { match: m % consolCount, side: m < consolCount ? 'a' : 'b' };
 }
 
+// Doubles can overflow its 16-line draw via PLAY-INS: field 17..16+PLAYIN_MAX
+// adds (n-16) "Play-in — Round of 32" matches (seed 16 v 17, 15 v 18, …)
+// whose winners take the corresponding East R1 lines, so every registered
+// team is in the championship draw instead of sitting out as an alternate.
+// Play-ins are numbered AFTER South (29+) so the public numbering contract
+// (East 1-15 … South 26-28) stays byte-identical.
+export const PLAYIN_MAX = { Singles: 0, Doubles: 8 };
+
 // The ops seed list -> ordered, de-duped names (seed 1 first), capped to the
 // event's draw size (entries beyond the cap are alternates).
 function fieldFromSeeds(seedList, cap) {
@@ -77,22 +85,38 @@ export function buildDraw(event, seedList, opts = {}) {
   const labelFor = opts.labelFor || ((s) => s);
   const overrides = opts.overrides || {};
   const size = DRAW_CAP[event] || nextPow2((seedList || []).length || 2);
-  const field = fieldFromSeeds(seedList, size);
+  const field = fieldFromSeeds(seedList, size + (PLAYIN_MAX[event] || 0));
   const n = field.length;
   if (n < 2) return null;
+  const pIns = Math.max(0, n - size); // doubles overflow -> play-in count
   const order = seedOrder(size);
-  const r1slots = order.map((seedNum) => {
-    if (seedNum > n) return { name: null, def: null, key: null, raw: null, seed: seedNum, bye: true };
+  const teamSlot = (seedNum) => {
     const raw = field[seedNum - 1];
     const key = rowKeys(raw).key;
     const def = labelFor(raw);
     return { name: overrides[key] || def, def, key, raw, seed: seedNum, bye: false };
+  };
+  const r1slots = order.map((seedNum) => {
+    // Host line of play-in k (k = size - seedNum): fed by that play-in's
+    // winner, derived at resolve time — no team sits here directly.
+    if (pIns > 0 && seedNum > size - pIns) {
+      return { name: null, def: null, key: null, raw: null, seed: seedNum, bye: false, fromPlayIn: size - seedNum };
+    }
+    if (seedNum > n) return { name: null, def: null, key: null, raw: null, seed: seedNum, bye: true };
+    return teamSlot(seedNum);
   });
+  // Play-in participant slots, appended contiguously (match k -> slots
+  // size+2k / size+2k+1) so the DrawBoard's idx = slot math keeps working.
+  for (let k = 0; k < pIns; k++) {
+    r1slots.push(teamSlot(size - k));      // higher seed hosts the play-in
+    r1slots.push(teamSlot(size + 1 + k));  // overflow entrant
+  }
   return {
     event,
     size,
+    pIns,
     fieldCount: n,
-    byeCount: size - n,
+    byeCount: Math.max(0, size - n),
     format: event === 'Doubles' ? 'compass' : 'double-elim',
     consolLabel: CONSOL_LABEL[event] || 'Comeback',
     r1slots,
@@ -106,7 +130,7 @@ export function buildDraw(event, seedList, opts = {}) {
 // evaluation (and play) order. aFrom/bFrom are either { slot } (an R1 slot
 // index) or { kind: 'winner'|'loser', ref: <matchId> }.
 // ---------------------------------------------------------------------------
-function graphFor(event) {
+function graphFor(event, pIns = 0) {
   const matches = [];
   const sections = [];
   let section = null;
@@ -123,6 +147,14 @@ function graphFor(event) {
     // North; West R1 losers -> South. Numbers = public numberSeq chain.
     const E = (r, k) => `D-E${r}-${k}`, W = (r, k) => `D-W${r}-${k}`;
     const N = (r, k) => `D-N${r}-${k}`, S = (r, k) => `D-S${r}-${k}`;
+    // Overflow field (17+ teams): play-ins run FIRST (both play + display
+    // order) — their winners feed the East host lines via each slot's
+    // fromPlayIn marker (see evalGraph). Numbered 29+ so East 1-15 … South
+    // 26-28 stay contract-exact with the public templates.
+    if (pIns > 0) {
+      open('P1', 'Play-in — Round of 32');
+      for (let k = 0; k < pIns; k++) add(`D-P1-${k}`, 'Play-in', 29 + k, { slot: 16 + 2 * k }, { slot: 16 + 2 * k + 1 });
+    }
     open('E1', 'East — Round of 16');
     for (let k = 0; k < 8; k++) add(E(1, k), 'R1', k + 1, { slot: 2 * k }, { slot: 2 * k + 1 });
     open('E2', 'East — Quarterfinals');
@@ -195,6 +227,15 @@ function evalGraph(graph, r1slots, results) {
     const side = (from) => {
       if (from.slot != null) {
         const s = r1slots[from.slot];
+        // Play-in host line: derived from the play-in's outcome (play-ins sit
+        // first in the graph, so their state is already evaluated). Never
+        // dead-before-play — both play-in sides are real teams.
+        if (s.fromPlayIn != null) {
+          const src = state.get(`D-P1-${s.fromPlayIn}`);
+          const label = `W of M${29 + s.fromPlayIn}`;
+          if (!src || !src.decided) return { name: null, seed: s.seed, dead: false, from: label };
+          return { name: src.winnerName, seed: s.seed, dead: src.winnerName == null, from: label };
+        }
         return { name: s.name, seed: s.seed, dead: !!s.bye, from: null };
       }
       const label = `${from.kind === 'winner' ? 'W' : 'L'} of M${numOf.get(from.ref)}`;
@@ -231,7 +272,7 @@ function evalGraph(graph, r1slots, results) {
 export function resolve(bracket) {
   if (!bracket) return null;
   const { event, size, r1slots, results } = bracket;
-  const graph = graphFor(event);
+  const graph = graphFor(event, bracket.pIns || 0);
   const state = evalGraph(graph, r1slots, results);
   const byId = new Map(graph.matches.map(m => [m.id, m]));
   const sections = graph.sections.map(sec => ({
@@ -241,10 +282,14 @@ export function resolve(bracket) {
       const g = byId.get(id);
       const st = state.get(id);
       const active = g.resetOf ? state.get(g.resetOf)?.manual === 'b' : true;
-      // Section 0 exposes the raw R1 slots so drag/rename keep working.
+      // R1-type sections expose the raw slots so drag/rename keep working —
+      // except play-in host lines, whose value is DERIVED from the play-in
+      // (st.a/st.b carry the resolved name or a "W of M29" pointer).
       const isR1 = g.aFrom.slot != null;
-      const slotA = isR1 ? r1slots[g.aFrom.slot] : st.a;
-      const slotB = isR1 ? r1slots[g.bFrom.slot] : st.b;
+      const rawA = isR1 ? r1slots[g.aFrom.slot] : null;
+      const rawB = isR1 ? r1slots[g.bFrom.slot] : null;
+      const slotA = isR1 ? (rawA.fromPlayIn != null ? { ...st.a, key: null, bye: false } : rawA) : st.a;
+      const slotB = isR1 ? (rawB.fromPlayIn != null ? { ...st.b, key: null, bye: false } : rawB) : st.b;
       return {
         id, num: g.num, roundTag: g.roundTag, k: isR1 ? g.aFrom.slot / 2 : null,
         slotA, slotB,
@@ -260,20 +305,29 @@ export function resolve(bracket) {
     consolLabel: bracket.consolLabel,
     fieldCount: bracket.fieldCount,
     byeCount: bracket.byeCount,
+    pIns: bracket.pIns || 0,
     sections,
   };
 }
 
 // All matches consuming this one's outcome (transitively) — their recorded
 // results become meaningless if this result changes, so they get cleared.
-function downstreamIds(event, size, startId) {
-  const graph = graphFor(event);
+// Play-in host lines feed East through the slot's fromPlayIn marker (not a
+// graph ref), so those edges are added explicitly from r1slots.
+function downstreamIds(bracket, startId) {
+  const graph = graphFor(bracket.event, bracket.pIns || 0);
   const consumers = new Map();
+  const link = (ref, id) => {
+    if (!consumers.has(ref)) consumers.set(ref, []);
+    consumers.get(ref).push(id);
+  };
   for (const m of graph.matches) {
     for (const f of [m.aFrom, m.bFrom]) {
-      if (!f.ref) continue;
-      if (!consumers.has(f.ref)) consumers.set(f.ref, []);
-      consumers.get(f.ref).push(m.id);
+      if (f.ref) link(f.ref, m.id);
+      else if (f.slot != null) {
+        const s = bracket.r1slots[f.slot];
+        if (s && s.fromPlayIn != null) link(`D-P1-${s.fromPlayIn}`, m.id);
+      }
     }
   }
   const out = new Set();
@@ -292,13 +346,13 @@ function downstreamIds(event, size, startId) {
 // longer be in that match. Ops re-marks the affected matches.
 export function setResult(bracket, matchId, side) {
   const results = { ...bracket.results, [matchId]: side };
-  for (const id of downstreamIds(bracket.event, bracket.size, matchId)) delete results[id];
+  for (const id of downstreamIds(bracket, matchId)) delete results[id];
   return { ...bracket, results };
 }
 export function clearResult(bracket, matchId) {
   const results = { ...bracket.results };
   delete results[matchId];
-  for (const id of downstreamIds(bracket.event, bracket.size, matchId)) delete results[id];
+  for (const id of downstreamIds(bracket, matchId)) delete results[id];
   return { ...bracket, results };
 }
 
@@ -335,7 +389,7 @@ export function renameSlot(bracket, idx, value) {
 export function bracketMatchRows(bracket) {
   if (!bracket) return [];
   const { event, r1slots, results } = bracket;
-  const graph = graphFor(event);
+  const graph = graphFor(event, bracket.pIns || 0);
   const state = evalGraph(graph, r1slots, results);
   const rows = [];
   for (const m of graph.matches) {

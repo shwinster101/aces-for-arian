@@ -1904,20 +1904,42 @@ export default function App() {
               )}
             </div>
 
-            {/* SATURDAY DOUBLES — Compass Draw (16 teams) */}
-            {DRAWS_PUBLIC && bracketEvent === 'doubles' && (
+            {/* SATURDAY DOUBLES — Compass Draw. 16 East lines; a 17+ team
+                field adds a Play-in Round of 32 (numbered M29+ to keep the
+                East 1-15 … South 26-28 contract with the ops engine) whose
+                winners take the last East lines — every registered team is
+                in the championship draw. */}
+            {DRAWS_PUBLIC && bracketEvent === 'doubles' && (() => {
+              const teams = seedNamesFrom(seeds, 'Doubles');
+              const dCount = seedsLive ? teams.length : 16;
+              const pIns = seedsLive ? Math.max(0, Math.min(teams.length - 16, 8)) : 0;
+              // Play-in host lines (seeds 16-pIns+1..16) stay TBD on the East
+              // template until ops posts the play-in result (overlay fills
+              // them); their teams appear in the play-in card instead.
+              const eastNames = teams.slice(0, 16).map((n, i) => (pIns > 0 && i + 1 > 16 - pIns ? null : publicLabel(n)));
+              const playInRounds = pIns > 0 ? [Array.from({ length: pIns }, (_, k) => ({
+                num: 29 + k,
+                a: { seed: 16 - k, name: publicLabel(teams[16 - k - 1]) },
+                b: { seed: 17 + k, name: publicLabel(teams[16 + k]) },
+              }))] : null;
+              return (
               <div className="space-y-5">
                 <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <Award className="w-5 h-5 text-[#fbbf24]" />
-                    <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · 16 Teams</h3>
+                    <h3 className="text-base font-black text-white uppercase tracking-wider">Compass Draw · {dCount} Teams</h3>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
                     Every team is guaranteed at least 3 matches (up to 5). If a round does not go your way, you rotate into a new direction with another path to compete.
                   </p>
+                  {pIns > 0 && (
+                    <p className="text-xs text-zinc-500 leading-relaxed max-w-2xl mt-2">
+                      With {dCount} teams, the draw opens with {pIns} play-in match{pIns === 1 ? '' : 'es'} (Round of 32) — the winners take the last East lines, and everyone else starts straight in the Round of 16.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
                     {[
-                      ['East', 'Championship path — all 16 teams', 'text-[#fbbf24]'],
+                      ['East', 'Championship path — every team starts here', 'text-[#fbbf24]'],
                       ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
                       ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-200'],
                       ['South', 'Final placement path after opening West round (4)', 'text-zinc-200'],
@@ -1930,10 +1952,21 @@ export default function App() {
                   </div>
                 </div>
 
+                {playInRounds && (
+                  <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Play-in — Round of 32</h4>
+                    <Bracket rounds={overlayRounds(playInRounds, 'Doubles')}
+                      names={['First on court Saturday']} highlight={drawHighlight} estFor={estForEvent('Doubles')} />
+                  </div>
+                )}
+
                 {(() => {
                   let next = 1;
                   return [
-                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, seedNamesFrom(seeds, 'Doubles').map(publicLabel), showByes)],
+                    // A full/overflow field has no byes in East (the play-ins
+                    // absorb the overflow), so bye rendering is off when
+                    // play-ins exist — host lines read TBD, not BYE.
+                    ['East — Championship Draw', singleElim(DRAW_CAP.Doubles, true, eastNames, showByes && pIns === 0)],
                     ['West Draw', singleElim(8, false)],
                     ['North Draw', singleElim(4, false)],
                     ['South Draw', singleElim(4, false)],
@@ -1941,7 +1974,8 @@ export default function App() {
                     const numbered = numberSeq(rounds, next); next = numbered.next;
                     // The ops engine numbers the whole compass to match this
                     // numberSeq chain (East 1-15, West 16-22, North 23-25,
-                    // South 26-28), so every direction overlays + estimates.
+                    // South 26-28; play-ins append at 29+), so every
+                    // direction overlays + estimates.
                     return (
                       <div key={title} className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
                         <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">{title}</h4>
@@ -1952,7 +1986,8 @@ export default function App() {
                   });
                 })()}
               </div>
-            )}
+              );
+            })()}
 
             {/* SUNDAY SINGLES — Double Elimination (32 players) */}
             {DRAWS_PUBLIC && bracketEvent === 'singles' && (
