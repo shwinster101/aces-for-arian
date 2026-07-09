@@ -1691,7 +1691,7 @@ export default function App() {
                   <>Arrive <strong className="text-white">15 minutes</strong> before your first match.</>,
                   <>Bring your racquet, water, and court shoes.</>,
                   <>Haven't paid? <strong className="text-white">$40 via Venmo</strong> (see the Scholarship tab) or cash at the desk.</>,
-                  <>Draws &amp; schedule post <strong className="text-white">Thursday afternoon</strong> — day-of, your court and time live in the <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 font-semibold transition-colors">Brackets tab</button>.</>,
+                  <>Draws &amp; schedule post <strong className="text-white">Thursday evening</strong> — day-of, your court and time live in the <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 font-semibold transition-colors">Brackets tab</button>.</>,
                   <>Joining late? Text a coordinator or email <a href="mailto:acesforarian@gmail.com?subject=Late%20registration%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">acesforarian@gmail.com</a>.</>,
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-2.5">
@@ -1899,7 +1899,7 @@ export default function App() {
                 <div className="mt-5 flex items-start gap-3 bg-[#1c1408] border border-[#fbbf24]/30 rounded-2xl px-4 py-3.5">
                   <Clock className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
                   <p className="text-xs text-zinc-300 leading-relaxed">
-                    Seeding is being finalized — the full doubles and singles draws post here <strong className="text-white">Thursday afternoon (July 9)</strong>. Want a say? <span className="text-[#fbbf24]/90">Suggest the seeds</span> below until the draw locks.
+                    Seeding is being finalized — the full doubles and singles draws post here <strong className="text-white">Thursday evening (July 9)</strong>. Want a say? <span className="text-[#fbbf24]/90">Suggest the seeds</span> below until the draw locks.
                   </p>
                 </div>
               )}
