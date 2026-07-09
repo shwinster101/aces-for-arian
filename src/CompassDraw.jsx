@@ -83,7 +83,9 @@ function LineCell({ l, highlight, mirrored, hdr = HDR }) {
 function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
   let extra = null, color = 'var(--cd-faint)';
   if (m.live) { extra = m.court ? `Ct ${m.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
-  else if (m.posted && !m.final && clockFor) { const c = clockFor(m.num); if (c) { extra = c; color = 'var(--cd-gold)'; } }
+  // UNPOSTED matches carry a projected time too (9-court simulation) — every
+  // team can read their first match's start straight off the sheet.
+  else if (!m.final && clockFor) { const c = clockFor(m.num); if (c) { extra = c; color = 'var(--cd-gold)'; } }
   return (
     <div
       style={{ gridColumn: m.col, gridRow: m.row + hdr, justifyContent: mirrored ? 'flex-start' : 'flex-end' }}
@@ -143,7 +145,7 @@ function PairPanel({ dataDir, title, items, clockFor, highlight }) {
         {items.map((p) => {
           let extra = null, color = 'var(--cd-gold)';
           if (p.meta.live) { extra = p.meta.court ? `Ct ${p.meta.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
-          else if (p.meta.posted && !p.meta.final && clockFor) extra = clockFor(p.num);
+          else if (!p.meta.final && clockFor) extra = clockFor(p.num);
           return (
             <div key={p.num} style={{ width: COL_W }}>
               <div className="grid" style={{ gridTemplateColumns: `${COL_W}px`, gridAutoRows: `${ROW_H}px` }}>
@@ -214,6 +216,18 @@ export default function CompassDraw({
     const { x, y } = offsetIn(el);
     wrapRef.current.scrollTo({ left: Math.max(0, x * scale - 16), top: Math.max(0, y * scale - 16), behavior: 'smooth' });
   };
+
+  // Phones land READING the first-round matchups (100% at the East R16
+  // block), not squinting at the whole-sheet overview — Fit stays one tap
+  // away (player-perspective review call). Desktop keeps the Fit overview.
+  useEffect(() => {
+    const wrapW = wrapRef.current ? wrapRef.current.clientWidth : CANVAS_W;
+    if (wrapW < 700) {
+      setFit(false);
+      const t = setTimeout(() => jumpTo('east'), 200);
+      return () => clearTimeout(t);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Find yourself" — bring the first highlighted line into view.
   useEffect(() => {
