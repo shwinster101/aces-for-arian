@@ -7,7 +7,7 @@ import { Card, PageHeader, Pills, TextInput, Select, IconButton, EmptyState, Sea
 import { nextId, isEngineRow } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, firstName, ambiguousLooseKeys, shortLabel, shortName, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
-import { resolve, isDraggableSlot } from '../../lib/draw';
+import { resolve, isDraggableSlot, PLAYIN_MAX } from '../../lib/draw';
 import { estimateLabel, waitsOnLabel, playPos, SCHEDULE_DEFAULTS } from '../../lib/schedule';
 
 const EVENTS = [
@@ -224,19 +224,28 @@ function SeedList({ event, ops, namesInEvent, entrants }) {
           </SortableContext>
         </DndContext>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = bracket placement. Only 1–8 are individually seeded — 9–16{event === 'Singles' ? ' and 17–32' : ''} go into the draw as groups, but order within a group still sets which line they land on. Drag the grip to reorder, or use the up/down arrows.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = bracket placement. Only 1–8 are individually seeded — 9–16{event === 'Singles' ? ' and 17–32' : ''} go into the draw as groups, but order within a group still sets which line they land on.{event === 'Doubles' ? ' Teams 17+ enter via the play-in round — they are in the tournament, not alternates.' : ''} Drag the grip to reorder, or use the up/down arrows.</p>
     </Card>
   );
 }
 
 // Bands in the seed order: 1..SEED_CUT are the true seeds; 9–16 / 17–32
-// place in the bracket as groups; anything past DRAW_CAP is an alternate.
-// SEED_CUT/DRAW_CAP come from lib/entrants.js — the same constants the
-// public brackets build from — so these dividers can't drift from the draw.
+// place in the bracket as groups. Doubles rows past 16 are NOT alternates —
+// the engine runs them through the play-in Round of 32 (seed 16 v 17,
+// 15 v 18, … up to PLAYIN_MAX extra teams); only past 16+PLAYIN_MAX do rows
+// become true alternates. SEED_CUT/DRAW_CAP/PLAYIN_MAX come from the same
+// modules the draws build from, so these dividers can't drift from the draw.
 function bandDividerFor(event, i) {
   const cap = DRAW_CAP[event] ?? 32;
+  const playins = PLAYIN_MAX[event] || 0;
   if (i === SEED_CUT) return '9–16 · bracket group';
-  if (i === 16) return cap === 16 ? `Alternates — beyond the ${cap}-team draw` : '17–32 · bracket group';
+  if (i === 16) {
+    if (cap !== 16) return '17–32 · bracket group';
+    return playins
+      ? 'Play-in — Round of 32 (17+ play into the draw)'
+      : `Alternates — beyond the ${cap}-team draw`;
+  }
+  if (cap === 16 && playins && i === cap + playins) return `Alternates — beyond the ${cap + playins}-team field`;
   if (i === cap && cap === 32) return `Alternates — beyond the ${cap}-player draw`;
   return null;
 }
