@@ -817,7 +817,7 @@ function AnnouncementBanner({ item, now, onOpen, onDismiss }) {
 // pro sets). Times only, no names — safe to show pre-reveal; hidden until the
 // draw is generated. `now` is a heartbeat dep so it refreshes.
 function RoundTimesBanner({ matches, sched, now }) {
-  const clock = (d) => (d ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null);
+  const clock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const rows = [
     { ev: 'Doubles', label: 'Sat · Doubles', first: '9:00 AM' },
     { ev: 'Singles', label: 'Sun · Singles', first: '8:00 AM' },
@@ -825,9 +825,17 @@ function RoundTimesBanner({ matches, sched, now }) {
     .map(r => ({ ...r, m: roundMilestones(matches, r.ev, sched, now) }))
     .filter(r => r.m);
   if (!rows.length) return null;
-  const cell = (lbl, d) => (
-    <span className="whitespace-nowrap"><span className="text-zinc-500">{lbl} </span><span className="text-zinc-200 font-semibold">{d ? `~${clock(d)}` : '—'}</span></span>
-  );
+  // Each milestone is { at } | { live } | { done } — the banner shifts live.
+  const cell = (lbl, v) => {
+    const val = !v ? '—'
+      : v.done ? 'done'
+      : v.live ? 'now'
+      : `~${clock(v.at)}`;
+    const cls = v && v.live ? 'text-emerald-400' : v && v.done ? 'text-zinc-500' : 'text-zinc-200';
+    return (
+      <span className="whitespace-nowrap"><span className="text-zinc-500">{lbl} </span><span className={`font-semibold ${cls}`}>{val}</span></span>
+    );
+  };
   return (
     <div className="bg-[#151515] border border-[#fbbf24]/20 rounded-2xl px-5 py-4">
       <div className="flex items-center gap-2 mb-2.5">
