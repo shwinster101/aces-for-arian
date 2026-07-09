@@ -8,7 +8,7 @@ import { nextId, isEngineRow } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, firstName, ambiguousLooseKeys, shortLabel, shortName, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot, PLAYIN_MAX } from '../../lib/draw';
-import { estimateLabel, waitsOnLabel, playPos, SCHEDULE_DEFAULTS } from '../../lib/schedule';
+import { estimateLabel, waitsOnLabel, playPos, stakesFor, SCHEDULE_DEFAULTS } from '../../lib/schedule';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -42,6 +42,7 @@ export default function Seeding({ participants, ops }) {
       <FieldPicker event={event} ops={ops} entrants={entrants} />
       <SeedList event={event} ops={ops} namesInEvent={namesInEvent} entrants={entrants} />
       <DrawBoard event={event} ops={ops} participants={participants} />
+      <CallSheet event={event} ops={ops} />
       <FieldLock ops={ops} participants={participants} />
       {event === 'Doubles' && <PartnerAssignments participants={participants} ops={ops} />}
       <DrawEditor event={event} ops={ops} namesInEvent={namesInEvent} />
@@ -778,6 +779,61 @@ function RoundMatch({ m, est, onWin }) {
 // Inputs for the public "when's my next match" estimate — courts in play and
 // average match length per event. Saved locally for instant ops display and
 // pushed to the Config tab so the public estimate matches.
+// Full call sheet — every match for the event in PLAY order (play-ins first),
+// with its round, "playing for" stakes, court, status, and an approximate
+// time. The TD's one-glance reference for what to call next and why it
+// matters. Read-only; the editable order lives in the Match Order card.
+function CallSheet({ event, ops }) {
+  const sched = { ...SCHEDULE_DEFAULTS, ...(ops.store.schedule || {}) };
+  const bracket = ops.store.brackets[event];
+  const resolved = bracket ? resolve(bracket) : null;
+  // Every real match across all sections (skip byes/walkovers — never played),
+  // in play order (play-ins first). Future rounds show TBD until their feeders
+  // resolve. Status/court come from the posted Match Order row (by id).
+  const all = [];
+  if (resolved) for (const sec of resolved.sections) for (const mm of sec.matches) if (!mm.bye) all.push(mm);
+  all.sort((a, b) => (playPos({ num: a.num, event }) - playPos({ num: b.num, event })) || (a.num - b.num));
+  const posted = new Map(ops.store.matches.filter(m => m.event === event).map(m => [m.id, m]));
+  const dot = { scheduled: 'bg-zinc-600', live: 'bg-emerald-400 animate-pulse', final: 'bg-[#fbbf24]' };
+  return (
+    <Card className="p-4 sm:p-5">
+      <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-1"><ListChecks className="w-4 h-4 text-[#fbbf24]" /> Match call sheet — {event}</h3>
+      <p className="text-[11px] text-zinc-500 mb-3">Every match in play order (play-ins first), with what it’s for. Later rounds read TBD until the feeders resolve; times are approximate and shift as rounds finish.</p>
+      {all.length === 0 ? (
+        <EmptyState title="No draw yet" hint="Generate the draw above — the call sheet builds from it." />
+      ) : (
+        <div className="space-y-1.5">
+          {all.map((mm, i) => {
+            const p = posted.get(mm.id);
+            const status = p ? p.status : 'scheduled';
+            const teamA = (mm.slotA && mm.slotA.name) || 'TBD';
+            const teamB = (mm.slotB && mm.slotB.name) || 'TBD';
+            const stakes = stakesFor(event, mm.roundTag);
+            const champ = /🏆|Championship|Grand Final/.test(stakes);
+            const est = p ? estimateLabel(p, ops.store.matches, sched) : null;
+            return (
+              <div key={mm.id} className="flex items-center gap-2.5 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                <span className="text-[10px] font-mono text-zinc-600 w-6 shrink-0 text-right">#{i + 1}</span>
+                <span className="text-[10px] font-mono font-bold text-zinc-300 w-9 shrink-0">M{mm.num}</span>
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot[status] || 'bg-zinc-600'}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-zinc-100 truncate">{teamA} <span className="text-zinc-600 font-normal">vs</span> {teamB}</div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                    <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${champ ? 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/25' : 'text-zinc-400 bg-zinc-800/60 border-zinc-700'}`}>{stakes}</span>
+                    {p && p.court && <span className="text-[10px] text-zinc-500">Court {p.court}</span>}
+                    {est && <span className="text-[10px] text-zinc-500">{est}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <p className="text-[10px] text-zinc-600 mt-3">Order = play sequence (play-ins go first). Times use the Schedule card below — QF onward are 8-game pro sets.</p>
+    </Card>
+  );
+}
+
 function ScheduleCard({ ops }) {
   const sched = { ...SCHEDULE_DEFAULTS, ...(ops.store.schedule || {}) };
   const field = (label, key, hint) => (

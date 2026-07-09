@@ -95,44 +95,90 @@ export function matchEstimate(match, allMatches, sched, nowMs = Date.now()) {
   return { ahead, waitMin, startAt: new Date(baseMs + waitMin * 60000) };
 }
 
-// Approximate championship-path milestone times (QF / SF / Final), projected
-// forward from first serve. Each championship round is one court-wave that
-// can't begin until the prior round clears; round-aware lengths (QF onward =
-// qfMin). Counts come from the actual generated matches, so byes shrink the
-// early rounds automatically. Returns { QF?, SF?, F? } of Dates, or null when
-// there's nothing to project yet. It's a PLAN anchored at 9/8 AM — labelled
-// approximate — not a live countdown (that's estimateLabel).
+// Approximate championship-path milestones (QF / SF / Final). PROGRESS-AWARE:
+// before the day starts it's a plan anchored at first serve (9/8 AM); once
+// matches go live/final it re-projects the remaining rounds from NOW, so the
+// times shift as the day runs ahead of or behind schedule. Each championship
+// round is one court-wave that can't begin until the prior clears; round-aware
+// lengths (QF onward = qfMin); byes shrink early rounds via live counts.
+// Returns { QF?, SF?, F? } where each is { at: Date } | { live: true } |
+// { done: true }, or null when there's nothing to project yet.
 export function roundMilestones(matches, event, sched, nowMs = Date.now()) {
   const s = { ...SCHEDULE_DEFAULTS, ...(sched || {}) };
   const courts = Math.max(1, Number(s.courts) || 1);
   const ev = (matches || []).filter(m => (m.event || '') === event);
   if (!ev.length) return null;
   const isD = /doub/i.test(event);
-  const nRound = (tags) => ev.filter(m => tags.includes(String(m.round || '').trim())).length;
-  // Doubles play-ins go on court first, before East R1 — count them into the
-  // pre-QF block. (Their consolation is separate and doesn't gate the QF.)
-  const playIn = isD ? ev.filter(m => /play-?in/i.test(m.round || '') && !/consol/i.test(m.round || '')).length : 0;
+  const roundMs = (tags) => ev.filter(m => tags.includes(String(m.round || '').trim()));
+  // Doubles play-ins go on court first, before East R1 — fold into the pre-QF
+  // block. (Their consolation is separate and doesn't gate the QF.)
+  const playIn = isD ? ev.filter(m => /play-?in/i.test(m.round || '') && !/consol/i.test(m.round || '')) : [];
   const path = isD ? [
-    { count: nRound(['R1']) + playIn, len: s.doublesMin },
-    { key: 'QF', count: nRound(['QF']), len: s.qfMin },
-    { key: 'SF', count: nRound(['SF']), len: s.qfMin },
-    { key: 'F', count: nRound(['F']), len: s.qfMin },
+    { ms: [...roundMs(['R1']), ...playIn], len: s.doublesMin },
+    { key: 'QF', ms: roundMs(['QF']), len: s.qfMin },
+    { key: 'SF', ms: roundMs(['SF']), len: s.qfMin },
+    { key: 'F', ms: roundMs(['F']), len: s.qfMin },
   ] : [
-    { count: nRound(['R1']), len: s.singlesMin },
-    { count: nRound(['R2']), len: s.singlesMin },
-    { key: 'QF', count: nRound(['R3']), len: s.qfMin },
-    { key: 'SF', count: nRound(['SF']), len: s.qfMin },
-    { key: 'F', count: nRound(['Grand Final', 'F']), len: s.qfMin },
+    { ms: roundMs(['R1']), len: s.singlesMin },
+    { ms: roundMs(['R2']), len: s.singlesMin },
+    { key: 'QF', ms: roundMs(['R3']), len: s.qfMin },
+    { key: 'SF', ms: roundMs(['SF']), len: s.qfMin },
+    { key: 'F', ms: roundMs(['Grand Final', 'F']), len: s.qfMin },
   ];
+  const durMs = (n, len) => (n > 0 ? Math.ceil(n / courts) : 0) * len * 60000;
+  const started = ev.some(m => isLive(m) || isFinal(m));
+  // Frontier = first path round not fully final (all before it are done).
+  let frontier = path.length;
+  for (let i = 0; i < path.length; i++) {
+    if (!(path[i].ms.length > 0 && path[i].ms.every(isFinal))) { frontier = i; break; }
+  }
   const ds = dayStartMs(event);
-  let t = Number.isFinite(ds) ? ds : nowMs;
+  let t = started ? nowMs : (Number.isFinite(ds) ? ds : nowMs);
   const out = {};
-  for (const r of path) {
-    if (r.key && r.count > 0) out[r.key] = new Date(t); // this round starts once prior rounds clear
-    const waves = r.count > 0 ? Math.ceil(r.count / courts) : 0;
-    t += waves * r.len * 60000;
+  for (let i = 0; i < path.length; i++) {
+    const r = path[i];
+    if (started && i < frontier) {           // round is behind us
+      if (r.key) out[r.key] = { done: true };
+      continue;                              // no clock advance — we anchor at now
+    }
+    if (started && i === frontier) {         // the round in progress right now
+      const remaining = r.ms.filter(m => !isFinal(m));
+      const anyLive = r.ms.some(isLive);
+      let d = durMs(remaining.length, r.len);
+      if (anyLive) d = Math.ceil(d / 2);     // ~half a match left on the live courts
+      if (r.key) out[r.key] = anyLive ? { live: true } : { at: new Date(t) };
+      t += d;
+      continue;
+    }
+    if (r.key && r.ms.length > 0) out[r.key] = { at: new Date(t) }; // upcoming
+    t += durMs(r.ms.length, r.len);
   }
   return (out.QF || out.SF || out.F) ? out : null;
+}
+
+// "What place is this match for?" — a concise stakes label per round tag, for
+// the ops call sheet. Doubles is a compass (East = championship, W/N/S =
+// placement paths); singles is double-elim (Grand Final decides it).
+const STAKES = {
+  Doubles: {
+    'Play-in': 'Play-in — into the draw', 'Play-in Consol': 'Play-in consolation',
+    R1: 'Round of 16', QF: 'Championship QF', SF: 'Championship SF', F: '🏆 Championship final',
+    'West R1': 'West — placement', 'West SF': 'West semifinal', 'West F': 'West final (placement)',
+    'North SF': 'North semifinal', 'North F': 'North final (placement)',
+    'South SF': 'South semifinal', 'South F': 'South final (placement)',
+  },
+  Singles: {
+    R1: 'Round of 32', R2: 'Round of 16', R3: 'Championship QF', SF: 'Championship SF',
+    F: 'Winners final', 'Grand Final': '🏆 Grand Final',
+    'Comeback R1': 'Comeback', 'Comeback R2': 'Comeback', 'Comeback R3': 'Comeback',
+    'Comeback R4': 'Comeback', 'Comeback R5': 'Comeback', 'Comeback R6': 'Comeback',
+    'Comeback R7': 'Comeback SF', 'Comeback F': 'Comeback final — into the Grand Final',
+  },
+};
+export function stakesFor(event, round) {
+  const tag = String(round || '').trim();
+  const map = /doub/i.test(event || '') ? STAKES.Doubles : STAKES.Singles;
+  return map[tag] || tag || '—';
 }
 
 const clock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
