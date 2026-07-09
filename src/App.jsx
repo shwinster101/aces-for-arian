@@ -1598,7 +1598,27 @@ export default function App() {
             ========================================== */}
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
-            
+
+            {/* Live-day strip — routes everyone to the court board the moment
+                ops posts the first match. Hidden all draw week. */}
+            {liveDay && (
+              <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 hover:border-[#fbbf24] rounded-2xl px-5 py-4 transition-colors group text-left">
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-white uppercase tracking-wider">We're live — court board &amp; scores</span>
+                    <span className="block text-xs text-zinc-400 mt-0.5">Find your court, the up-next queue, and live results.</span>
+                  </span>
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#fbbf24] shrink-0 group-hover:translate-x-0.5 transition-transform">Brackets →</span>
+              </button>
+            )}
+
+            {/* Announcements feed — event week's most time-critical content, so
+                it leads the page (above the hero); hidden when empty. */}
+            <AnnouncementsFeed items={announcements} now={now} />
+
             {/* Hero Section — twin slideshows flanking the register blurb + flyer */}
             <div className="bg-[#111111] border border-zinc-800 rounded-3xl p-4 md:p-8 flex flex-wrap md:flex-nowrap items-stretch gap-4 md:gap-8 relative overflow-hidden shadow-2xl shadow-black">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -1658,25 +1678,6 @@ export default function App() {
               <HeroCanvas images={heroRight} className="relative z-10 order-3 md:order-3 w-[calc(50%-0.625rem)] md:w-72 md:aspect-auto md:self-stretch" />
             </div>
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
-
-            {/* Live-day strip — routes everyone to the court board the moment
-                ops posts the first match. Hidden all draw week. */}
-            {liveDay && (
-              <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
-                className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 hover:border-[#fbbf24] rounded-2xl px-5 py-4 transition-colors group text-left">
-                <span className="flex items-center gap-3 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-black text-white uppercase tracking-wider">We're live — court board &amp; scores</span>
-                    <span className="block text-xs text-zinc-400 mt-0.5">Find your court, the up-next queue, and live results.</span>
-                  </span>
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#fbbf24] shrink-0 group-hover:translate-x-0.5 transition-transform">Brackets →</span>
-              </button>
-            )}
-
-            {/* Announcements feed — weather first-class; hidden when empty */}
-            <AnnouncementsFeed items={announcements} now={now} />
 
             {/* Player checklist — the "what do I do now?" card for a player
                 scanning on a phone the week of the tournament. */}
