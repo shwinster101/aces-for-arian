@@ -28,6 +28,7 @@ import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/
 import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
 import CompassDraw from './CompassDraw';
 import TeamTracker from './TeamTracker';
+import { projectSchedule } from './lib/compass';
 import {
   Trophy, 
   Award, 
@@ -1475,12 +1476,34 @@ export default function App() {
     const fm = engineRowsFor(evt).get(Number(n));
     return fm ? estimateLabel(fm, publicMatches, scheduleCfg, now) : null;
   };
-  // Compact projected-start clock ("~9:00 AM") for a bracket line — the only
-  // schedule ink the compass sheet carries per match.
-  const clockForEvent = (evt) => (n) => {
-    if (n == null) return null;
-    const fm = engineRowsFor(evt).get(Number(n));
-    return fm ? startClockLabel(fm, publicMatches, scheduleCfg, now) : null;
+
+  // Doubles compass field sizing — shared by the draw canvas, the tracker,
+  // and the schedule projection. A 17+ team field adds play-ins (M29+).
+  const dTeamsRaw = seedNamesFrom(seeds, 'Doubles');
+  const dCount = seedsLive ? dTeamsRaw.length : 16;
+  const dPIns = seedsLive ? Math.max(0, Math.min(dTeamsRaw.length - 16, 8)) : 0;
+  const dTeams = dTeamsRaw.map(publicLabel);
+  const dEastNames = dTeamsRaw.slice(0, 16).map((n, i) => (dPIns > 0 && i + 1 > 16 - dPIns ? null : publicLabel(n)));
+  const publicEvents = ['Doubles', 'Singles'].filter(e => DRAWS_PUBLIC[e]);
+  const pInsFor = (evt) => (evt === 'Doubles' ? dPIns : 0);
+
+  // ONE clock per match, EVERY match ("every team's first match at least" —
+  // owner call): a greedy 9-court simulation over the whole draw
+  // (projectSchedule) gives a projected start for posted AND unposted
+  // matches — M1 waiting on play-in M29 reads ~9:40, the QFs ~10:20, etc.
+  // Off-graph hand rows fall back to the wave-model clock.
+  const clockByEvent = Object.fromEntries(publicEvents.map((evt) => {
+    const proj = projectSchedule(evt, pInsFor(evt), engineRowsFor(evt), scheduleCfg, now);
+    return [evt, (n) => {
+      const d = proj.get(Number(n));
+      if (d) return `~${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      const fm = engineRowsFor(evt).get(Number(n));
+      return fm ? startClockLabel(fm, publicMatches, scheduleCfg, now) : null;
+    }];
+  }));
+  const rowClock = (m) => {
+    const c = clockByEvent[m.event];
+    return (c && c(m.num)) || startClockLabel(m, publicMatches, scheduleCfg, now);
   };
 
   // "Find my match" — look up the player's posted matches and say where/when.
@@ -1936,22 +1959,8 @@ export default function App() {
             ========================================== */}
         {activeTab === 'draws' && (() => {
           // Phase-aware ordering (liveDay, defined with the board consts
-          // above). Draw week reads draws-first; the moment ops posts matches,
-          // the live boards jump above the brackets so "which court am I on?"
-          // is the first thing on the tab instead of ten phone-screens down.
-          // Same section cards either way — only the order changes.
-
-          // Doubles compass field sizing — shared by the compass canvas and
-          // the team tracker. A 17+ team field adds play-ins (numbered M29+
-          // to keep the East 1-15 … South 26-28 contract with the ops
-          // engine); host lines (seeds 16-pIns+1..16) stay open on the East
-          // template until the play-in result posts.
-          const dTeamsRaw = seedNamesFrom(seeds, 'Doubles');
-          const dCount = seedsLive ? dTeamsRaw.length : 16;
-          const dPIns = seedsLive ? Math.max(0, Math.min(dTeamsRaw.length - 16, 8)) : 0;
-          const dTeams = dTeamsRaw.map(publicLabel);
-          const dEastNames = dTeamsRaw.slice(0, 16).map((n, i) => (dPIns > 0 && i + 1 > 16 - dPIns ? null : publicLabel(n)));
-          const publicEvents = ['Doubles', 'Singles'].filter(e => DRAWS_PUBLIC[e]);
+          // (dTeams/dPIns/dEastNames/publicEvents/clockByEvent live at
+          // component scope — shared with the schedule projection.)
 
           // THE DRAW LEADS THE PAGE (owner call 2026-07-09): sheet canvas at
           // the very top, Follow-my-team right under it (with the free-text
@@ -1990,7 +1999,7 @@ export default function App() {
                     teams={dTeams}
                     pIns={dPIns}
                     rowsByNum={engineRowsFor('Doubles')}
-                    clockFor={clockForEvent('Doubles')}
+                    clockFor={clockByEvent.Doubles}
                     highlight={drawHighlight}
                     showByes={showByes && dPIns === 0}
                   />
@@ -2025,7 +2034,8 @@ export default function App() {
               labelFor={publicLabel}
               sched={scheduleCfg}
               now={now}
-              pInsFor={(evt) => (evt === 'Doubles' ? dPIns : 0)}
+              pInsFor={pInsFor}
+              clocks={clockByEvent}
               onHighlight={setDrawQuery}
               query={drawQuery}
               onQuery={setDrawQuery}
@@ -2165,7 +2175,7 @@ export default function App() {
                           <span className="text-sm text-zinc-200 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
                           <span className="ml-auto shrink-0 flex items-center gap-2">
                             {i === 0 && <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
-                            <span className="text-[10px] font-bold text-[#fbbf24]/80">{startClockLabel(m, publicMatches, scheduleCfg, now)}</span>
+                            <span className="text-[10px] font-bold text-[#fbbf24]/80">{rowClock(m)}</span>
                           </span>
                         </div>
                       ))}
@@ -2207,7 +2217,7 @@ export default function App() {
                     const badge = {
                       live: { label: 'Live', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                       final: { label: 'Final', cls: 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20' },
-                      scheduled: { label: startClockLabel(m, publicMatches, scheduleCfg, now) || 'Scheduled', cls: 'text-[#fbbf24]/90 bg-[#fbbf24]/10 border-[#fbbf24]/20' },
+                      scheduled: { label: rowClock(m) || 'Scheduled', cls: 'text-[#fbbf24]/90 bg-[#fbbf24]/10 border-[#fbbf24]/20' },
                     }[m.status] || { label: m.status, cls: 'text-zinc-400 bg-zinc-800/60 border-zinc-700' };
                     return (
                       <div key={m.id || i} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
@@ -2266,13 +2276,14 @@ export default function App() {
             </button>
           );
 
-          // ONE fixed flow, both phases (owner call): the draw sheet leads,
-          // Follow-my-team right under it, then the live boards.
+          // ONE fixed flow, both phases: personalized data FIRST (owner +
+          // player-perspective review call) — Follow-my-team leads, the draw
+          // sheet right under it, then the live boards.
           return (
             <div className="space-y-6 animate-fade-in">
+              {tracker}
               {drawsTop}
               {singlesDraws}
-              {tracker}
               {liveBoards}
               <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
               {suggestBox}

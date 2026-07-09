@@ -35,6 +35,42 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd3. Session Summary — 2026-07-10 early: projected times for EVERY match + player-first flow
+
+Owner: "put down est start times of every team's first match at least —
+remember 9 courts", plus a player-perspective review he endorsed.
+
+- **`projectSchedule` (src/lib/compass.js)** — greedy simulation over the
+  engine's feeder graph honoring BOTH constraints: dependencies (M1 can't
+  start before play-in M29 finishes) and the court pool (`sched.courts`, 9 —
+  singles' 10th R1 match waits for a court, 8:50 not 8:00). Anchored at
+  first serve until anything goes live/final, then re-projects from `now`
+  (a live match holds a court for ~half a match). Every not-yet-final match
+  — posted or NOT — gets a `~h:mm` start. One clock source per event in App
+  (`clockByEvent`/`rowClock`): compass tokens, Live Scores badges, and
+  Up-next chips all agree; off-graph hand rows fall back to the wave model.
+  Compass tokens now show times on UNPOSTED matches too (M1 · ~9:40 AM,
+  QFs ~10:20 AM …).
+- **`firstMatchFor`** (same file): a team's first match from seed rank alone
+  (host seeds → their play-in; overflow → theirs; else the R1 line, with the
+  opponent as a rank or "winner of M29"). The tracker's empty state now
+  shows "Your first match: M1 · Round of 16 · vs winner of M29 · ~9:40 AM"
+  instead of a bare "nothing posted yet" — kills the populated-sheet /
+  empty-tracker contradiction the review flagged.
+- **Player-first order**: Follow-my-team is now the FIRST card on Brackets
+  (personalized before aggregate), draw sheet second, boards third.
+- **Mobile default**: phones now land at 100% zoom scrolled to the East R16
+  block (readable first-round matchups) instead of the whole-sheet Fit
+  overview; Fit remains one tap away. Desktop unchanged (Fit).
+- Verified: view suite 51/51 (projected 9:00/9:40/10:20 tokens with ZERO
+  posted rows, tracker first-match line, tracker→draw→boards order, mobile
+  100%-default + Fit tap), engine contract 37/37 (projection math exact:
+  deps, court cap, live re-anchor, firstMatchFor routing), round-trip 15/15.
+- NOTE for Sunday: reveal singles → `DRAWS_PUBLIC.Singles = true`; the
+  projection/tracker/singles brackets pick it up with zero extra work.
+
+---
+
 ## 1-cd2. Session Summary — 2026-07-09 late: post-reveal polish (owner phone review)
 
 Owner reviewed the live reveal on his phone; five fixes shipped in one pass:

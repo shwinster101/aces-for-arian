@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
-import { teamOptions, teamTimeline } from './lib/compass';
+import { teamOptions, teamTimeline, firstMatchFor } from './lib/compass';
 import { estimateLabel, stakesFor } from './lib/schedule';
 
 const LS_KEY = 'a4a-follow';
@@ -24,7 +24,7 @@ function loadSel() {
   } catch { return null; }
 }
 
-export default function TeamTracker({ seeds, matches, events, labelFor, sched, now, pInsFor, onHighlight, query = '', onQuery }) {
+export default function TeamTracker({ seeds, matches, events, labelFor, sched, now, pInsFor, clocks, onHighlight, query = '', onQuery }) {
   const groups = teamOptions(seeds, matches, events, labelFor);
   const [sel, setSel] = useState(loadSel);
 
@@ -123,11 +123,30 @@ export default function TeamTracker({ seeds, matches, events, labelFor, sched, n
             </div>
           ))}
 
-          {!tl.mine.length && (
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              No match posted for <span className="text-zinc-300 font-semibold">{active.label}</span> yet — your first match and the projected path appear here the moment the desk posts the draw.
-            </p>
-          )}
+          {/* Nothing posted yet — still give them their FIRST match straight
+              off the seed placement + the 9-court schedule projection. */}
+          {!tl.mine.length && (() => {
+            const seedRow = (seeds || []).find(s => s.type === active.event && labelFor(s.name).toLowerCase() === active.label.toLowerCase());
+            const fm = seedRow ? firstMatchFor(active.event, pInsFor(active.event), seedRow.rank) : null;
+            const time = fm && clocks && clocks[active.event] ? clocks[active.event](fm.num) : null;
+            const oppRow = fm && fm.oppRank ? (seeds || []).find(s => s.type === active.event && s.rank === fm.oppRank) : null;
+            const opp = oppRow ? labelFor(oppRow.name) : (fm && fm.oppFrom) || null;
+            if (!fm) return (
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                No match posted for <span className="text-zinc-300 font-semibold">{active.label}</span> yet — your first match and the projected path appear here the moment the desk posts the draw.
+              </p>
+            );
+            return (
+              <div className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                <span className="shrink-0 text-[9px] font-mono font-bold text-zinc-500">M{fm.num}</span>
+                <span className="text-xs text-zinc-300 min-w-0 truncate">
+                  <span className="text-zinc-500">Your first match · {stakesFor(active.event, fm.round)}</span>
+                  {opp && <> · vs <span className="font-semibold text-zinc-200">{opp}</span></>}
+                </span>
+                {time && <span className="ml-auto shrink-0 text-[10px] font-bold text-[#fbbf24]/90">{time}</span>}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -141,7 +160,7 @@ export default function TeamTracker({ seeds, matches, events, labelFor, sched, n
             placeholder="Or type any name to light it up on the draw"
             className="w-full max-w-sm bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors"
           />
-          <p className="text-[10px] text-zinc-600 mt-1.5">Highlights the matching lines on the draw sheet above and auto-scrolls to them.</p>
+          <p className="text-[10px] text-zinc-600 mt-1.5">Highlights the matching lines on the draw sheet below and auto-scrolls to them.</p>
         </div>
       )}
     </div>

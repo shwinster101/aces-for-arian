@@ -11,7 +11,7 @@
 // bracket.
 
 import { graphFor, seedOrder } from './draw';
-import { playPos, stakesFor, waitsOnLabel } from './schedule';
+import { playPos, stakesFor, waitsOnLabel, matchMinFor, dayStartMs, SCHEDULE_DEFAULTS } from './schedule';
 
 const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
 
@@ -224,6 +224,90 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
   }
 
   return { east, west, north, south, playIns, consolation };
+}
+
+// ---------------------------------------------------------------------------
+// PROJECTED SCHEDULE — a start time for EVERY match in the draw, posted or
+// not. Greedy simulation honoring BOTH constraints: the feeder chain (M1
+// can't start before its play-in finishes) and the court pool (sched.courts,
+// 9 — an 11th concurrent match waits for a court). Anchored at first serve
+// (9:00 Sat / 8:00 Sun) until anything goes live/final, then re-projects
+// from `now` so times shift with the real day. All consumers label with "~".
+// ---------------------------------------------------------------------------
+export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now()) {
+  const s = { ...SCHEDULE_DEFAULTS, ...(sched || {}) };
+  const courts = Math.max(1, Number(s.courts) || 1);
+  const g = graphFor(event, pIns);
+
+  let anyStarted = false;
+  for (const r of rows.values()) if (r.status === 'live' || r.status === 'final') { anyStarted = true; break; }
+  const ds = dayStartMs(event);
+  const anchor = anyStarted ? nowMs : Math.max(nowMs, Number.isFinite(ds) ? ds : nowMs);
+
+  // Play-in winner -> East host line isn't a graph ref (it's an r1slots
+  // marker in the engine) — same seedOrder patch nextMatchMap uses.
+  const hostDep = new Map(); // East R1 match id -> play-in id
+  if (event === 'Doubles' && pIns > 0) {
+    const order = seedOrder(T);
+    for (let k = 0; k < pIns; k++) hostDep.set(`D-E1-${Math.floor(order.indexOf(T - k) / 2)}`, `D-P1-${k}`);
+  }
+
+  const pool = Array.from({ length: courts }, () => anchor); // court free-at times
+  const finish = new Map(); // match id -> projected finish ms
+  const out = new Map();    // num -> Date projected start (not-yet-final only)
+  const ordered = g.matches
+    .filter((m) => !m.resetOf) // GF reset is conditional — never booked
+    .sort((a, b) => playPos({ num: a.num, event }) - playPos({ num: b.num, event }));
+
+  for (const m of ordered) {
+    const durMs = matchMinFor(event, s, m.roundTag) * 60000;
+    let ready = anchor;
+    for (const f of [m.aFrom, m.bFrom]) if (f.ref && finish.has(f.ref)) ready = Math.max(ready, finish.get(f.ref));
+    const dep = hostDep.get(m.id);
+    if (dep && finish.has(dep)) ready = Math.max(ready, finish.get(dep));
+
+    const row = rows.get(Number(m.num));
+    if (row && row.status === 'final') { finish.set(m.id, anchor); continue; } // played; court long free
+    if (row && row.status === 'live') {
+      const f = nowMs + durMs / 2; // ~half a match left
+      let i = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[i]) i = j;
+      pool[i] = Math.max(pool[i], f);
+      finish.set(m.id, f);
+      continue;
+    }
+    let i = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[i]) i = j;
+    const start = Math.max(ready, pool[i]);
+    pool[i] = start + durMs;
+    finish.set(m.id, start + durMs);
+    out.set(m.num, new Date(start));
+  }
+  return out;
+}
+
+// A team's FIRST match from its seed rank alone — for the tracker's
+// "your first match" line before ops has posted anything. Mirrors buildDraw
+// placement: overflow seeds (17+) and their host seeds open in the play-ins;
+// everyone else starts on their East/Winners R1 line. Opponent is either a
+// seed rank or a "winner of M29"-style pointer.
+export function firstMatchFor(event, pIns, rank) {
+  if (!rank || rank < 1) return null;
+  if (event === 'Doubles') {
+    if (rank > T) return rank - 17 < pIns ? { num: 29 + (rank - 17), round: 'Play-in', oppRank: 33 - rank } : null;
+    if (pIns > 0 && rank > T - pIns) return { num: 29 + (T - rank), round: 'Play-in', oppRank: 33 - rank };
+    const order = seedOrder(T);
+    const idx = order.indexOf(rank);
+    const oppSeed = order[idx % 2 === 0 ? idx + 1 : idx - 1];
+    const oppHost = pIns > 0 && oppSeed > T - pIns;
+    return {
+      num: Math.floor(idx / 2) + 1, round: 'R1',
+      oppRank: oppHost ? null : oppSeed,
+      oppFrom: oppHost ? `winner of M${29 + (T - oppSeed)}` : null,
+    };
+  }
+  const order = seedOrder(32);
+  const idx = order.indexOf(rank);
+  if (idx < 0) return null;
+  return { num: Math.floor(idx / 2) + 1, round: 'R1', oppRank: order[idx % 2 === 0 ? idx + 1 : idx - 1] };
 }
 
 // ---------------------------------------------------------------------------
