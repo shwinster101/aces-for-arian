@@ -121,6 +121,7 @@ const initialStore = () => ({
   cash: emptyCash(),                         // day-of cash drawer ledger — LOCAL to the drawer device (see setCash)
   deskScript: emptyDeskScript(),             // pinned check-in script lines volunteers read out
   logistics: defaultLogistics(),             // buy list + merch/trophy order confirmations — LOCAL (see setLogItem)
+  regPay: {},                                // normName -> intended payment method from the registration form (pullDesk)
 });
 
 // Match Order rows managed by the bracket engine carry ids prefixed 'S-'
@@ -174,6 +175,7 @@ function load() {
             orders: Array.isArray(parsed.logistics.orders) ? parsed.logistics.orders : defaultLogistics().orders,
           }
         : defaultLogistics(),
+      regPay: parsed.regPay && typeof parsed.regPay === 'object' ? parsed.regPay : {},
     };
   } catch {
     return initialStore();
@@ -566,6 +568,28 @@ export function useOpsStore() {
     applyBracket(event, s => (s.brackets[event] ? renameSlot(s.brackets[event], idx, value) : null));
   // Tear the generated draw down (and its synced Match Order rows).
   const clearBracket = (event) => applyBracket(event, () => null);
+  // Re-derive every slot's display label from the CURRENT roster (labelFor)
+  // without touching seeds, results, or manual name overrides — the fix when
+  // a class year or name was missing at generate time (roster hadn't loaded,
+  // nickname-only seed entry). Unlike Regenerate, every posted result stays.
+  // Hard no-op without a local bracket: falling through to applyBracket(null)
+  // would CLEAR the event's rows on the sheet from a device that simply
+  // hasn't pulled the draw yet.
+  const relabelBracket = (event, labelFor) => {
+    if (!store.brackets[event]) return;
+    applyBracket(event, s => {
+      const b = s.brackets[event];
+      if (!b) return null;
+      return {
+        ...b,
+        r1slots: b.r1slots.map(sl => {
+          if (!sl || !sl.raw) return sl;
+          const def = labelFor(sl.raw);
+          return { ...sl, def, name: (b.overrides || {})[sl.key] || def };
+        }),
+      };
+    });
+  };
 
   // Push ONLY the display-safe registration flag (Verified/Pending) for a
   // sheet-sourced registrant, so tapping the "Confirmed" chip flips the public
@@ -669,8 +693,21 @@ export function useOpsStore() {
     try {
       const res = await fetch(`${SHEET_WRITE_URL}?mode=opsdesk&token=${OPSDESK_TOKEN}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const { desk, walkups, draw } = await res.json();
+      const { desk, walkups, draw, reg } = await res.json();
       const now = Date.now();
+      // Intended payment method straight off the registration form (raw-sheet
+      // column, served ONLY through this token-gated ops read — the public
+      // path strips payment columns). Read-only reference data: the server
+      // list always wins wholesale, no local-edit guard needed. Absent until
+      // the Apps Script carrying rosterPayIntent_ is deployed — harmless.
+      if (Array.isArray(reg) && reg.length) {
+        const regPay = {};
+        for (const r of reg) {
+          const k = String((r && r.name) || '').trim().toLowerCase().replace(/\s+/g, ' ');
+          if (k) regPay[k] = String(r.pay || '').trim();
+        }
+        setStore(s => ({ ...s, regPay }));
+      }
       setStore(s => {
         const participants = { ...s.participants };
         for (const row of desk || []) {
@@ -769,7 +806,7 @@ export function useOpsStore() {
     setMerch,
     incrementAces, decrementAces,
     postAnnouncement, deleteAnnouncement,
-    generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket,
+    generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket, relabelBracket,
     pushPublicStatus, pushConfig, setSchedule,
     addEmails, removeEmail, clearEmails,
     setCash, recordCash, removeCashEntry, setDeskScript,
