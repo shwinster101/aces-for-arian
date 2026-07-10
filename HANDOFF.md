@@ -35,6 +35,30 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd11. Session Summary — 2026-07-10: SINGLES DRAW REVEALED (gate flipped live)
+
+Owner: "Flip singles to live." After the full build + audit this session, the
+one reveal gate is on:
+
+- `DRAWS_PUBLIC = { Doubles: true, Singles: true }` (`src/App.jsx:446`). This
+  filters `publicMatches` and feeds every name-bearing surface, so the singles
+  double-elim canvas, its projected 9 AM times, the live boards, and the tracker
+  are now public — exactly as doubles revealed 2026-07-09.
+- No other code change: the singles draw renders from the ops-pushed Matches
+  rows + `SeedBoardPublic` the desk maintains; BYE-vs-TBD still follows the
+  sheet's "Seeds Final" flag.
+- Verified on the REAL build (no more TEST flip): verify-singles 13/13, and the
+  compass suite's 6 obsolete "no-singles-leak" guards were inverted to assert
+  the revealed state (singles seed names + live rows now surface; Sunday Singles
+  toggle active; tracker lists both events) → 58/58. Round-trip 15/15, scores
+  12/12, check-in 21/21, contract 78/78, lint/build clean. Screenshot of the
+  live public singles draw captured (byes, live court chip, final score, GF
+  panel + champion, comeback band).
+
+Both draws are now public by intent — there is no longer a hidden event to leak.
+
+---
+
 ## 1-cd10. Session Summary — 2026-07-10: true double-elim — backdraw QF/SF/F are 8-game pro sets
 
 Owner: "8 game pro quarter semis and finals including the backdraw play in
