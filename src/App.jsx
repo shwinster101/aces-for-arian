@@ -741,7 +741,7 @@ function RoundTimesBanner({ matches, sched, now }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Quarters, semis & finals — including the singles backdraw's (true double elimination) — are 8-game pro sets (~{sched.qfMin} min){sched.finalsMin > 0 ? `; singles semis & finals run best-of-3 (~${sched.finalsMin} min)` : ''}. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
+      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Every match is best-of-3 Fast-4; quarters, semis & finals switch to ad scoring and run a bit longer (~{sched.qfMin} min). Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
     </div>
   );
 }
@@ -1966,7 +1966,7 @@ export default function App() {
                 <>
                   <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
                     <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
-                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it and jump there. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover. Each tag reads <span className="font-mono text-zinc-300">M# · ~time</span> — times are <strong className="text-zinc-200">estimates</strong> counted from the 9:00 AM first serve and they shift as rounds finish. A <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span> tag marks the scoring — East plays ad, West/North/South play no-ad. “W of M12” = the winner of match 12, not decided yet.</span>
+                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it and jump there. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover. Each tag reads <span className="font-mono text-zinc-300">M# · ~time</span> — times are <strong className="text-zinc-200">estimates</strong> counted from the 9:00 AM first serve and they shift as rounds finish. A <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span> tag marks the scoring — no-ad through the Round of 16, ad from the Quarterfinals on. “W of M12” = the winner of match 12, not decided yet.</span>
                   </div>
                   <CompassDraw
                     eastNames={dEastNames}
@@ -1983,10 +1983,10 @@ export default function App() {
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
                     {[
-                      ['East', 'Championship path — every team starts here · ad scoring', 'text-[#fbbf24]'],
-                      ['West', 'Second path after East Round of 16 (8) · no-ad', 'text-zinc-200'],
-                      ['North', 'Placement path after East Quarterfinals (4) · no-ad', 'text-zinc-200'],
-                      ['South', 'Final placement path after opening West round (4) · no-ad', 'text-zinc-200'],
+                      ['East', 'Championship path — every team starts here', 'text-[#fbbf24]'],
+                      ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
+                      ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-200'],
+                      ['South', 'Final placement path after opening West round (4)', 'text-zinc-200'],
                     ].map(([dir, desc, color]) => (
                       <div key={dir} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
                         <div className={`font-black uppercase tracking-wider ${color}`}>{dir}</div>
@@ -2299,8 +2299,8 @@ export default function App() {
                 <p className="text-xs text-zinc-500 mb-4">July 11 · first matches 9:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Compass Draw — every team is guaranteed at least 3 matches (up to 5).</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets — first to 4 games, 7-point tiebreak at 3–3, and a 10-point match tiebreak at one set all.</li>
-                  <li><strong className="text-zinc-200">Ad vs no-ad by path:</strong> the <strong className="text-[#fbbf24]">East</strong> championship path (and the play-ins that feed it) plays <strong className="text-zinc-200">ad</strong> scoring; <strong className="text-zinc-200">West / North / South</strong> and placement matches play <strong className="text-zinc-200">no-ad</strong>. Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
+                  <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets — first to 4 games, 7-point tiebreak at 3–3, and a 10-point match tiebreak in place of a 3rd set.</li>
+                  <li><strong className="text-zinc-200">Ad vs no-ad:</strong> <strong className="text-zinc-200">no-ad</strong> through the Round of 16, then <strong className="text-[#fbbf24]">ad</strong> from the Quarterfinals on (the matches that decide the title). Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
                   <li><strong className="text-zinc-200">Prizes:</strong> awarded to the top 3.</li>
                 </ul>
                 {DRAWS_PUBLIC.Doubles && (
@@ -2318,8 +2318,8 @@ export default function App() {
                 <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 9:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets; 7-point tiebreak at 6–6.</li>
-                  <li><strong className="text-zinc-200">Main-draw QF / SF / F:</strong> 8-game sets or best 2 of 3 Fast-4, as the players decide.</li>
+                  <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets — first to 4 games, 7-point tiebreak at 3–3, and a 10-point match tiebreak in place of a 3rd set.</li>
+                  <li><strong className="text-zinc-200">Ad vs no-ad:</strong> <strong className="text-zinc-200">no-ad</strong> through the Round of 16, then <strong className="text-[#fbbf24]">ad</strong> from the Quarterfinals on. Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
                 </ul>
                 {DRAWS_PUBLIC.Singles && (

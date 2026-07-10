@@ -35,6 +35,45 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd18. Session Summary — 2026-07-10: UNIFIED format (Fast-4, ad from QF) across both events + schedule alignment
+
+Owner consult: "what's the highest-leverage single format? … make sure doubles
+and singles schedule and times are aligned." Recommendation given (uniform Fast-4
+no-ad for throughput/predictability); owner chose **"uniform Fast-4 no-ad
+best-of-3, 10pt for 3rd, until QF ad."** So the cd17 path-dependent (East ad /
+West no-ad) rule is **SUPERSEDED** — ad/no-ad is now **round-based and identical
+for both events**: no-ad through the Round of 16 + the whole backdraw/placement
+side, **ad from the main-draw quarterfinal onward** (the title-deciding matches).
+
+- **One classifier** (`src/lib/compass.js` `scoreFmt(event, num)` + `AD_NUMS`):
+  Doubles ad = East QF/SF/F **M9-15**; Singles ad = Winners QF **M41-44**, SF
+  **M53-54**, F **M59**, Grand Final **M62** (+ reset 63). Everything else no-ad.
+  `buildCompassModel` tags doubles metas via `scoreFmt`; `buildDoubleElimModel`
+  post-processes all singles metas (winners + comeback + GF) the same way — so
+  **singles now shows the AD/NO-AD chip too** (cd17 had it doubles-only).
+- **Chip on both sheets**: `FmtChip` (CompassDraw) renders from `m.fmt`;
+  `SinglesDraw` imports it and renders it in the Grand Final panel (which builds
+  its meta by hand, not via MetaCell).
+- **Schedule aligned** (`src/lib/schedule.js`): `singlesMin` **50→40** to match
+  `doublesMin` (both are the same Fast-4 best-of-3 now); `qfMin` 60 kept for the
+  ad QF-onward rounds (shared). Both events already start 9:00. Doubles times
+  unchanged (doublesMin/restMin untouched); singles early waves shift ~10 min
+  earlier (shorter format). East↔West alternation (cd17) retained.
+- **Copy unified** (`src/App.jsx`): both Rules cards now carry the SAME scoring +
+  ad/no-ad bullets (round-based); reverted the cd17 per-direction "ad/no-ad"
+  legend tags and the "East plays ad" blurb to the round rule; the draw footer no
+  longer says "8-game pro sets"; admin Seeding notes/labels updated too.
+- Verified: lint/build clean; contract **91/0** (doubles ad 9-15 / singles ad
+  41-44,53,54,59,62; all singles metas carry fmt; East/West interleave; singles
+  base aligned to 40 → M10 9:40); **verify-format 11/0** (doubles AD=7, singles
+  AD=8, no-ad on both, unified Rules copy); verify-compass 58/0, verify-singles
+  13/0, verify-nextmatch 10/0; screenshots (doubles East QF ad, singles SF/GF ad).
+- **Note:** the North/South and singles-Comeback backdraws are **no-ad** (they're
+  not the main-draw QF+). `finalsMin` is now vestigial (format is uniform
+  best-of-3) but left as a working knob.
+
+---
+
 ## 1-cd17. Session Summary — 2026-07-10: doubles path-dependent scoring format + East↔West alternation
 
 Owner rule change for Saturday doubles: best-of-3 Fast-4 sets (first to 4 games),

@@ -93,6 +93,21 @@ function meta(col, row, num, rows, fmt) {
   };
 }
 
+// Scoring format by round (uniform Fast-4 best-of-3, 10-pt match tiebreak for
+// the 3rd): NO-AD through the Round of 16 and on the whole backdraw/placement
+// side; AD from the main-draw QUARTERFINAL onward (the matches that decide the
+// title). Derived from the fixed numbering contract — same rule both events.
+//   Doubles: East QF M9-12, SF M13-14, F M15.
+//   Singles: Winners QF M41-44, SF M53-54, F M59, Grand Final M62 (+ reset 63).
+const AD_NUMS = {
+  Doubles: new Set([9, 10, 11, 12, 13, 14, 15]),
+  Singles: new Set([41, 42, 43, 44, 53, 54, 59, 62, 63]),
+};
+export function scoreFmt(event, num) {
+  const set = AD_NUMS[/doub/i.test(event || '') ? 'Doubles' : 'Singles'];
+  return set.has(Number(num)) ? 'ad' : 'noad';
+}
+
 const conn = (col, rowStart, rowEnd, num, rows) => ({
   key: `c${num}`, col, rowStart, rowEnd,
   live: (rowOf(rows, num) || {}).status === 'live',
@@ -147,10 +162,10 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
     feederNum: 13 + j, feederTake: 'winner', from: `W of M${13 + j}`,
     nextNum: 15, nextSide: j === 0 ? 'a' : 'b',
   }, rows));
-  for (let k = 0; k < 8; k++) { east.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); east.metas.push(meta(1, 4 * k + 4, k + 1, rows, 'ad')); }
-  for (let k = 0; k < 4; k++) { east.connectors.push(conn(2, 8 * k + 2, 8 * k + 6, 9 + k, rows)); east.metas.push(meta(2, 8 * k + 7, 9 + k, rows, 'ad')); }
-  for (let k = 0; k < 2; k++) { east.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 13 + k, rows)); east.metas.push(meta(3, 16 * k + 13, 13 + k, rows, 'ad')); }
-  east.connectors.push(conn(4, 8, 24, 15, rows)); east.metas.push(meta(4, 25, 15, rows, 'ad'));
+  for (let k = 0; k < 8; k++) { east.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); east.metas.push(meta(1, 4 * k + 4, k + 1, rows, scoreFmt('Doubles', k + 1))); }
+  for (let k = 0; k < 4; k++) { east.connectors.push(conn(2, 8 * k + 2, 8 * k + 6, 9 + k, rows)); east.metas.push(meta(2, 8 * k + 7, 9 + k, rows, scoreFmt('Doubles', 9 + k))); }
+  for (let k = 0; k < 2; k++) { east.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 13 + k, rows)); east.metas.push(meta(3, 16 * k + 13, 13 + k, rows, scoreFmt('Doubles', 13 + k))); }
+  east.connectors.push(conn(4, 8, 24, 15, rows)); east.metas.push(meta(4, 25, 15, rows, scoreFmt('Doubles', 15)));
   const r15 = rowOf(rows, 15);
   east.champion = { row: 16, name: isFinal(r15) ? winnerName(r15) : null, score: isFinal(r15) ? (r15.score || '') : '' };
 
@@ -179,9 +194,9 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
   }, rows));
   west.lines.push(resolveLine({ key: 'w-win', col: 1, row: 16, feederNum: 22, feederTake: 'winner', from: 'W of M22' }, rows));
   west.winner = { col: 1, row: 17, caption: 'West champions' };
-  for (let k = 0; k < 4; k++) { west.connectors.push(conn(4, 8 * k + 2, 8 * k + 6, 16 + k, rows)); west.metas.push(meta(4, 8 * k + 7, 16 + k, rows, 'noad')); }
-  for (let k = 0; k < 2; k++) { west.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 20 + k, rows)); west.metas.push(meta(3, 16 * k + 13, 20 + k, rows, 'noad')); }
-  west.connectors.push(conn(2, 8, 24, 22, rows)); west.metas.push(meta(2, 25, 22, rows, 'noad'));
+  for (let k = 0; k < 4; k++) { west.connectors.push(conn(4, 8 * k + 2, 8 * k + 6, 16 + k, rows)); west.metas.push(meta(4, 8 * k + 7, 16 + k, rows, scoreFmt('Doubles', 16 + k))); }
+  for (let k = 0; k < 2; k++) { west.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 20 + k, rows)); west.metas.push(meta(3, 16 * k + 13, 20 + k, rows, scoreFmt('Doubles', 20 + k))); }
+  west.connectors.push(conn(2, 8, 24, 22, rows)); west.metas.push(meta(2, 25, 22, rows, scoreFmt('Doubles', 22)));
 
   // --- North (East QF losers) / South (West R1 losers) ---------------------
   const smallDraw = (keyP, firstNum, finalNum, feederBase, feederTake, caption, headers) => {
@@ -198,8 +213,8 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
     }, rows));
     g.lines.push(resolveLine({ key: `${keyP}-win`, col: 3, row: 4, feederNum: finalNum, feederTake: 'winner', from: `W of M${finalNum}` }, rows));
     g.winner = { col: 3, row: 5, caption };
-    for (let k = 0; k < 2; k++) { g.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, firstNum + k, rows)); g.metas.push(meta(1, 4 * k + 4, firstNum + k, rows, 'noad')); }
-    g.connectors.push(conn(2, 2, 6, finalNum, rows)); g.metas.push(meta(2, 7, finalNum, rows, 'noad'));
+    for (let k = 0; k < 2; k++) { g.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, firstNum + k, rows)); g.metas.push(meta(1, 4 * k + 4, firstNum + k, rows, scoreFmt('Doubles', firstNum + k))); }
+    g.connectors.push(conn(2, 2, 6, finalNum, rows)); g.metas.push(meta(2, 7, finalNum, rows, scoreFmt('Doubles', finalNum)));
     return g;
   };
   const north = smallDraw('n', 23, 25, 9, 'loser', 'North champions', ['Semifinals', 'Final', 'Champion']);
@@ -220,7 +235,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
       b: resolveLine({ key: `p${k}b`, col: 1, row: 2, seed: T + 1 + k, tName: teams[T + k] || null, nextNum: num, nextSide: 'b' }, rows),
       note: `Winner → East M${eastMatch}`, // opponent already shows on that East line
       opp,
-      meta: meta(1, 1, num, rows, 'ad'), // East-entry play-in → ad, like the East path it feeds
+      meta: meta(1, 1, num, rows, scoreFmt('Doubles', num)), // play-in (pre-R16) → no-ad
     });
   }
   const consolation = [];
@@ -232,7 +247,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
         num,
         a: resolveLine({ key: `pc${k}a`, col: 1, row: 1, feederNum: 29 + 2 * k, feederTake: 'loser', from: `L of M${29 + 2 * k}`, nextNum: num, nextSide: 'a' }, rows),
         b: resolveLine({ key: `pc${k}b`, col: 1, row: 2, feederNum: 29 + 2 * k + 1, feederTake: 'loser', from: `L of M${29 + 2 * k + 1}`, nextNum: num, nextSide: 'b' }, rows),
-        meta: meta(1, 1, num, rows, 'noad'), // play-in consolation → no-ad placement
+        meta: meta(1, 1, num, rows, scoreFmt('Doubles', num)), // play-in consolation → no-ad placement
       });
     }
     if (pIns % 2 === 1) {
@@ -241,7 +256,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
         num,
         a: resolveLine({ key: `pc${pairs}a`, col: 1, row: 1, feederNum: 29 + pIns, feederTake: 'winner', from: `W of M${29 + pIns}`, nextNum: num, nextSide: 'a' }, rows),
         b: resolveLine({ key: `pc${pairs}b`, col: 1, row: 2, feederNum: 29 + pIns - 1, feederTake: 'loser', from: `L of M${29 + pIns - 1}`, nextNum: num, nextSide: 'b' }, rows),
-        meta: meta(1, 1, num, rows, 'noad'), // play-in consolation → no-ad placement
+        meta: meta(1, 1, num, rows, scoreFmt('Doubles', num)), // play-in consolation → no-ad placement
       });
     }
   }
@@ -378,6 +393,12 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   let champion = { name: null, score: '' };
   if (isFinal(r63)) champion = { name: winnerName(r63), score: r63.score || '' };
   else if (isFinal(r62) && r62.winner === 'a') champion = { name: winnerName(r62), score: r62.score || '' };
+
+  // Scoring-format chip, round-based (same rule as doubles): no-ad through the
+  // Winners R16 + all of the Comeback side; ad from the Winners QF (M41-44) on,
+  // the finals, and the Grand Final. Tag every meta so the chip renders.
+  for (const m of [...winners.metas, ...comeback.metas]) m.fmt = scoreFmt('Singles', m.num);
+  gf.meta.fmt = scoreFmt('Singles', 62);
 
   return { winners, comeback, gf, champion };
 }

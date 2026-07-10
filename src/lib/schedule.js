@@ -9,9 +9,11 @@
 
 export const SCHEDULE_DEFAULTS = {
   courts: 9,        // courts available for play
-  doublesMin: 40,   // Fast-4 best-of-3 doubles match — rough average
-  singlesMin: 50,   // 6-/8-game singles match — rough average (varies by round)
-  qfMin: 60,        // championship QF onward: 8-game pro set, with ad — ~1 hr
+  // Unified format both events: best-of-3 Fast-4 (first to 4), 10-pt match
+  // tiebreak for the 3rd — no-ad through the R16, ad from the QF on.
+  doublesMin: 40,   // early-round Fast-4 best-of-3 — rough average
+  singlesMin: 40,   // aligned to doubles: same Fast-4 best-of-3 length
+  qfMin: 60,        // QF onward (ad Fast-4 best-of-3) runs a bit longer — ~1 hr
   backdrawMin: 0,   // West/North/South/consolation match length (shorter pro
                     // sets); 0/unset = fall back to the event length. Config
                     // key: "Backdraw min".
@@ -41,13 +43,13 @@ export function dayStartMs(event) {
   return new Date(/doub/i.test(event || '') ? EVENT_START.Doubles : EVENT_START.Singles).getTime();
 }
 
-// Rounds played as 8-game pro sets (QF onward) — longer than the earlier
-// rounds. Doubles championship = East QF/SF/F. Singles is a TRUE double
+// Longer rounds (QF onward) — ad Fast-4 best-of-3 runs a bit past the early
+// no-ad rounds. Doubles championship = East QF/SF/F. Singles is a TRUE double
 // elimination: the Winners QF/SF/F (R3/SF/F), the Grand Final + reset, AND the
 // Backdraw's own quarter/semi/final (Comeback R6 = M57/58, R7 = M60, F = M61)
-// are all 8-game pro sets — the backdraw isn't a shortened consolation. Only
-// the earlier winners/comeback rounds run the standard singles length. Keyed
-// off the flat rows' `round` tag (see roundTag in src/lib/draw.js).
+// take the longer slot — the backdraw isn't a shortened consolation. Only the
+// earlier winners/comeback rounds run the standard early length. Keyed off the
+// flat rows' `round` tag (see roundTag in src/lib/draw.js).
 const LONG_ROUNDS = {
   Doubles: new Set(['QF', 'SF', 'F']),
   Singles: new Set(['R3', 'SF', 'F', 'Grand Final', 'GF Reset', 'Comeback R6', 'Comeback R7', 'Comeback F']),

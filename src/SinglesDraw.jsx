@@ -12,7 +12,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { buildDoubleElimModel, COL_W, THEMES } from './lib/compass';
-import { LineCell, DirectionGrid, DirLabel } from './CompassDraw';
+import { LineCell, DirectionGrid, DirLabel, FmtChip } from './CompassDraw';
 
 const PAD = 20;
 const CANVAS_W = PAD * 2 + 9 * COL_W; // comeback is the widest band (1840 @ COL_W 200)
@@ -124,6 +124,7 @@ export default function SinglesDraw({
                   </div>
                   <div className="flex items-baseline gap-1 pt-1 min-w-0">
                     <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: 'var(--cd-faint)' }}>M62</span>
+                    <FmtChip fmt={model.gf.meta.fmt} />
                     {gfExtra && <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: gfColor }}>· {gfExtra}</span>}
                   </div>
                   <p className="text-[8px] leading-snug mt-1" style={{ color: 'var(--cd-faint)' }}>
