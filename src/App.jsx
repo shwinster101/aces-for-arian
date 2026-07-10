@@ -24,11 +24,12 @@ import {
   mapOpsStatus,
   mapAnnouncements,
 } from './lib/sheet';
-import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName, boardTeam, dupFirstNames } from './lib/entrants';
+import { deriveEntrants, shortLabel, normName, boardTeam, dupFirstNames } from './lib/entrants';
 import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
 import CompassDraw from './CompassDraw';
+import SinglesDraw from './SinglesDraw';
 import TeamTracker from './TeamTracker';
-import { projectSchedule } from './lib/compass';
+import { projectSchedule, structuralSkips } from './lib/compass';
 import {
   Trophy, 
   Award, 
@@ -444,131 +445,15 @@ const SEEDS_FINAL = false;
 const DRAWS_PUBLIC = { Doubles: true, Singles: false };
 const anyDrawsPublic = DRAWS_PUBLIC.Doubles || DRAWS_PUBLIC.Singles;
 
-// ==========================================
-// DRAW BUILDERS (drafts — every slot is TBD until registration closes)
-// ==========================================
+// (Legacy draw templates — seedOrder/singleElim/losersBracket32/Slot/
+// MatchCard/Bracket — retired 2026-07-10: both events now render on the
+// sheet-style canvases, CompassDraw + SinglesDraw, fed by lib/compass.)
 
-// Standard single-elimination seeding order for a bracket of size n.
-function seedOrder(n) {
-  let seeds = [1, 2];
-  while (seeds.length < n) {
-    const total = seeds.length * 2 + 1;
-    const next = [];
-    for (const s of seeds) next.push(s, total - s);
-    seeds = next;
-  }
-  return seeds;
-}
-
-// Build the rounds of a single-elimination draw of n entrants.
-// Round 1 optionally shows seed lines (1..n); later rounds are TBD advancers.
-// Seed names for an event, ordered by rank (seed 1 first) — drives bracket
-// auto-seeding. Reads from a seed list (live `seeds` state in App, which the
-// admin-published SeedBoardPublic tab replaces on every page load — so a
-// refresh repopulates the brackets in the committee's latest order).
+// Seed names for an event, ordered by rank (seed 1 first) — from the
+// sanitized SeedBoardPublic tab, replaced on every page load.
 const seedNamesFrom = (seedList, type) =>
   seedList.filter(s => s.type === type).sort((a, b) => a.rank - b.rank).map(s => s.name);
 
-// Only positions 1–8 are true seeds; 9–16 and 17–32 place as GROUPS (their
-// order in the seed list sets bracket position, but they aren't individually
-// ranked — see bandLabel in Slot). When `fieldLocked` (committee locked the
-// field at the entry cutoff), an unfilled R1 slot opposite a named entrant
-// renders as a BYE — and because slot names fill positions 1..k in seed
-// order while seedOrder pairs 1v16, 2v15, …, byes automatically go to the
-// top seeds first, per standard draw rules.
-function singleElim(n, seeded = true, names = [], fieldLocked = false) {
-  const order = seedOrder(n);
-  const slot = (pos) => (seeded ? { seed: pos, name: names[pos - 1] || null } : {});
-  const r1 = [];
-  for (let i = 0; i < n; i += 2) {
-    const a = slot(order[i]), b = slot(order[i + 1]);
-    if (fieldLocked && seeded) {
-      if (a.name && !b.name) b.bye = true;
-      if (b.name && !a.name) a.bye = true;
-    }
-    r1.push({ a, b });
-  }
-  const rounds = [r1];
-  let m = n / 2;
-  while (m > 1) {
-    m /= 2;
-    rounds.push(Array.from({ length: m }, () => ({ a: {}, b: {} })));
-  }
-  return rounds;
-}
-
-// Losers bracket of a 32-player double elimination (match counts per round).
-function losersBracket32() {
-  return [8, 8, 4, 4, 2, 2, 1, 1].map(c =>
-    Array.from({ length: c }, () => ({ a: {}, b: {} }))
-  );
-}
-
-// Stamp a match number onto each match. numberRounds: explicit per-round start
-// numbers (used to mirror the PrintYourBrackets 1–62 singles scheme).
-function numberRounds(rounds, starts) {
-  return rounds.map((matches, ri) => { let n = starts[ri]; return matches.map(m => ({ ...m, num: n++ })); });
-}
-
-const roundLabel = (matches) =>
-  ({ 1: 'Final', 2: 'Semifinals', 4: 'Quarterfinals', 8: 'Round of 16', 16: 'Round of 32' }[matches] || `Round of ${matches * 2}`);
-
-// Seed badge: shown ONLY for the true seeds (1..SEED_CUT). Positions 9+ are
-// deliberately unlabeled — publicly they read the same as unseeded entrants,
-// so nobody sees themselves ranked near the bottom of the draw. SEED_CUT/
-// DRAW_CAP live in lib/entrants.js, shared with the admin seed list.
-function Slot({ slot, highlight }) {
-  const bye = !!(slot && slot.bye);
-  // "Find yourself in the draw": light the line up when it matches the query.
-  const hit = !!(highlight && slot && slot.name && slot.name.toLowerCase().includes(highlight));
-  return (
-    <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${hit ? 'bg-[#fbbf24]/15' : ''}`}>
-      <span className={`text-[11px] truncate ${hit ? 'text-[#fbbf24] font-bold' : slot && slot.name ? 'text-zinc-200' : bye ? 'text-zinc-500 italic' : 'text-zinc-600'}`}>
-        {slot && slot.name ? slot.name : bye ? 'BYE' : 'TBD'}
-      </span>
-      {slot && slot.seed != null && slot.seed <= SEED_CUT && !bye && (
-        <span className="shrink-0 text-[9px] font-mono font-bold rounded px-1.5 border text-[#fbbf24]/90 bg-[#fbbf24]/10 border-[#fbbf24]/20">
-          {slot.seed}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function MatchCard({ match, highlight, estFor }) {
-  const est = estFor ? estFor(match.num) : null;
-  return (
-    <div className="flex flex-col gap-0.5 shrink-0">
-      <div className="flex items-center gap-1.5">
-        <span className="w-5 shrink-0 text-right text-[8px] font-mono font-bold text-zinc-500">{match.num != null ? match.num : ''}</span>
-        <div className="w-40 md:w-44 rounded-lg border border-zinc-800 bg-[#111] divide-y divide-zinc-800/80 overflow-hidden">
-          <Slot slot={match.a} highlight={highlight} />
-          <Slot slot={match.b} highlight={highlight} />
-        </div>
-      </div>
-      {est && <div className="pl-6 text-[8px] font-bold text-[#fbbf24]/70 truncate max-w-[11.5rem]">{est}</div>}
-    </div>
-  );
-}
-
-function Bracket({ rounds, names, highlight, estFor }) {
-  return (
-    <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-2">
-      {rounds.map((matches, ri) => (
-        <div key={ri} className="flex flex-col shrink-0">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-2 pl-1 whitespace-nowrap">
-            {names ? names[ri] : roundLabel(matches.length)}
-          </div>
-          <div className="flex flex-col justify-around flex-1 gap-1.5">
-            {/* Every round can carry an estimate now — engine rows share the
-                public numbering for all rounds (see engineRowsFor in App). */}
-            {matches.map((m, mi) => <MatchCard key={mi} match={m} highlight={highlight} estFor={estFor} />)}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // Self-hosted auto-advancing gallery slideshow. No third-party scripts.
 function Slideshow({ images, interval = 5000 }) {
@@ -1464,31 +1349,6 @@ export default function App() {
     );
   };
 
-  // Overlay the posted matchups onto EVERY round of a bracket, so the public
-  // draw fills in live as ops marks winners — placements, advancement, and
-  // name fixes all mirror the ops board. Rows must already be numbered.
-  const overlayRounds = (rounds, evt) => {
-    const byNum = engineRowsFor(evt);
-    if (!byNum.size) return rounds;
-    return rounds.map(round => round.map(match => {
-      const row = byNum.get(Number(match.num));
-      if (!row) return match;
-      return {
-        ...match,
-        a: { ...match.a, name: row.a || match.a.name },
-        b: { ...match.b, name: row.b || match.b.name },
-      };
-    }));
-  };
-
-  // Estimate label for a bracket line ("~N ahead · ~min · around H:MM").
-  // Null when that match isn't posted. `now` ticks off the heartbeat.
-  const estForEvent = (evt) => (n) => {
-    if (n == null) return null;
-    const fm = engineRowsFor(evt).get(Number(n));
-    return fm ? estimateLabel(fm, publicMatches, scheduleCfg, now) : null;
-  };
-
   // Doubles compass field sizing — shared by the draw canvas, the tracker,
   // and the schedule projection. A 17+ team field adds play-ins (M29+).
   const dTeamsRaw = seedNamesFrom(seeds, 'Doubles');
@@ -1506,8 +1366,13 @@ export default function App() {
   // posted AND unposted matches. Match numbers stay pure bracket identity;
   // the call order is derived. Off-graph hand rows fall back to the
   // wave-model clock.
+  // Structural byes/walkovers (engine-derived from the public seeds) never
+  // occupy a court in the projection — a 27-player singles field books 11
+  // real R1 matches, not 16.
+  const skipsByEvent = Object.fromEntries(publicEvents.map((evt) =>
+    [evt, structuralSkips(evt, seeds.filter(s => s.type === evt))]));
   const projByEvent = Object.fromEntries(publicEvents.map((evt) =>
-    [evt, projectSchedule(evt, pInsFor(evt), engineRowsFor(evt), scheduleCfg, now)]));
+    [evt, projectSchedule(evt, pInsFor(evt), engineRowsFor(evt), scheduleCfg, now, skipsByEvent[evt])]));
   const clockByEvent = Object.fromEntries(publicEvents.map((evt) => {
     const proj = projByEvent[evt];
     return [evt, (n) => {
@@ -2107,61 +1972,25 @@ export default function App() {
 
           // Singles draw cards — unchanged view, still gated hidden until the
           // Sunday reveal (flip DRAWS_PUBLIC.Singles).
-          const singlesDraws = (
-            <>
-            {/* SUNDAY SINGLES — Double Elimination (32 players) */}
-            {DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
-              <div className="space-y-5">
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Trophy className="w-5 h-5 text-[#fbbf24]" />
-                    <h3 className="text-base font-black text-white uppercase tracking-wider">Double Elimination · 32 Players</h3>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-                    Players get a two-match cushion. After a first setback, you move into the comeback bracket and can still battle all the way back to the Grand Final.
-                  </p>
-                </div>
-
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Winners Bracket</h4>
-                  <Bracket rounds={overlayRounds(numberRounds(singleElim(DRAW_CAP.Singles, true, seedNamesFrom(seeds, 'Singles').map(publicLabel), showByes), [1, 25, 41, 53, 59]), 'Singles')} highlight={drawHighlight} estFor={estForEvent('Singles')} />
-                </div>
-
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Comeback Bracket</h4>
-                  <Bracket
-                    rounds={overlayRounds(numberRounds(losersBracket32(), [17, 33, 45, 49, 55, 57, 60, 61]), 'Singles')}
-                    names={['Comeback R1', 'Comeback R2', 'Comeback R3', 'Comeback R4', 'Comeback R5', 'Comeback R6', 'Comeback R7', 'Comeback Final']}
-                    highlight={drawHighlight} estFor={estForEvent('Singles')}
-                  />
-                </div>
-
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider mb-4">Grand Final <span className="text-[10px] font-mono font-normal text-zinc-500">· Match 62 (+ 63 if reset)</span></h4>
-                  <div className="flex items-center gap-5 flex-wrap">
-                    {(() => {
-                      // Names fill in from the engine-posted GF row (num 62);
-                      // a posted reset row (63) flips the footnote live.
-                      const gf = engineRowsFor('Singles').get(62);
-                      const reset = engineRowsFor('Singles').get(63);
-                      return (
-                        <div className="w-60 shrink-0 rounded-lg border border-[#fbbf24]/30 bg-[#111] divide-y divide-zinc-800">
-                          <div className={`px-3 py-2 text-xs ${gf?.a ? 'text-white font-bold' : 'text-zinc-200'}`}>{gf?.a || 'Winners Bracket Champion'}</div>
-                          <div className={`px-3 py-2 text-xs ${gf?.b ? 'text-white font-bold' : 'text-zinc-200'}`}>{gf?.b || 'Comeback Bracket Champion'}</div>
-                          {gf && <div className="px-3 py-1.5 text-[10px] font-bold text-[#fbbf24]/80">{estForEvent('Singles')(62)}</div>}
-                          {reset && <div className="px-3 py-1.5 text-[10px] font-bold text-[#fbbf24]">Bracket reset — Match 63 is ON</div>}
-                        </div>
-                      );
-                    })()}
-                    <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-                      If the Comeback Bracket Champion wins, a deciding "bracket reset" set is played because the Winners Champion has not dropped a match yet.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            </>
+          // SUNDAY SINGLES — 32 double elimination as ONE sheet-style canvas
+          // (same grammar as the doubles compass: rules, tokens, projected
+          // times on every match, highlight + zoom). Lines fill from the
+          // engineRowsFor num-join (NUMBERING CONTRACT: winners rounds start
+          // [1,25,41,53,59], comeback [17,33,45,49,55,57,60,61], GF 62,
+          // reset 63).
+          const singlesDraws = DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
+            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-4 md:p-6">
+              <SinglesDraw
+                names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
+                rowsByNum={engineRowsFor('Singles')}
+                clockFor={clockByEvent.Singles}
+                highlight={drawHighlight}
+                showByes={showByes}
+              />
+              <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
+                Double elimination — every player has a two-match cushion. Lose in the Winners bracket and you drop into the Comeback bracket with a live path back to the Grand Final; the Winners champ must be beaten twice (the M63 reset) to lose the title.
+              </p>
+            </div>
           );
 
           // Crowdsourced seeding input — hidden once the field locks; only in

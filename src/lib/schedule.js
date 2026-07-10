@@ -247,6 +247,11 @@ export function estimateLabel(match, allMatches, sched, nowMs = Date.now()) {
   if (e.status === 'final') return match.score ? `Final · ${match.score}` : 'Final';
   if (e.status === 'live') return match.court ? `On court ${match.court} now` : 'On court now';
   const aheadTxt = e.ahead === 0 ? 'You’re up next' : `~${e.ahead} match${e.ahead === 1 ? '' : 'es'} ahead`;
-  if (e.waitMin <= 0) return `${aheadTxt} · about now`;
+  if (e.waitMin <= 0) {
+    // Before the day starts, "about now" is nonsense (Friday night reading a
+    // Sunday 8 AM match) — anchor the label at first serve instead.
+    if (e.startAt.getTime() - nowMs > 15 * 60000) return `${aheadTxt} · around ${clock(e.startAt)}`;
+    return `${aheadTxt} · about now`;
+  }
   return `${aheadTxt} · ~${round5(e.waitMin)} min · around ${clock(e.startAt)}`;
 }

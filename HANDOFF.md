@@ -35,6 +35,54 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd6. Session Summary — 2026-07-10: singles bridge — double-elim sheet canvas + bye-aware schedule
+
+Owner ops-audit request: "audit the singles bracket on the ops end… make sure
+the 27 person double elimination bracket and schedule are bridged with the
+public view as well as possible. use the doubles compass ui as an example."
+
+**Ops-side audit verdict (screenshots vs engine): routing is CORRECT.**
+M57 = W of M55 + L of M54 (reversed drop-ins ✓), the call sheet is
+contested-only and skips bye matches ✓, "27 entered · 5 byes" is consistent
+with seedOrder(32) byes at draw slots feeding M1/M5/M7 etc. ✓. The real gaps
+were bridge-side; all fixed behind the still-closed gate:
+
+- **`estimateLabel` pre-day fix** (src/lib/schedule.js): wave-0 rows used to
+  say "about now" even on Friday for a Sunday event. Now, if `startAt` is
+  >15 min out it prints "around 8:00 AM" instead. Ops Draw Board/Call Sheet
+  strips inherit the fix via the shared lib.
+- **`structuralSkips(event, seedList)`** (src/lib/compass.js): runs the REAL
+  engine client-side (`resolve(buildDraw(...))`) and returns the Set of
+  never-played match nums. 27-player singles → {1,5,7,9,13, 17,21,23, 33,37,
+  63} (R1 byes + dead-loser comeback drop-ins + inactive reset). Doubles
+  19 teams → empty set, so live behavior is untouched.
+- **`projectSchedule(..., skips)`**: skipped nums book no court and get no
+  time (`finish = anchor − rest`, winner counts as long-rested), so the
+  Sunday cascade isn't inflated by walkovers.
+- **`buildDoubleElimModel`** (src/lib/compass.js) + **src/SinglesDraw.jsx**
+  (new): the singles public view is now the same sheet-canvas grammar as the
+  doubles compass — winners grid (6 cols, single-elim row math), comeback
+  band (9 cols, alternating pair-up/drop-in with worked integer row
+  formulas; drop lines read "L of M54"), Grand Final panel (M62 + reset
+  note) + champion cell, Fit/100% zoom, jump chips (Winners · Comeback ·
+  Grand Final), highlight auto-scroll, paper theme. Wiring is asserted
+  against `graphFor('Singles')` by a 92-edge probe test — no hand tables.
+  CompassDraw now exports LineCell/MetaCell/DirectionGrid/PairPanel/DirLabel;
+  THEMES moved to lib/compass.js (react-refresh rule).
+- **`firstMatchFor`** is bye-aware (fieldCount param): singles seed 1 in a
+  27 field shows M25 · Round of 16 · "winner of M2", not the phantom bye.
+- **Legacy deletion** (src/App.jsx): `Bracket`/`MatchCard`/`Slot`/
+  `singleElim`/`losersBracket32`/`numberRounds`/`roundLabel`/`overlayRounds`/
+  `estForEvent` are gone — singles was their last consumer.
+- **Gate unchanged:** `DRAWS_PUBLIC = { Doubles: true, Singles: false }`.
+  Sunday's reveal is still the one-line flip.
+- Verified: contract 69/69 (skips set = engine truth, 92-edge model wiring,
+  skips-aware projection math, bye-aware first match), singles view 13/13 on
+  a TEST build (gate temporarily open, reverted), doubles view 57/57 and
+  round-trip 15/15 on the REAL build, lint/build clean.
+
+---
+
 ## 1-cd5. Session Summary — 2026-07-10: board names (first names) + elapsed-time proxy
 
 Live-score scope review, owner-endorsed. Scores were ALWAYS optional here

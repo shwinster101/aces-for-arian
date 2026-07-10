@@ -130,7 +130,8 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
               off the seed placement + the 9-court schedule projection. */}
           {!tl.mine.length && (() => {
             const seedRow = (seeds || []).find(s => s.type === active.event && labelFor(s.name).toLowerCase() === active.label.toLowerCase());
-            const fm = seedRow ? firstMatchFor(active.event, pInsFor(active.event), seedRow.rank) : null;
+            const fieldCount = (seeds || []).filter(s => s.type === active.event).length;
+            const fm = seedRow ? firstMatchFor(active.event, pInsFor(active.event), seedRow.rank, fieldCount) : null;
             const time = fm && clocks && clocks[active.event] ? clocks[active.event](fm.num) : null;
             const oppRow = fm && fm.oppRank ? (seeds || []).find(s => s.type === active.event && s.rank === fm.oppRank) : null;
             const opp = oppRow ? show(labelFor(oppRow.name)) : (fm && fm.oppFrom) || null;
