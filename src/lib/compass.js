@@ -227,16 +227,25 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
 }
 
 // ---------------------------------------------------------------------------
-// PROJECTED SCHEDULE — a start time for EVERY match in the draw, posted or
-// not. Greedy simulation honoring BOTH constraints: the feeder chain (M1
-// can't start before its play-in finishes) and the court pool (sched.courts,
-// 9 — an 11th concurrent match waits for a court). Anchored at first serve
-// (9:00 Sat / 8:00 Sun) until anything goes live/final, then re-projects
-// from `now` so times shift with the real day. All consumers label with "~".
+// PROJECTED SCHEDULE / CALL ORDER — a start time for EVERY match in the
+// draw, posted or not. Match NUMBERS stay pure bracket identity (the
+// num+event overlay contract is untouchable); the CALL ORDER is derived
+// here, list-scheduling style, honoring all three courtside constraints:
+//  1. the feeder chain — M1 can't start before its play-in finishes;
+//  2. the REST WINDOW — a team gets sched.restMin (10) after its previous
+//     match before it can be called again (skipped for feeders already
+//     final long ago);
+//  3. the court pool (sched.courts, 9) — when courts are contended, SHORTER
+//     backdraw matches go on first (front-load the West/North/South splits),
+//     with an aging guard so a longer championship QF/SF/F that's been
+//     ready for a while can't be starved and push the final late.
+// Anchored at first serve (9:00 Sat / 8:00 Sun) until anything goes
+// live/final, then re-projects from `now`. All consumers label with "~".
 // ---------------------------------------------------------------------------
 export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now()) {
   const s = { ...SCHEDULE_DEFAULTS, ...(sched || {}) };
   const courts = Math.max(1, Number(s.courts) || 1);
+  const restMs = Math.max(0, Number(s.restMin) || 0) * 60000;
   const g = graphFor(event, pIns);
 
   let anyStarted = false;
@@ -251,35 +260,78 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now()) {
     const order = seedOrder(T);
     for (let k = 0; k < pIns; k++) hostDep.set(`D-E1-${Math.floor(order.indexOf(T - k) / 2)}`, `D-P1-${k}`);
   }
+  const depsOf = (m) => {
+    const d = [];
+    for (const f of [m.aFrom, m.bFrom]) if (f.ref) d.push(f.ref);
+    const h = hostDep.get(m.id);
+    if (h) d.push(h);
+    return d;
+  };
 
   const pool = Array.from({ length: courts }, () => anchor); // court free-at times
-  const finish = new Map(); // match id -> projected finish ms
+  const finish = new Map(); // match id -> projected finish ms (rest applies AFTER this)
   const out = new Map();    // num -> Date projected start (not-yet-final only)
-  const ordered = g.matches
-    .filter((m) => !m.resetOf) // GF reset is conditional — never booked
-    .sort((a, b) => playPos({ num: a.num, event }) - playPos({ num: b.num, event }));
 
-  for (const m of ordered) {
-    const durMs = matchMinFor(event, s, m.roundTag) * 60000;
-    let ready = anchor;
-    for (const f of [m.aFrom, m.bFrom]) if (f.ref && finish.has(f.ref)) ready = Math.max(ready, finish.get(f.ref));
-    const dep = hostDep.get(m.id);
-    if (dep && finish.has(dep)) ready = Math.max(ready, finish.get(dep));
-
+  // Seed the sim with reality: finals freed their courts long ago (and the
+  // teams have had their rest — back the finish off by restMs so dependents
+  // aren't double-charged); live matches hold a court for ~half a match.
+  const pending = [];
+  for (const m of g.matches) {
+    if (m.resetOf) continue; // GF reset is conditional — never booked
     const row = rows.get(Number(m.num));
-    if (row && row.status === 'final') { finish.set(m.id, anchor); continue; } // played; court long free
+    if (row && row.status === 'final') { finish.set(m.id, anchor - restMs); continue; }
     if (row && row.status === 'live') {
-      const f = nowMs + durMs / 2; // ~half a match left
+      const f = nowMs + (matchMinFor(event, s, m.roundTag) * 60000) / 2;
       let i = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[i]) i = j;
       pool[i] = Math.max(pool[i], f);
       finish.set(m.id, f);
       continue;
     }
-    let i = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[i]) i = j;
-    const start = Math.max(ready, pool[i]);
-    pool[i] = start + durMs;
-    finish.set(m.id, start + durMs);
-    out.set(m.num, new Date(start));
+    pending.push(m);
+  }
+
+  // List scheduling: repeatedly place the match that can start EARLIEST.
+  // Among ties (same court-contended start time):
+  //   1. a match that's been kept waiting ≥ AGING_MS beats one that hasn't
+  //      (a long championship QF can't be starved by an endless run of
+  //      short backdraw calls — the "don't push the final late" guard);
+  //   2. both aged → whoever's been ready longest, then bracket play order
+  //      (championship path first);
+  //   3. neither aged → SHORTER match first (front-load the West/North/
+  //      South splits), then bracket play order.
+  const AGING_MS = 30 * 60000;
+  while (pending.length) {
+    let ci = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[ci]) ci = j;
+    const courtAt = pool[ci];
+    let best = null;
+    for (let i = 0; i < pending.length; i++) {
+      const m = pending[i];
+      const deps = depsOf(m);
+      if (deps.some((d) => !finish.has(d))) continue; // upstream still pending
+      let ready = anchor;
+      for (const d of deps) ready = Math.max(ready, finish.get(d) + restMs);
+      const durMs = matchMinFor(event, s, m.roundTag) * 60000;
+      const cand = {
+        i, m, durMs,
+        start: Math.max(ready, courtAt),
+        ready,
+        pos: playPos({ num: m.num, event }),
+      };
+      if (!best) { best = cand; continue; }
+      if (cand.start !== best.start) { if (cand.start < best.start) best = cand; continue; }
+      const aC = cand.start - cand.ready >= AGING_MS, aB = best.start - best.ready >= AGING_MS;
+      if (aC !== aB) { if (aC) best = cand; continue; }
+      if (aC) { // both aged: longest-waiting first, then play order
+        if (cand.ready !== best.ready ? cand.ready < best.ready : cand.pos < best.pos) best = cand;
+        continue;
+      }
+      if (cand.durMs !== best.durMs ? cand.durMs < best.durMs : cand.pos < best.pos) best = cand;
+    }
+    if (!best) break; // safety: cyclic/unsatisfiable (can't happen in a DAG)
+    pending.splice(best.i, 1);
+    pool[ci] = best.start + best.durMs;
+    finish.set(best.m.id, best.start + best.durMs);
+    out.set(best.m.num, new Date(best.start));
   }
   return out;
 }

@@ -1403,17 +1403,8 @@ export default function App() {
   const livePlaying = publicMatches
     .filter(m => m.status === 'live')
     .sort((a, b) => playPos(a) - playPos(b));
-  // Up next = matches that can ACTUALLY go on the next open court: not
-  // live/final AND both sides are real teams (isReadyRow) — a row still
-  // waiting on an upstream result (e.g. M5 waiting on M3's winner) never
-  // occupies a queue slot; the next playable match takes it. Play order via
-  // playPos (doubles play-ins queue first despite their M29+ numbers).
-  const upNextQueue = publicMatches
-    .filter(m => m.status !== 'live' && m.status !== 'final' && isReadyRow(m))
-    .sort((a, b) => playPos(a) - playPos(b));
-  const waitingUpstream = publicMatches
-    .filter(m => m.status !== 'live' && m.status !== 'final' && !isReadyRow(m)).length;
-  const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
+  // (upNextQueue/queuePos are derived BELOW, after the call-order projection
+  // they sort by is built.)
 
   // The board is entirely match-derived: live once matches are posted, else a
   // pre-tournament placeholder.
@@ -1432,6 +1423,8 @@ export default function App() {
     doublesMin: config.doublesMin || SCHEDULE_DEFAULTS.doublesMin,
     singlesMin: config.singlesMin || SCHEDULE_DEFAULTS.singlesMin,
     qfMin: config.qfMin || SCHEDULE_DEFAULTS.qfMin,
+    backdrawMin: config.backdrawMin || SCHEDULE_DEFAULTS.backdrawMin,
+    restMin: config.restMin != null ? config.restMin : SCHEDULE_DEFAULTS.restMin,
     warmupMin: config.warmupMin != null ? config.warmupMin : SCHEDULE_DEFAULTS.warmupMin,
   };
   // Engine-posted matches (Matches tab) keyed by match number per event. The
@@ -1488,12 +1481,16 @@ export default function App() {
   const pInsFor = (evt) => (evt === 'Doubles' ? dPIns : 0);
 
   // ONE clock per match, EVERY match ("every team's first match at least" —
-  // owner call): a greedy 9-court simulation over the whole draw
-  // (projectSchedule) gives a projected start for posted AND unposted
-  // matches — M1 waiting on play-in M29 reads ~9:40, the QFs ~10:20, etc.
-  // Off-graph hand rows fall back to the wave-model clock.
+  // owner call): the 9-court CALL-ORDER simulation over the whole draw
+  // (projectSchedule — deps + 10-min rest windows + court pool, shorter
+  // backdraw matches first under contention) gives a projected start for
+  // posted AND unposted matches. Match numbers stay pure bracket identity;
+  // the call order is derived. Off-graph hand rows fall back to the
+  // wave-model clock.
+  const projByEvent = Object.fromEntries(publicEvents.map((evt) =>
+    [evt, projectSchedule(evt, pInsFor(evt), engineRowsFor(evt), scheduleCfg, now)]));
   const clockByEvent = Object.fromEntries(publicEvents.map((evt) => {
-    const proj = projectSchedule(evt, pInsFor(evt), engineRowsFor(evt), scheduleCfg, now);
+    const proj = projByEvent[evt];
     return [evt, (n) => {
       const d = proj.get(Number(n));
       if (d) return `~${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
@@ -1505,6 +1502,26 @@ export default function App() {
     const c = clockByEvent[m.event];
     return (c && c(m.num)) || startClockLabel(m, publicMatches, scheduleCfg, now);
   };
+  // Call order for the queue: projected start first, bracket number as the
+  // stable fallback/tiebreak.
+  const callPos = (m) => {
+    const proj = projByEvent[m.event];
+    const d = proj && proj.get(Number(m.num));
+    return d ? d.getTime() : Infinity;
+  };
+
+  // Up next = matches that can ACTUALLY go on the next open court: not
+  // live/final AND both sides are real teams (isReadyRow) — a row still
+  // waiting on an upstream result (e.g. M5 waiting on M3's winner) never
+  // occupies a queue slot; the next playable match takes it. Ordered by the
+  // CALL-ORDER projection (rest windows + backdraw-first under contention),
+  // with bracket play order as the tiebreak/fallback.
+  const upNextQueue = publicMatches
+    .filter(m => m.status !== 'live' && m.status !== 'final' && isReadyRow(m))
+    .sort((a, b) => callPos(a) - callPos(b) || playPos(a) - playPos(b));
+  const waitingUpstream = publicMatches
+    .filter(m => m.status !== 'live' && m.status !== 'final' && !isReadyRow(m)).length;
+  const queuePos = new Map(upNextQueue.map((m, i) => [m, i + 1]));
 
   // "Find my match" — look up the player's posted matches and say where/when.
   const myMatches = matchQuery.trim().length >= 2
