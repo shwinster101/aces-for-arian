@@ -383,18 +383,19 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // Fallback announcements — shown until the live Announcements tab returns
 // rows (same pattern as fallbackRoster), so the section launches with real
 // content even before the Apps Script redeploy that activates live posting.
-// Forecast source: Apple Weather (Dunlap), pulled Fri 2026-07-10 ~10:45 AM.
-// Array order = display order; Saturday leads as the nearer day. Temps are
-// Apple-exact. Update from the 7/9 pull: rain moved back INTO both mornings —
-// wet overnight/early-AM each day, drying by ~9 AM. Singles Sunday is pushed
-// to a 9 AM first serve so the courts dry (see EVENT_START in lib/schedule.js).
+// Forecast source: Apple Weather (Dunlap), pulled Fri 2026-07-10 ~10:45 AM,
+// Saturday note refreshed Fri 7/10 PM. Array order = display order; Saturday
+// leads as the nearer day. Temps are Apple-exact. Rain sits in both mornings —
+// wet overnight/early-AM, drying by ~9 AM. Saturday first serve HOLDS at 9:00:
+// only ~0.25" of light rain overnight, and a squeegee crew clears the courts at
+// dawn. Singles Sunday first serve is 9 AM (see EVENT_START in lib/schedule.js).
 const FALLBACK_ANNOUNCEMENTS = [
   {
     id: 'fallback-weather-sat-0710',
-    ts: '2026-07-10T10:45:00-05:00',
+    ts: '2026-07-10T18:35:00-05:00',
     event: 'Doubles',
     category: 'weather',
-    message: "Saturday doubles outlook (Apple Weather, as of Fri 7/10): rain overnight and early morning, then drying for play. Pre-match — showers taper through dawn; Apple's 85% daily chance is front-loaded before ~8 AM, so the courts should be playable by the 9 AM first serve, just expect a damp start. During play — cloudy early, breaking to partly sunny by late morning and full sun in the afternoon; hourly rain risk falls to near 0% from ~9 AM on. Low 67°F early, high 83°F mid-afternoon. Watch Announcements in case a wet start nudges the first wave back.",
+    message: "Saturday doubles is ON — first serve holds at 9:00 AM (update Fri 7/10 PM). Overnight into early morning brings light rain, only about a quarter inch, tapering by dawn. Our squeegee crew is on the courts at first light to clear any standing water, so they'll be dry and ready by 9. Expect a cool, cloudy start (low ~67°F) breaking to partly sunny by late morning and full sun in the afternoon (high ~84°F), with hourly rain risk near 0% once we're underway. Bring a towel for the early games; hydrate and grab shade once the sun's out. Watch Announcements for any change.",
   },
   {
     id: 'fallback-weather-sun-0710',
