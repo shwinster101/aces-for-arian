@@ -104,7 +104,7 @@ function ScoreRow({ m, ops }) {
 
       <div className="flex items-center gap-2.5">
         <TextInput value={m.score} onChange={(v) => update({ score: v })}
-          placeholder="Score, e.g. 6-4, 3-6, 10-7" className="flex-1" />
+          placeholder="Score, e.g. 4-2, 3-4, 10-7" className="flex-1" />
         <Select value={m.status} onChange={(v) => update({ status: v })}
           options={['scheduled', 'live', 'final']} placeholder="Status" />
       </div>

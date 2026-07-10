@@ -67,6 +67,22 @@ export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
   );
 }
 
+// Per-match scoring-format chip (doubles only — set on the model's meta.fmt).
+// East path + East-entry play-ins play AD; West/North/South + placement play
+// NO-AD. Singles metas have no fmt, so nothing renders.
+export function FmtChip({ fmt }) {
+  if (!fmt) return null;
+  const ad = fmt === 'ad';
+  const c = ad ? 'var(--cd-gold)' : 'var(--cd-faint)';
+  return (
+    <span
+      className="text-[7px] font-black uppercase tracking-wider whitespace-nowrap rounded px-1 leading-none py-px shrink-0"
+      style={{ color: c, border: `1px solid ${c}` }}
+      title={ad ? 'Ad scoring' : 'No-ad scoring'}
+    >{ad ? 'AD' : 'NO-AD'}</span>
+  );
+}
+
 // ONE compact token per match — "M2 · ~9:00 AM" scheduled, "M1 · Ct 3 LIVE"
 // live, bare "M2" otherwise — hugging the connector edge so it reads as the
 // pair's metadata, never as a third line of text.
@@ -84,6 +100,7 @@ export function MetaCell({ m, clockFor, mirrored, hdr = HDR, isNext = false }) {
       className="flex items-start gap-1 px-2 pt-px min-w-0"
     >
       <span className="text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-faint)' }}>M{m.num}</span>
+      <FmtChip fmt={m.fmt} />
       {isNext && (
         <span className="text-[8px] font-black uppercase tracking-wider whitespace-nowrap rounded px-1 leading-none py-px" style={{ color: nextColor, border: `1px solid ${nextColor}` }}>▸ Next</span>
       )}
@@ -151,6 +168,7 @@ export function PairPanel({ dataDir, title, items, clockFor, highlight, nextNum 
               </div>
               <div className="flex items-baseline gap-1 pt-0.5 min-w-0">
                 <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: 'var(--cd-faint)' }}>M{p.num}</span>
+                <FmtChip fmt={p.meta.fmt} />
                 {isNext && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider rounded px-1 leading-none py-px" style={{ color: nextColor, border: `1px solid ${nextColor}` }}>▸ Next</span>}
                 {extra && <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color }}>· {extra}</span>}
                 {p.note && <span className="text-[8px] truncate" style={{ color: 'var(--cd-faint)' }} title={p.note}>· {p.note}</span>}

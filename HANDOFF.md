@@ -35,6 +35,50 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd17. Session Summary — 2026-07-10: doubles path-dependent scoring format + East↔West alternation
+
+Owner rule change for Saturday doubles: best-of-3 Fast-4 sets (first to 4 games),
+**7-point tiebreak at 3–3**, 10-point match tiebreak at one set all, with scoring
+**ad on the East championship path (+ the East-entry play-ins) and no-ad on
+West/North/South + placement/consolation**. Also alternate East↔West in the call
+order so courts stay full and each half rests while the other plays (owner: the
+other side's play IS the rest — no extra recovery window; durations + 10-min rest
+unchanged). Singles untouched. Shipped:
+
+- **Format tags on the model** (`src/lib/compass.js`): `meta()` gained an optional
+  `fmt` arg; `buildCompassModel` tags East + play-in metas `fmt:'ad'`,
+  West/North/South + consolation `fmt:'noad'`. `buildDoubleElimModel` (singles)
+  passes nothing → no `fmt` → no chip on singles. Derived from build section, not
+  stored — no schema/score-entry change (scores stay free-text).
+- **Per-match AD / NO-AD chip** (`src/CompassDraw.jsx`): new `FmtChip` rendered in
+  `MetaCell` + play-in `PairPanel` when `m.fmt` is set (gold-bordered AD, muted
+  NO-AD), beside the M# token. Doubles-only.
+- **East↔West call-order alternation** (`projectSchedule`, compass.js): added a
+  `sideOf(m)` (front = East/championship + play-ins, back = West/North/South +
+  consolation via the roundTag regex) and a direction-alternation tie-break in the
+  "neither aged" branch (prefer the side different from the last-placed match),
+  with `lastSide` tracked across placements. Durations (40/60) and `restMin` (10)
+  unchanged → first-wave times hold (9:00 / 9:50 / 10:40); East QF (M9) and West R1
+  (M16) interleave in the same wave.
+- **Copy** (`src/App.jsx`): Rules doubles card rewritten to the per-path rule +
+  7-pt/10-pt tiebreaks (dropped the obsolete "first to 5 points" and "switch to
+  regular sets" lines); direction legend cards tagged "ad scoring" (East) /
+  "no-ad" (West/North/South); "Reading the draw" blurb explains the AD/NO-AD chip.
+  `admin/sections/Scores.jsx` placeholder → Fast-4 example ("4-2, 3-4, 10-7").
+- Verified: lint/build clean; contract **89/0** (new: East 1-15 + play-ins 29-31
+  `ad`, West/North/South 16-28 `noad`, consolation `noad`, singles metas no `fmt`,
+  East/West interleave, first-wave times unchanged); new **verify-format 10/0**
+  (18 AD + 15 NO-AD chips on doubles, none on singles, Rules copy updated);
+  verify-compass 58/0, verify-singles 13/0; screenshot of the East path with AD
+  chips.
+- **Note / open question for owner:** the handoff doc's North/South are classified
+  no-ad here (non-East placement). The doc also specifies a 20-min recovery + East
+  60 / no-ad 55-min match lengths; per owner we did NOT adopt those (alternation
+  supplies the rest, times kept). Revisit post-event if the fuller timing model is
+  wanted.
+
+---
+
 ## 1-cd16. Session Summary — 2026-07-10: deferred bracket enhancements (MVP tier)
 
 Shipped the **MVP tier** of the three items cd15 deferred (owner chose "MVP, all

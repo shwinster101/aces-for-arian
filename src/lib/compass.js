@@ -78,7 +78,10 @@ function resolveLine(spec, rows) {
 // Match meta chip (num + status) rendered on the spare row under the lower
 // feeder line. The estimate text itself is time-dependent, so the component
 // asks App's estFor(num) at render time; the model only says which state.
-function meta(col, row, num, rows) {
+// `fmt` (doubles only) carries the scoring format for that path — 'ad' on the
+// East championship path + East-entry play-ins, 'noad' on West/North/South and
+// the placement/consolation matches. Left undefined for singles (no chip).
+function meta(col, row, num, rows, fmt) {
   const r = rowOf(rows, num);
   return {
     key: `m${num}`, col, row, num,
@@ -86,6 +89,7 @@ function meta(col, row, num, rows) {
     court: (r && r.court) || '',
     final: isFinal(r),
     posted: !!r,
+    fmt: fmt || null,
   };
 }
 
@@ -143,10 +147,10 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
     feederNum: 13 + j, feederTake: 'winner', from: `W of M${13 + j}`,
     nextNum: 15, nextSide: j === 0 ? 'a' : 'b',
   }, rows));
-  for (let k = 0; k < 8; k++) { east.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); east.metas.push(meta(1, 4 * k + 4, k + 1, rows)); }
-  for (let k = 0; k < 4; k++) { east.connectors.push(conn(2, 8 * k + 2, 8 * k + 6, 9 + k, rows)); east.metas.push(meta(2, 8 * k + 7, 9 + k, rows)); }
-  for (let k = 0; k < 2; k++) { east.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 13 + k, rows)); east.metas.push(meta(3, 16 * k + 13, 13 + k, rows)); }
-  east.connectors.push(conn(4, 8, 24, 15, rows)); east.metas.push(meta(4, 25, 15, rows));
+  for (let k = 0; k < 8; k++) { east.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); east.metas.push(meta(1, 4 * k + 4, k + 1, rows, 'ad')); }
+  for (let k = 0; k < 4; k++) { east.connectors.push(conn(2, 8 * k + 2, 8 * k + 6, 9 + k, rows)); east.metas.push(meta(2, 8 * k + 7, 9 + k, rows, 'ad')); }
+  for (let k = 0; k < 2; k++) { east.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 13 + k, rows)); east.metas.push(meta(3, 16 * k + 13, 13 + k, rows, 'ad')); }
+  east.connectors.push(conn(4, 8, 24, 15, rows)); east.metas.push(meta(4, 25, 15, rows, 'ad'));
   const r15 = rowOf(rows, 15);
   east.champion = { row: 16, name: isFinal(r15) ? winnerName(r15) : null, score: isFinal(r15) ? (r15.score || '') : '' };
 
@@ -175,9 +179,9 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
   }, rows));
   west.lines.push(resolveLine({ key: 'w-win', col: 1, row: 16, feederNum: 22, feederTake: 'winner', from: 'W of M22' }, rows));
   west.winner = { col: 1, row: 17, caption: 'West champions' };
-  for (let k = 0; k < 4; k++) { west.connectors.push(conn(4, 8 * k + 2, 8 * k + 6, 16 + k, rows)); west.metas.push(meta(4, 8 * k + 7, 16 + k, rows)); }
-  for (let k = 0; k < 2; k++) { west.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 20 + k, rows)); west.metas.push(meta(3, 16 * k + 13, 20 + k, rows)); }
-  west.connectors.push(conn(2, 8, 24, 22, rows)); west.metas.push(meta(2, 25, 22, rows));
+  for (let k = 0; k < 4; k++) { west.connectors.push(conn(4, 8 * k + 2, 8 * k + 6, 16 + k, rows)); west.metas.push(meta(4, 8 * k + 7, 16 + k, rows, 'noad')); }
+  for (let k = 0; k < 2; k++) { west.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 20 + k, rows)); west.metas.push(meta(3, 16 * k + 13, 20 + k, rows, 'noad')); }
+  west.connectors.push(conn(2, 8, 24, 22, rows)); west.metas.push(meta(2, 25, 22, rows, 'noad'));
 
   // --- North (East QF losers) / South (West R1 losers) ---------------------
   const smallDraw = (keyP, firstNum, finalNum, feederBase, feederTake, caption, headers) => {
@@ -194,8 +198,8 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
     }, rows));
     g.lines.push(resolveLine({ key: `${keyP}-win`, col: 3, row: 4, feederNum: finalNum, feederTake: 'winner', from: `W of M${finalNum}` }, rows));
     g.winner = { col: 3, row: 5, caption };
-    for (let k = 0; k < 2; k++) { g.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, firstNum + k, rows)); g.metas.push(meta(1, 4 * k + 4, firstNum + k, rows)); }
-    g.connectors.push(conn(2, 2, 6, finalNum, rows)); g.metas.push(meta(2, 7, finalNum, rows));
+    for (let k = 0; k < 2; k++) { g.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, firstNum + k, rows)); g.metas.push(meta(1, 4 * k + 4, firstNum + k, rows, 'noad')); }
+    g.connectors.push(conn(2, 2, 6, finalNum, rows)); g.metas.push(meta(2, 7, finalNum, rows, 'noad'));
     return g;
   };
   const north = smallDraw('n', 23, 25, 9, 'loser', 'North champions', ['Semifinals', 'Final', 'Champion']);
@@ -216,7 +220,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
       b: resolveLine({ key: `p${k}b`, col: 1, row: 2, seed: T + 1 + k, tName: teams[T + k] || null, nextNum: num, nextSide: 'b' }, rows),
       note: `Winner → East M${eastMatch}`, // opponent already shows on that East line
       opp,
-      meta: meta(1, 1, num, rows),
+      meta: meta(1, 1, num, rows, 'ad'), // East-entry play-in → ad, like the East path it feeds
     });
   }
   const consolation = [];
@@ -228,7 +232,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
         num,
         a: resolveLine({ key: `pc${k}a`, col: 1, row: 1, feederNum: 29 + 2 * k, feederTake: 'loser', from: `L of M${29 + 2 * k}`, nextNum: num, nextSide: 'a' }, rows),
         b: resolveLine({ key: `pc${k}b`, col: 1, row: 2, feederNum: 29 + 2 * k + 1, feederTake: 'loser', from: `L of M${29 + 2 * k + 1}`, nextNum: num, nextSide: 'b' }, rows),
-        meta: meta(1, 1, num, rows),
+        meta: meta(1, 1, num, rows, 'noad'), // play-in consolation → no-ad placement
       });
     }
     if (pIns % 2 === 1) {
@@ -237,7 +241,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
         num,
         a: resolveLine({ key: `pc${pairs}a`, col: 1, row: 1, feederNum: 29 + pIns, feederTake: 'winner', from: `W of M${29 + pIns}`, nextNum: num, nextSide: 'a' }, rows),
         b: resolveLine({ key: `pc${pairs}b`, col: 1, row: 2, feederNum: 29 + pIns - 1, feederTake: 'loser', from: `L of M${29 + pIns - 1}`, nextNum: num, nextSide: 'b' }, rows),
-        meta: meta(1, 1, num, rows),
+        meta: meta(1, 1, num, rows, 'noad'), // play-in consolation → no-ad placement
       });
     }
   }
@@ -464,6 +468,13 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
     pending.push(m);
   }
 
+  // Path "side" for the owner's East↔West alternation: the East championship
+  // path + the East-entry play-ins are the FRONT; West/North/South + play-in
+  // consolation are the BACK. Alternating front/back across successive calls
+  // keeps every court busy while the half that just played gets its break
+  // (the break IS the other side's court time — no extra recovery window).
+  const sideOf = (m) => (/west|north|south|consol/i.test(m.roundTag || '') ? 'back' : 'front');
+
   // List scheduling: repeatedly place the match that can start EARLIEST.
   // Among ties (same court-contended start time):
   //   1. a match that's been kept waiting ≥ AGING_MS beats one that hasn't
@@ -471,9 +482,11 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
   //      short backdraw calls — the "don't push the final late" guard);
   //   2. both aged → whoever's been ready longest, then bracket play order
   //      (championship path first);
-  //   3. neither aged → SHORTER match first (front-load the West/North/
-  //      South splits), then bracket play order.
+  //   3. neither aged → alternate away from the last-placed side (East↔West),
+  //      then SHORTER match first (front-load the placement splits), then
+  //      bracket play order.
   const AGING_MS = 30 * 60000;
+  let lastSide = null; // side of the most recently placed match
   while (pending.length) {
     let ci = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[ci]) ci = j;
     const courtAt = pool[ci];
@@ -490,6 +503,7 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
         start: Math.max(ready, courtAt),
         ready,
         pos: playPos({ num: m.num, event }),
+        side: sideOf(m),
       };
       if (!best) { best = cand; continue; }
       if (cand.start !== best.start) { if (cand.start < best.start) best = cand; continue; }
@@ -499,6 +513,10 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
         if (cand.ready !== best.ready ? cand.ready < best.ready : cand.pos < best.pos) best = cand;
         continue;
       }
+      // neither aged: alternate away from the last-placed side first (keep the
+      // other half resting), then shorter match, then bracket play order.
+      const cAlt = lastSide && cand.side !== lastSide, bAlt = lastSide && best.side !== lastSide;
+      if (cAlt !== bAlt) { if (cAlt) best = cand; continue; }
       if (cand.durMs !== best.durMs ? cand.durMs < best.durMs : cand.pos < best.pos) best = cand;
     }
     if (!best) break; // safety: cyclic/unsatisfiable (can't happen in a DAG)
@@ -506,6 +524,7 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
     pool[ci] = best.start + best.durMs;
     finish.set(best.m.id, best.start + best.durMs);
     out.set(best.m.num, new Date(best.start));
+    lastSide = best.side;
   }
   return out;
 }
