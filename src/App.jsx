@@ -442,8 +442,8 @@ const SEEDS_FINAL = false;
 // boards, Live Scores, find-my-match, team tracker — those all filter to
 // public events so ops-pushed rows for a hidden event can never leak names).
 // The ops Seeding console is unaffected either way. Doubles revealed
-// 2026-07-09; flip Singles to true to publish the Sunday draw.
-const DRAWS_PUBLIC = { Doubles: true, Singles: false };
+// 2026-07-09; Singles revealed 2026-07-10 (Sunday draw now public).
+const DRAWS_PUBLIC = { Doubles: true, Singles: true };
 const anyDrawsPublic = DRAWS_PUBLIC.Doubles || DRAWS_PUBLIC.Singles;
 
 // (Legacy draw templates — seedOrder/singleElim/losersBracket32/Slot/
