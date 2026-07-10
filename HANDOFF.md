@@ -35,6 +35,41 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd9. Session Summary — 2026-07-10: singles pushed to 9 AM (rain) + best-of-3 finals knob + weather update
+
+New Fri 7/10 forecast (Apple, Dunlap): rain moved back INTO both mornings —
+wet overnight/early-AM each day, drying by ~9 AM. Owner call: **push Sunday
+singles first serve from 8 AM to 9 AM** so courts dry + more sleep.
+
+- **Singles anchor 8→9 AM** (`src/lib/schedule.js` `EVENT_START.Singles`). Every
+  singles projection/label counts from 9:00 now. Updated all public "8 AM"
+  singles references (checklist, ICS calendar, spectator info, schedule tiles,
+  Sunday-singles card, planned-round-times banner first-serve).
+- **`finalsMin` knob** (best-of-3 semis/finals): new Config key "Finals min" +
+  Schedule-card field + `matchMinFor` branch. Applies ONLY to singles Winners
+  SF, the Winners/Comeback finals, the Grand Final + reset (round tags in
+  `SINGLES_FINALS`); QF (R3) stays a pro set; doubles unaffected. **Default 0**
+  (pro sets — no public change) so best-of-3 is opt-in; set ~90 to model it.
+  Wired through `sheet.js` mapConfig (`/final/ && /min/`), `store.js`
+  `setSchedule`, and the "Planned round times" footnote (shows the best-of-3
+  line only when finalsMin > 0).
+- **Projected end times** (9-court sim, `scratchpad/verify/sim-src.mjs`,
+  27-player field): the double-elim tail is long because the Comeback bracket
+  is ~8 serial rounds. Grand Final ends **~7:50 PM** at 9 AM with pro-set
+  finals; **~9:00 PM** with best-of-3 (finalsMin 90); a bracket reset adds one
+  more finals-length match (→ ~8:50 PM pro / ~10:30 PM best-of-3). Flagged to
+  owner as late; best-of-3 left opt-in for that reason.
+- **Weather announcements** (`src/App.jsx` `FALLBACK_ANNOUNCEMENTS`): both
+  Saturday + Sunday rewritten for the Fri 7/10 outlook (wet mornings drying by
+  9 AM; Sunday explains the 9 AM push). New ids `-0710`, ts 2026-07-10.
+- Verified: contract 75/75 (fixed the two 8:00→9:00 projection assertions the
+  anchor change moved; added finalsMin unit checks + singles-only scoping),
+  Scores flow 12/12, round-trip 15/15, doubles view 57/57, check-in 21/21, a
+  weather-render probe (Sunday 9 AM message + Fri 7/10 stamp on Home),
+  lint/build clean.
+
+---
+
 ## 1-cd8. Session Summary — 2026-07-10: singles readiness audit + explicit "Save result" affordance
 
 Owner: "is singles ready to flip? audit the logic and scores. make sure the ops

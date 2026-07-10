@@ -269,6 +269,10 @@ export function mapConfig(rows) {
       // "Rest min" — minimum turnaround between a team's matches
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n >= 0) out.restMin = n;
+    } else if (/final/.test(key) && /min/.test(key)) {
+      // "Finals min" — singles semis/finals as best-of-3 (0 = pro sets)
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n >= 0) out.finalsMin = n;
     }
   });
   return out;
