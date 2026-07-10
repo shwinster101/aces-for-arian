@@ -10,10 +10,11 @@
 export const SCHEDULE_DEFAULTS = {
   courts: 9,        // courts available for play
   // Unified format both events: best-of-3 Fast-4 (first to 4), 10-pt match
-  // tiebreak for the 3rd — no-ad through the R16, ad from the QF on.
-  doublesMin: 40,   // early-round Fast-4 best-of-3 — rough average
-  singlesMin: 40,   // aligned to doubles: same Fast-4 best-of-3 length
-  qfMin: 60,        // QF onward (ad Fast-4 best-of-3) runs a bit longer — ~1 hr
+  // tiebreak for the 3rd — no-ad through the R16, ad from the QF on. Estimates
+  // fold in warm-up + walk-on/off, so they read a touch longer than pure play.
+  doublesMin: 50,   // early-round (no-ad) Fast-4 best-of-3 — realistic average
+  singlesMin: 50,   // aligned to doubles: same Fast-4 best-of-3 length
+  qfMin: 65,        // QF onward (ad Fast-4 best-of-3) — deuce games run longer
   backdrawMin: 0,   // West/North/South/consolation match length (shorter pro
                     // sets); 0/unset = fall back to the event length. Config
                     // key: "Backdraw min".
