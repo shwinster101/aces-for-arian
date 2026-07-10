@@ -20,19 +20,21 @@ const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
 // lines are at rows rA < rB elbows through a border-only item spanning
 // rows rA+1..rB, and its output line lands exactly on the midpoint row —
 // integer by construction for every round below.
-export const COL_W = 176;
+export const COL_W = 200;
 export const ROW_H = 22;
 
 // Paper/dark canvas token sets — shared by CompassDraw and SinglesDraw.
 export const THEMES = {
   paper: {
     '--cd-canvas': '#faf7f0', '--cd-ink': '#171310', '--cd-faint': 'rgba(23,19,16,0.52)',
+    '--cd-from': 'rgba(23,19,16,0.72)',
     '--cd-rule': '#57534e', '--cd-gold': '#996c00', '--cd-gold-bg': '#fbbf24',
     '--cd-hit': 'rgba(251,191,36,0.45)', '--cd-live': '#047857', '--cd-live-bg': 'rgba(4,120,87,0.09)',
     '--cd-panel': '#f3ede1', '--cd-border': '#d8d2c4',
   },
   dark: {
     '--cd-canvas': '#101010', '--cd-ink': '#e4e4e7', '--cd-faint': 'rgba(228,228,231,0.45)',
+    '--cd-from': 'rgba(228,228,231,0.7)',
     '--cd-rule': '#71717a', '--cd-gold': '#fbbf24', '--cd-gold-bg': '#fbbf24',
     '--cd-hit': 'rgba(251,191,36,0.25)', '--cd-live': '#34d399', '--cd-live-bg': 'rgba(52,211,153,0.09)',
     '--cd-panel': '#171717', '--cd-border': '#27272a',
@@ -55,6 +57,7 @@ function resolveLine(spec, rows) {
     key: spec.key, col: spec.col, row: spec.row,
     seed: spec.seed || null, name: null, kind: 'tbd',
     score: '', live: false, court: '', wo: false, from: spec.from || null,
+    drop: !!spec.dropIn,
   };
   const nr = spec.nextNum ? rowOf(rows, spec.nextNum) : null;
   if (nr && nr[spec.nextSide]) { out.name = nr[spec.nextSide]; out.kind = 'name'; }
@@ -75,7 +78,10 @@ function resolveLine(spec, rows) {
 // Match meta chip (num + status) rendered on the spare row under the lower
 // feeder line. The estimate text itself is time-dependent, so the component
 // asks App's estFor(num) at render time; the model only says which state.
-function meta(col, row, num, rows) {
+// `fmt` (doubles only) carries the scoring format for that path — 'ad' on the
+// East championship path + East-entry play-ins, 'noad' on West/North/South and
+// the placement/consolation matches. Left undefined for singles (no chip).
+function meta(col, row, num, rows, fmt) {
   const r = rowOf(rows, num);
   return {
     key: `m${num}`, col, row, num,
@@ -83,7 +89,23 @@ function meta(col, row, num, rows) {
     court: (r && r.court) || '',
     final: isFinal(r),
     posted: !!r,
+    fmt: fmt || null,
   };
+}
+
+// Scoring format by round (uniform Fast-4 best-of-3, 10-pt match tiebreak for
+// the 3rd): NO-AD through the Round of 16 and on the whole backdraw/placement
+// side; AD from the main-draw QUARTERFINAL onward (the matches that decide the
+// title). Derived from the fixed numbering contract — same rule both events.
+//   Doubles: East QF M9-12, SF M13-14, F M15.
+//   Singles: Winners QF M41-44, SF M53-54, F M59, Grand Final M62 (+ reset 63).
+const AD_NUMS = {
+  Doubles: new Set([9, 10, 11, 12, 13, 14, 15]),
+  Singles: new Set([41, 42, 43, 44, 53, 54, 59, 62, 63]),
+};
+export function scoreFmt(event, num) {
+  const set = AD_NUMS[/doub/i.test(event || '') ? 'Doubles' : 'Singles'];
+  return set.has(Number(num)) ? 'ad' : 'noad';
 }
 
 const conn = (col, rowStart, rowEnd, num, rows) => ({
@@ -140,10 +162,10 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
     feederNum: 13 + j, feederTake: 'winner', from: `W of M${13 + j}`,
     nextNum: 15, nextSide: j === 0 ? 'a' : 'b',
   }, rows));
-  for (let k = 0; k < 8; k++) { east.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); east.metas.push(meta(1, 4 * k + 4, k + 1, rows)); }
-  for (let k = 0; k < 4; k++) { east.connectors.push(conn(2, 8 * k + 2, 8 * k + 6, 9 + k, rows)); east.metas.push(meta(2, 8 * k + 7, 9 + k, rows)); }
-  for (let k = 0; k < 2; k++) { east.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 13 + k, rows)); east.metas.push(meta(3, 16 * k + 13, 13 + k, rows)); }
-  east.connectors.push(conn(4, 8, 24, 15, rows)); east.metas.push(meta(4, 25, 15, rows));
+  for (let k = 0; k < 8; k++) { east.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); east.metas.push(meta(1, 4 * k + 4, k + 1, rows, scoreFmt('Doubles', k + 1))); }
+  for (let k = 0; k < 4; k++) { east.connectors.push(conn(2, 8 * k + 2, 8 * k + 6, 9 + k, rows)); east.metas.push(meta(2, 8 * k + 7, 9 + k, rows, scoreFmt('Doubles', 9 + k))); }
+  for (let k = 0; k < 2; k++) { east.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 13 + k, rows)); east.metas.push(meta(3, 16 * k + 13, 13 + k, rows, scoreFmt('Doubles', 13 + k))); }
+  east.connectors.push(conn(4, 8, 24, 15, rows)); east.metas.push(meta(4, 25, 15, rows, scoreFmt('Doubles', 15)));
   const r15 = rowOf(rows, 15);
   east.champion = { row: 16, name: isFinal(r15) ? winnerName(r15) : null, score: isFinal(r15) ? (r15.score || '') : '' };
 
@@ -172,9 +194,9 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
   }, rows));
   west.lines.push(resolveLine({ key: 'w-win', col: 1, row: 16, feederNum: 22, feederTake: 'winner', from: 'W of M22' }, rows));
   west.winner = { col: 1, row: 17, caption: 'West champions' };
-  for (let k = 0; k < 4; k++) { west.connectors.push(conn(4, 8 * k + 2, 8 * k + 6, 16 + k, rows)); west.metas.push(meta(4, 8 * k + 7, 16 + k, rows)); }
-  for (let k = 0; k < 2; k++) { west.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 20 + k, rows)); west.metas.push(meta(3, 16 * k + 13, 20 + k, rows)); }
-  west.connectors.push(conn(2, 8, 24, 22, rows)); west.metas.push(meta(2, 25, 22, rows));
+  for (let k = 0; k < 4; k++) { west.connectors.push(conn(4, 8 * k + 2, 8 * k + 6, 16 + k, rows)); west.metas.push(meta(4, 8 * k + 7, 16 + k, rows, scoreFmt('Doubles', 16 + k))); }
+  for (let k = 0; k < 2; k++) { west.connectors.push(conn(3, 16 * k + 4, 16 * k + 12, 20 + k, rows)); west.metas.push(meta(3, 16 * k + 13, 20 + k, rows, scoreFmt('Doubles', 20 + k))); }
+  west.connectors.push(conn(2, 8, 24, 22, rows)); west.metas.push(meta(2, 25, 22, rows, scoreFmt('Doubles', 22)));
 
   // --- North (East QF losers) / South (West R1 losers) ---------------------
   const smallDraw = (keyP, firstNum, finalNum, feederBase, feederTake, caption, headers) => {
@@ -191,8 +213,8 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
     }, rows));
     g.lines.push(resolveLine({ key: `${keyP}-win`, col: 3, row: 4, feederNum: finalNum, feederTake: 'winner', from: `W of M${finalNum}` }, rows));
     g.winner = { col: 3, row: 5, caption };
-    for (let k = 0; k < 2; k++) { g.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, firstNum + k, rows)); g.metas.push(meta(1, 4 * k + 4, firstNum + k, rows)); }
-    g.connectors.push(conn(2, 2, 6, finalNum, rows)); g.metas.push(meta(2, 7, finalNum, rows));
+    for (let k = 0; k < 2; k++) { g.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, firstNum + k, rows)); g.metas.push(meta(1, 4 * k + 4, firstNum + k, rows, scoreFmt('Doubles', firstNum + k))); }
+    g.connectors.push(conn(2, 2, 6, finalNum, rows)); g.metas.push(meta(2, 7, finalNum, rows, scoreFmt('Doubles', finalNum)));
     return g;
   };
   const north = smallDraw('n', 23, 25, 9, 'loser', 'North champions', ['Semifinals', 'Final', 'Champion']);
@@ -213,7 +235,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
       b: resolveLine({ key: `p${k}b`, col: 1, row: 2, seed: T + 1 + k, tName: teams[T + k] || null, nextNum: num, nextSide: 'b' }, rows),
       note: `Winner → East M${eastMatch}`, // opponent already shows on that East line
       opp,
-      meta: meta(1, 1, num, rows),
+      meta: meta(1, 1, num, rows, scoreFmt('Doubles', num)), // play-in (pre-R16) → no-ad
     });
   }
   const consolation = [];
@@ -225,7 +247,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
         num,
         a: resolveLine({ key: `pc${k}a`, col: 1, row: 1, feederNum: 29 + 2 * k, feederTake: 'loser', from: `L of M${29 + 2 * k}`, nextNum: num, nextSide: 'a' }, rows),
         b: resolveLine({ key: `pc${k}b`, col: 1, row: 2, feederNum: 29 + 2 * k + 1, feederTake: 'loser', from: `L of M${29 + 2 * k + 1}`, nextNum: num, nextSide: 'b' }, rows),
-        meta: meta(1, 1, num, rows),
+        meta: meta(1, 1, num, rows, scoreFmt('Doubles', num)), // play-in consolation → no-ad placement
       });
     }
     if (pIns % 2 === 1) {
@@ -234,7 +256,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
         num,
         a: resolveLine({ key: `pc${pairs}a`, col: 1, row: 1, feederNum: 29 + pIns, feederTake: 'winner', from: `W of M${29 + pIns}`, nextNum: num, nextSide: 'a' }, rows),
         b: resolveLine({ key: `pc${pairs}b`, col: 1, row: 2, feederNum: 29 + pIns - 1, feederTake: 'loser', from: `L of M${29 + pIns - 1}`, nextNum: num, nextSide: 'b' }, rows),
-        meta: meta(1, 1, num, rows),
+        meta: meta(1, 1, num, rows, scoreFmt('Doubles', num)), // play-in consolation → no-ad placement
       });
     }
   }
@@ -321,8 +343,8 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   // L2 (M33-40): W of L1 vs L of W2 (reversed drop — L of M(32-k))
   for (let k = 0; k < 8; k++) {
     CL.push(resolveLine({ key: `l2w-${k}`, col: 2, row: 4 * k + 2, feederNum: 17 + k, feederTake: 'winner', from: `W of M${17 + k}`, nextNum: 33 + k, nextSide: 'a' }, rows));
-    CL.push(resolveLine({ key: `l2d-${k}`, col: 2, row: 4 * k + 4, feederNum: 32 - k, feederTake: 'loser', from: `L of M${32 - k}`, nextNum: 33 + k, nextSide: 'b' }, rows));
-    CC.push(conn(2, 4 * k + 2, 4 * k + 4, 33 + k, rows)); CM.push(meta(2, 4 * k + 5, 33 + k, rows));
+    CL.push(resolveLine({ key: `l2d-${k}`, col: 2, row: 4 * k + 4, feederNum: 32 - k, feederTake: 'loser', from: `L of M${32 - k}`, nextNum: 33 + k, nextSide: 'b', dropIn: true }, rows));
+    CC.push(conn(2, 4 * k + 2, 4 * k + 3, 33 + k, rows)); CM.push(meta(2, 4 * k + 5, 33 + k, rows));
   }
   // L3 (M45-48): pair-up of L2 winners
   for (let j = 0; j < 8; j++) CL.push(resolveLine({ key: `l3-${j}`, col: 3, row: 4 * j + 3, feederNum: 33 + j, feederTake: 'winner', from: `W of M${33 + j}`, nextNum: 45 + Math.floor(j / 2), nextSide: j % 2 === 0 ? 'a' : 'b' }, rows));
@@ -330,8 +352,8 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   // L4 (M49-52): W of L3 vs L of W3 (reversed — L of M(44-k))
   for (let k = 0; k < 4; k++) {
     CL.push(resolveLine({ key: `l4w-${k}`, col: 4, row: 8 * k + 5, feederNum: 45 + k, feederTake: 'winner', from: `W of M${45 + k}`, nextNum: 49 + k, nextSide: 'a' }, rows));
-    CL.push(resolveLine({ key: `l4d-${k}`, col: 4, row: 8 * k + 7, feederNum: 44 - k, feederTake: 'loser', from: `L of M${44 - k}`, nextNum: 49 + k, nextSide: 'b' }, rows));
-    CC.push(conn(4, 8 * k + 5, 8 * k + 7, 49 + k, rows)); CM.push(meta(4, 8 * k + 8, 49 + k, rows));
+    CL.push(resolveLine({ key: `l4d-${k}`, col: 4, row: 8 * k + 7, feederNum: 44 - k, feederTake: 'loser', from: `L of M${44 - k}`, nextNum: 49 + k, nextSide: 'b', dropIn: true }, rows));
+    CC.push(conn(4, 8 * k + 5, 8 * k + 6, 49 + k, rows)); CM.push(meta(4, 8 * k + 8, 49 + k, rows));
   }
   // L5 (M55-56): pair-up
   for (let j = 0; j < 4; j++) CL.push(resolveLine({ key: `l5-${j}`, col: 5, row: 8 * j + 6, feederNum: 49 + j, feederTake: 'winner', from: `W of M${49 + j}`, nextNum: 55 + Math.floor(j / 2), nextSide: j % 2 === 0 ? 'a' : 'b' }, rows));
@@ -339,16 +361,16 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   // L6 (M57-58): W of L5 vs L of W4 (reversed — L of M(54-k))
   for (let k = 0; k < 2; k++) {
     CL.push(resolveLine({ key: `l6w-${k}`, col: 6, row: 16 * k + 10, feederNum: 55 + k, feederTake: 'winner', from: `W of M${55 + k}`, nextNum: 57 + k, nextSide: 'a' }, rows));
-    CL.push(resolveLine({ key: `l6d-${k}`, col: 6, row: 16 * k + 12, feederNum: 54 - k, feederTake: 'loser', from: `L of M${54 - k}`, nextNum: 57 + k, nextSide: 'b' }, rows));
-    CC.push(conn(6, 16 * k + 10, 16 * k + 12, 57 + k, rows)); CM.push(meta(6, 16 * k + 13, 57 + k, rows));
+    CL.push(resolveLine({ key: `l6d-${k}`, col: 6, row: 16 * k + 12, feederNum: 54 - k, feederTake: 'loser', from: `L of M${54 - k}`, nextNum: 57 + k, nextSide: 'b', dropIn: true }, rows));
+    CC.push(conn(6, 16 * k + 10, 16 * k + 11, 57 + k, rows)); CM.push(meta(6, 16 * k + 13, 57 + k, rows));
   }
   // L7 (M60): pair-up of the two survivors
   for (let j = 0; j < 2; j++) CL.push(resolveLine({ key: `l7-${j}`, col: 7, row: 16 * j + 11, feederNum: 57 + j, feederTake: 'winner', from: `W of M${57 + j}`, nextNum: 60, nextSide: j === 0 ? 'a' : 'b' }, rows));
   CC.push(conn(7, 11, 27, 60, rows)); CM.push(meta(7, 28, 60, rows));
   // L8 (M61, Comeback Final): W of L7 vs L of Winners Final
   CL.push(resolveLine({ key: 'l8w', col: 8, row: 19, feederNum: 60, feederTake: 'winner', from: 'W of M60', nextNum: 61, nextSide: 'a' }, rows));
-  CL.push(resolveLine({ key: 'l8d', col: 8, row: 21, feederNum: 59, feederTake: 'loser', from: 'L of M59', nextNum: 61, nextSide: 'b' }, rows));
-  CC.push(conn(8, 19, 21, 61, rows)); CM.push(meta(8, 22, 61, rows));
+  CL.push(resolveLine({ key: 'l8d', col: 8, row: 21, feederNum: 59, feederTake: 'loser', from: 'L of M59', nextNum: 61, nextSide: 'b', dropIn: true }, rows));
+  CC.push(conn(8, 19, 20, 61, rows)); CM.push(meta(8, 22, 61, rows));
   CL.push(resolveLine({ key: 'l9', col: 9, row: 20, feederNum: 61, feederTake: 'winner', from: 'W of M61', nextNum: 62, nextSide: 'b' }, rows));
   comeback.winner = { col: 9, row: 21, caption: '→ Grand Final (M62)' };
 
@@ -371,6 +393,12 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   let champion = { name: null, score: '' };
   if (isFinal(r63)) champion = { name: winnerName(r63), score: r63.score || '' };
   else if (isFinal(r62) && r62.winner === 'a') champion = { name: winnerName(r62), score: r62.score || '' };
+
+  // Scoring-format chip, round-based (same rule as doubles): no-ad through the
+  // Winners R16 + all of the Comeback side; ad from the Winners QF (M41-44) on,
+  // the finals, and the Grand Final. Tag every meta so the chip renders.
+  for (const m of [...winners.metas, ...comeback.metas]) m.fmt = scoreFmt('Singles', m.num);
+  gf.meta.fmt = scoreFmt('Singles', 62);
 
   return { winners, comeback, gf, champion };
 }
@@ -461,6 +489,13 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
     pending.push(m);
   }
 
+  // Path "side" for the owner's East↔West alternation: the East championship
+  // path + the East-entry play-ins are the FRONT; West/North/South + play-in
+  // consolation are the BACK. Alternating front/back across successive calls
+  // keeps every court busy while the half that just played gets its break
+  // (the break IS the other side's court time — no extra recovery window).
+  const sideOf = (m) => (/west|north|south|consol/i.test(m.roundTag || '') ? 'back' : 'front');
+
   // List scheduling: repeatedly place the match that can start EARLIEST.
   // Among ties (same court-contended start time):
   //   1. a match that's been kept waiting ≥ AGING_MS beats one that hasn't
@@ -468,9 +503,11 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
   //      short backdraw calls — the "don't push the final late" guard);
   //   2. both aged → whoever's been ready longest, then bracket play order
   //      (championship path first);
-  //   3. neither aged → SHORTER match first (front-load the West/North/
-  //      South splits), then bracket play order.
+  //   3. neither aged → alternate away from the last-placed side (East↔West),
+  //      then SHORTER match first (front-load the placement splits), then
+  //      bracket play order.
   const AGING_MS = 30 * 60000;
+  let lastSide = null; // side of the most recently placed match
   while (pending.length) {
     let ci = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[ci]) ci = j;
     const courtAt = pool[ci];
@@ -487,6 +524,7 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
         start: Math.max(ready, courtAt),
         ready,
         pos: playPos({ num: m.num, event }),
+        side: sideOf(m),
       };
       if (!best) { best = cand; continue; }
       if (cand.start !== best.start) { if (cand.start < best.start) best = cand; continue; }
@@ -496,6 +534,10 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
         if (cand.ready !== best.ready ? cand.ready < best.ready : cand.pos < best.pos) best = cand;
         continue;
       }
+      // neither aged: alternate away from the last-placed side first (keep the
+      // other half resting), then shorter match, then bracket play order.
+      const cAlt = lastSide && cand.side !== lastSide, bAlt = lastSide && best.side !== lastSide;
+      if (cAlt !== bAlt) { if (cAlt) best = cand; continue; }
       if (cand.durMs !== best.durMs ? cand.durMs < best.durMs : cand.pos < best.pos) best = cand;
     }
     if (!best) break; // safety: cyclic/unsatisfiable (can't happen in a DAG)
@@ -503,6 +545,7 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
     pool[ci] = best.start + best.durMs;
     finish.set(best.m.id, best.start + best.durMs);
     out.set(best.m.num, new Date(best.start));
+    lastSide = best.side;
   }
   return out;
 }

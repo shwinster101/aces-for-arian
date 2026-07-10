@@ -35,7 +35,165 @@ checklist for the next auditor).
 
 ---
 
-## 1-cd15. Session Summary — 2026-07-10: check-in payment intent + draw class-year fixes
+## 1-cd18. Session Summary — 2026-07-10: UNIFIED format (Fast-4, ad from QF) across both events + schedule alignment
+
+Owner consult: "what's the highest-leverage single format? … make sure doubles
+and singles schedule and times are aligned." Recommendation given (uniform Fast-4
+no-ad for throughput/predictability); owner chose **"uniform Fast-4 no-ad
+best-of-3, 10pt for 3rd, until QF ad."** So the cd17 path-dependent (East ad /
+West no-ad) rule is **SUPERSEDED** — ad/no-ad is now **round-based and identical
+for both events**: no-ad through the Round of 16 + the whole backdraw/placement
+side, **ad from the main-draw quarterfinal onward** (the title-deciding matches).
+
+- **One classifier** (`src/lib/compass.js` `scoreFmt(event, num)` + `AD_NUMS`):
+  Doubles ad = East QF/SF/F **M9-15**; Singles ad = Winners QF **M41-44**, SF
+  **M53-54**, F **M59**, Grand Final **M62** (+ reset 63). Everything else no-ad.
+  `buildCompassModel` tags doubles metas via `scoreFmt`; `buildDoubleElimModel`
+  post-processes all singles metas (winners + comeback + GF) the same way — so
+  **singles now shows the AD/NO-AD chip too** (cd17 had it doubles-only).
+- **Chip on both sheets**: `FmtChip` (CompassDraw) renders from `m.fmt`;
+  `SinglesDraw` imports it and renders it in the Grand Final panel (which builds
+  its meta by hand, not via MetaCell).
+- **Schedule aligned** (`src/lib/schedule.js`): `singlesMin` **50→40** to match
+  `doublesMin` (both are the same Fast-4 best-of-3 now); `qfMin` 60 kept for the
+  ad QF-onward rounds (shared). Both events already start 9:00. Doubles times
+  unchanged (doublesMin/restMin untouched); singles early waves shift ~10 min
+  earlier (shorter format). East↔West alternation (cd17) retained.
+- **Copy unified** (`src/App.jsx`): both Rules cards now carry the SAME scoring +
+  ad/no-ad bullets (round-based); reverted the cd17 per-direction "ad/no-ad"
+  legend tags and the "East plays ad" blurb to the round rule; the draw footer no
+  longer says "8-game pro sets"; admin Seeding notes/labels updated too.
+- Verified: lint/build clean; contract **91/0** (doubles ad 9-15 / singles ad
+  41-44,53,54,59,62; all singles metas carry fmt; East/West interleave; singles
+  base aligned to 40 → M10 9:40); **verify-format 11/0** (doubles AD=7, singles
+  AD=8, no-ad on both, unified Rules copy); verify-compass 58/0, verify-singles
+  13/0, verify-nextmatch 10/0; screenshots (doubles East QF ad, singles SF/GF ad).
+- **Note:** the North/South and singles-Comeback backdraws are **no-ad** (they're
+  not the main-draw QF+). `finalsMin` is now vestigial (format is uniform
+  best-of-3) but left as a working knob.
+
+---
+
+## 1-cd17. Session Summary — 2026-07-10: doubles path-dependent scoring format + East↔West alternation
+
+Owner rule change for Saturday doubles: best-of-3 Fast-4 sets (first to 4 games),
+**7-point tiebreak at 3–3**, 10-point match tiebreak at one set all, with scoring
+**ad on the East championship path (+ the East-entry play-ins) and no-ad on
+West/North/South + placement/consolation**. Also alternate East↔West in the call
+order so courts stay full and each half rests while the other plays (owner: the
+other side's play IS the rest — no extra recovery window; durations + 10-min rest
+unchanged). Singles untouched. Shipped:
+
+- **Format tags on the model** (`src/lib/compass.js`): `meta()` gained an optional
+  `fmt` arg; `buildCompassModel` tags East + play-in metas `fmt:'ad'`,
+  West/North/South + consolation `fmt:'noad'`. `buildDoubleElimModel` (singles)
+  passes nothing → no `fmt` → no chip on singles. Derived from build section, not
+  stored — no schema/score-entry change (scores stay free-text).
+- **Per-match AD / NO-AD chip** (`src/CompassDraw.jsx`): new `FmtChip` rendered in
+  `MetaCell` + play-in `PairPanel` when `m.fmt` is set (gold-bordered AD, muted
+  NO-AD), beside the M# token. Doubles-only.
+- **East↔West call-order alternation** (`projectSchedule`, compass.js): added a
+  `sideOf(m)` (front = East/championship + play-ins, back = West/North/South +
+  consolation via the roundTag regex) and a direction-alternation tie-break in the
+  "neither aged" branch (prefer the side different from the last-placed match),
+  with `lastSide` tracked across placements. Durations (40/60) and `restMin` (10)
+  unchanged → first-wave times hold (9:00 / 9:50 / 10:40); East QF (M9) and West R1
+  (M16) interleave in the same wave.
+- **Copy** (`src/App.jsx`): Rules doubles card rewritten to the per-path rule +
+  7-pt/10-pt tiebreaks (dropped the obsolete "first to 5 points" and "switch to
+  regular sets" lines); direction legend cards tagged "ad scoring" (East) /
+  "no-ad" (West/North/South); "Reading the draw" blurb explains the AD/NO-AD chip.
+  `admin/sections/Scores.jsx` placeholder → Fast-4 example ("4-2, 3-4, 10-7").
+- Verified: lint/build clean; contract **89/0** (new: East 1-15 + play-ins 29-31
+  `ad`, West/North/South 16-28 `noad`, consolation `noad`, singles metas no `fmt`,
+  East/West interleave, first-wave times unchanged); new **verify-format 10/0**
+  (18 AD + 15 NO-AD chips on doubles, none on singles, Rules copy updated);
+  verify-compass 58/0, verify-singles 13/0; screenshot of the East path with AD
+  chips.
+- **Note / open question for owner:** the handoff doc's North/South are classified
+  no-ad here (non-East placement). The doc also specifies a 20-min recovery + East
+  60 / no-ad 55-min match lengths; per owner we did NOT adopt those (alternation
+  supplies the rest, times kept). Revisit post-event if the fuller timing model is
+  wanted.
+
+---
+
+## 1-cd16. Session Summary — 2026-07-10: deferred bracket enhancements (MVP tier)
+
+Shipped the **MVP tier** of the three items cd15 deferred (owner chose "MVP, all
+three" given the event is this weekend — additive, no grid-geometry re-baseline).
+Shared canvas, so **doubles compass + singles both** get them; verify-compass
+(58) + verify-singles (13) stayed green as geometry guards.
+
+- **Item 1 — name legibility:** `COL_W` 176 → **200** (`src/lib/compass.js`).
+  One constant; `CANVAS_W`/`WEST_W`/`EAST_W` derive from it, Fit-scale absorbs the
+  width. ~14% more room for long doubles names. (Full = 2-line wrap + taller
+  `ROW_H`, still deferred to post-event.)
+- **Item 2 — score chip:** the absolute feeder score in `LineCell`
+  (`src/CompassDraw.jsx`) is now wrapped in a rounded chip with
+  `background: var(--cd-canvas)` + `pointer-events:none` + ellipsis clamp, so it
+  stays legible over a connector spine or neighbor token. (Full = inline
+  deterministic slot, deferred.)
+- **Item 3 — "your next match" ring (headline win):** picking a team in
+  **Follow-my-team** now marks exactly ONE match with a **▸ Next** pill and
+  scrolls the sheet to it (was: light every name-match the same gold, scroll to
+  the first alphabetical hit). `TeamTracker` computes `nextNum` (priority: live →
+  next posted → projected next round once won → pre-post `firstMatchFor`) and
+  pushes `{event,num}` up via a new `onNextMatch`; `App` holds `nextMatch` and
+  passes an event-scoped `nextNum` to `CompassDraw`/`SinglesDraw`. `MetaCell` +
+  play-in `PairPanel` render the ▸ Next pill (emerald if live, gold if upcoming)
+  and tag `data-next`; the "find yourself" scroll effect prefers `[data-next]`
+  over `[data-hit]`. Correctly rings a top seed's real R16 first match, not their
+  bye (verified: singles seed 5 → M28).
+- Verified: lint/build clean; new **verify-nextmatch 10/0** (ring appears only
+  after a pick, exactly one, follows live match, event-scoped so a singles pick
+  doesn't ring doubles); verify-compass 58, verify-singles 13, contract 84 all
+  green; screenshots (doubles live-ring + singles bye-seed ring, wider cols,
+  score chips).
+- **Still deferred → post-tournament (Full tier):** 2-line name wrapping + taller
+  sheet, inline score refactor, full route/path highlighting with a legend. Spec
+  in the plan file.
+
+---
+
+## 1-cd15. Session Summary — 2026-07-10: free-hanging comeback drop-ins + bracket formatting pass
+
+Owner compared the live singles **Comeback** (loser's) bracket to the 2025
+PrintYourBrackets sheet and prefers the sheet's convention: the **drop-in
+feeder** — the fresh loser falling from the Winners bracket into a drop-in round
+— should hang **free/detached**, not be joined by the elbow to the surviving
+comeback player. Shipped (model-only for the geometry, singles-comeback-only;
+**doubles compass untouched**, guarded by verify-compass staying 58/0):
+
+- **Free-hang** (`src/lib/compass.js`, `buildDoubleElimModel`): the four drop-in
+  connectors L2/L4/L6/L8 had `rowEnd` pulled up to the pair's output midpoint
+  (`4k+4→4k+3`, `8k+7→8k+6`, `16k+12→16k+11`, `21→20`), so the vertical bar
+  reaches only the survivor + output, and the drop line hangs detached. The four
+  `l2d/l4d/l6d/l8d` specs carry a new `dropIn:true`; `resolveLine` sets
+  `out.drop`. L1 lines (also `feederTake:'loser'` but the genuine first round)
+  are NOT flagged.
+- **Dashed cue** (`src/CompassDraw.jsx` `LineCell`): `l.drop` renders the
+  underline **dashed** (vs solid) — a redundant "arrives from elsewhere" signal
+  matching the detached geometry. Live/hit styling still wins.
+- **Formatting pass** (shared canvas): MetaCell projected-time/status token
+  `8px→9px`; seed badge prefixed `#`; "W/L of M#" placeholder raised to a new
+  `--cd-from` mid-tone (paper `rgba(23,19,16,0.72)`, dark `rgba(228,228,231,0.7)`)
+  for legibility; the singles Comeback band (`src/SinglesDraw.jsx`) got a top
+  rule + faint `--cd-panel` tint to separate it from the Winners grid, and its
+  DirLabel caption now calls out the dashed drop-in line.
+- Verified: contract 84/0 (new: 15 drop connectors detached `rowEnd===rowStart+1`,
+  pair-ups keep full span, exactly l2d/l4d/l6d/l8d flagged `drop`, L1/survivors
+  not), verify-compass **58/0** (doubles unchanged regression guard),
+  verify-singles 13/0, lint/build clean, before/after comeback screenshots
+  (paper desktop + 390px) confirm the drop-ins visibly detach.
+- **Deferred** (too risky the night before both events go live): column widening
+  / name wrapping (`COL_W`), the absolute-position score fix in `LineCell`, and a
+  "current round → your next match" highlight affordance. Follow-ups for after
+  the tournament.
+
+---
+
+## 1-cd15b. Session Summary — 2026-07-10: check-in payment intent + draw class-year fixes (parallel work, merged from PR #59)
 
 Owner: show each player's intended payment method (from the registration
 form) at check-in, and make every registered class year render in the

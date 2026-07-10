@@ -24,7 +24,7 @@ function loadSel() {
   } catch { return null; }
 }
 
-export default function TeamTracker({ seeds, matches, events, labelFor, nameFor, sched, now, pInsFor, clocks, onHighlight, query = '', onQuery }) {
+export default function TeamTracker({ seeds, matches, events, labelFor, nameFor, sched, now, pInsFor, clocks, onHighlight, onNextMatch, query = '', onQuery }) {
   const groups = teamOptions(seeds, matches, events, labelFor);
   const [sel, setSel] = useState(loadSel);
 
@@ -47,6 +47,30 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
   const active = sel && events.includes(sel.event) ? sel : null;
   const selValue = active ? JSON.stringify({ event: active.event, label: active.label }) : '';
   const tl = active ? teamTimeline(active.label, active.event, matches, sched, now, pInsFor(active.event)) : null;
+
+  // Your NEXT match to play — the one the draw sheet rings with "▸ Next" and
+  // scrolls to. Priority: on court now → next posted → the projected next round
+  // once you've won (not yet posted) → your first match before anything posts.
+  const nextNum = (() => {
+    if (!active || !tl) return null;
+    if (tl.live) return Number(tl.live.num);
+    if (tl.upcoming[0]) return Number(tl.upcoming[0].num);
+    const decided = (tl.next || []).find((b) => b.decided && !b.terminal && b.num != null);
+    if (decided) return Number(decided.num);
+    if (!tl.mine.length) {
+      const seedRow = (seeds || []).find((s) => s.type === active.event && labelFor(s.name).toLowerCase() === active.label.toLowerCase());
+      const fieldCount = (seeds || []).filter((s) => s.type === active.event).length;
+      const fm = seedRow ? firstMatchFor(active.event, pInsFor(active.event), seedRow.rank, fieldCount) : null;
+      return fm ? Number(fm.num) : null;
+    }
+    return null;
+  })();
+  const activeEvent = active ? active.event : null;
+  const activeLabel = active ? active.label : null;
+  // Push the ring target up to App (per event) whenever the pick or the day moves.
+  useEffect(() => {
+    if (onNextMatch) onNextMatch(activeEvent && nextNum != null ? { event: activeEvent, num: nextNum } : null);
+  }, [activeEvent, activeLabel, nextNum, onNextMatch]);
 
   // Opponents display in board style (first names) when App provides the
   // formatter; the dropdown keeps full labels for identity.

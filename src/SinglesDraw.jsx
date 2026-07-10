@@ -12,15 +12,15 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { buildDoubleElimModel, COL_W, THEMES } from './lib/compass';
-import { LineCell, DirectionGrid, DirLabel } from './CompassDraw';
+import { LineCell, DirectionGrid, DirLabel, FmtChip } from './CompassDraw';
 
 const PAD = 20;
-const CANVAS_W = PAD * 2 + 9 * COL_W; // comeback is the widest band (1624)
+const CANVAS_W = PAD * 2 + 9 * COL_W; // comeback is the widest band (1840 @ COL_W 200)
 
 const JUMPS = [['winners', 'Winners'], ['comeback', 'Comeback'], ['gf', 'Grand Final']];
 
 export default function SinglesDraw({
-  names, rowsByNum, clockFor, highlight = '', showByes = false,
+  names, rowsByNum, clockFor, highlight = '', nextNum = null, showByes = false,
   theme = 'paper', title = 'Aces for Arian 2026 Singles',
 }) {
   const model = buildDoubleElimModel({ names, rows: rowsByNum, showByes });
@@ -63,14 +63,15 @@ export default function SinglesDraw({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Bring your NEXT match (▸ Next cell) into view first, else the first name hit.
   useEffect(() => {
-    if (!highlight || !canvasRef.current || !wrapRef.current) return;
-    const el = canvasRef.current.querySelector('[data-hit]');
+    if ((!highlight && nextNum == null) || !canvasRef.current || !wrapRef.current) return;
+    const el = canvasRef.current.querySelector('[data-next]') || canvasRef.current.querySelector('[data-hit]');
     if (!el) return;
     const wrap = wrapRef.current;
     const { x, y } = offsetIn(el);
     wrap.scrollTo({ left: Math.max(0, x * scale - wrap.clientWidth / 2), top: Math.max(0, y * scale - wrap.clientHeight / 3), behavior: 'smooth' });
-  }, [highlight, scale]);
+  }, [highlight, nextNum, scale]);
 
   const chip = (active) => `whitespace-nowrap px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition ${active ? 'bg-[#fbbf24] text-black border-[#fbbf24]' : 'bg-[#111] text-zinc-400 border-zinc-800 hover:bg-zinc-900'}`;
 
@@ -112,7 +113,7 @@ export default function SinglesDraw({
             <div className="flex items-start gap-8">
               <div data-dir="winners" className="shrink-0">
                 <DirLabel caption="Championship path — lose here and you drop to the Comeback bracket">Winners</DirLabel>
-                <DirectionGrid g={model.winners} clockFor={clockFor} highlight={highlight} />
+                <DirectionGrid g={model.winners} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
               </div>
               <div data-dir="gf" className="shrink-0 mt-10" style={{ width: COL_W + 24 }}>
                 <div className="rounded-lg border px-3 pt-1.5 pb-2.5" style={{ background: 'var(--cd-panel)', borderColor: 'var(--cd-border)' }}>
@@ -123,6 +124,7 @@ export default function SinglesDraw({
                   </div>
                   <div className="flex items-baseline gap-1 pt-1 min-w-0">
                     <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: 'var(--cd-faint)' }}>M62</span>
+                    <FmtChip fmt={model.gf.meta.fmt} />
                     {gfExtra && <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: gfColor }}>· {gfExtra}</span>}
                   </div>
                   <p className="text-[8px] leading-snug mt-1" style={{ color: 'var(--cd-faint)' }}>
@@ -139,10 +141,11 @@ export default function SinglesDraw({
               </div>
             </div>
 
-            {/* Comeback backdraw below — every player's second life */}
-            <div data-dir="comeback" className="mt-4">
-              <DirLabel caption="Lose once, fight back — drop-in rounds meet a fresh loser from the Winners side">Comeback</DirLabel>
-              <DirectionGrid g={model.comeback} clockFor={clockFor} highlight={highlight} />
+            {/* Comeback backdraw below — every player's second life. A top rule +
+                faint tint separates the second-life bracket from the Winners grid. */}
+            <div data-dir="comeback" className="mt-4 pt-3 rounded-lg" style={{ borderTop: '2px solid var(--cd-border)', background: 'var(--cd-panel)' }}>
+              <DirLabel caption="Lose once, fight back — drop-in rounds (dashed line) meet a fresh loser falling from the Winners side">Comeback</DirLabel>
+              <DirectionGrid g={model.comeback} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
             </div>
           </div>
         </div>

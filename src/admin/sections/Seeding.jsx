@@ -866,7 +866,7 @@ function CallSheet({ event, ops }) {
           })}
         </div>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">Order = play sequence (play-ins go first). Times use the Schedule card below — QF onward are 8-game pro sets.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">Order = play sequence (play-ins go first). Times use the Schedule card below — QF onward (ad Fast-4) run a bit longer.</p>
     </Card>
   );
 }
@@ -890,8 +890,8 @@ function ScheduleCard({ ops }) {
         {field('Courts', 'courts', 'in play')}
         {field('Doubles min', 'doublesMin', 'R1 per match')}
         {field('Singles min', 'singlesMin', 'R1 per match')}
-        {field('QF+ min', 'qfMin', '8-game pro set')}
-        {field('Finals min', 'finalsMin', '0 = pro set; ~90 = best-of-3')}
+        {field('QF+ min', 'qfMin', 'QF onward, ad')}
+        {field('Finals min', 'finalsMin', '0 = same as QF+')}
         {field('Warm-up min', 'warmupMin', 'first match')}
       </div>
       <p className="text-[10px] text-zinc-600 mt-3">Saved to this device and pushed to the public Config (needs the latest Apps Script deployed to persist for visitors). <strong className="text-zinc-400">Finals min</strong> only affects singles semis/finals — set ~90 to model best-of-3 (10-pt 3rd); leave 0 for pro sets.</p>
