@@ -35,6 +35,44 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd4. Session Summary — 2026-07-10: CALL ORDER ≠ match numbers (rest windows + backdraw priority)
+
+Owner reviewed an external call-order proposal for the 19-team compass. The
+architectural answer, implemented: **match numbers stay pure bracket
+identity** (the num+event overlay contract between draw.js, the sheet, and
+the public view is untouchable); the **call order is derived** by the
+schedule simulation and surfaced through the projected times + the Up-next
+queue. No renumbering, no schema change, no separate "Bracket ID" column
+needed — `M#` IS the bracket id, `projectSchedule` IS the call order.
+
+- **projectSchedule is now full list-scheduling** (src/lib/compass.js):
+  honors (1) the feeder chain, (2) a **rest window** between a team's
+  matches (`restMin`, default 10 — Config "Rest min"; feeders already final
+  are assumed rested), and (3) the 9-court pool with the proposal's
+  priorities under contention: **shorter backdraw matches first**
+  (front-load West/North/South splits) with a **30-min aging guard** so a
+  long championship QF/SF/F can never be starved into pushing the final
+  late (both-aged → longest-waiting, then championship path first).
+- **`backdrawMin`** (Config "Backdraw min"): shorter pro sets for
+  West/North/South/comeback/consolation rounds; unset → event length.
+  `matchMinFor` routes by round tag. Owner can hand-add "Rest min,10" /
+  "Backdraw min,30" rows to the Config tab — no redeploy needed.
+- **Up-next queue is ordered by the projection** (`callPos`), not raw match
+  number — the desk can call straight off the public board and it matches
+  the optimized order. Ready-only filter unchanged.
+- Default-config cascade for the real 19-team field: play-ins + 5 open R1
+  at 9:00 → hosts (M1/M5/M7) + consolation 9:50 → QFs/West from 10:40 →
+  final ~1 PM. All chips re-anchor live during the day.
+- **TDZ footgun fixed while wiring**: upNextQueue's sort used `callPos`
+  before its `const` initialized — crashes only when the comparator RUNS
+  (≥2 queue rows), so the empty-fixture scenario passed while the mid-day
+  one white-screened. Queue derivation now sits below the projection block.
+- Verified: contract 41/41 (rest shifts exact, restMin/backdrawMin knobs,
+  1-court contention calls backdraw first, aging guard gets the QF on
+  within ~40 min), view 51/51, round-trip 15/15, lint/build clean.
+
+---
+
 ## 1-cd3. Session Summary — 2026-07-10 early: projected times for EVERY match + player-first flow
 
 Owner: "put down est start times of every team's first match at least —

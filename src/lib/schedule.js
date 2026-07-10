@@ -11,7 +11,13 @@ export const SCHEDULE_DEFAULTS = {
   courts: 9,        // courts available for play
   doublesMin: 40,   // Fast-4 best-of-3 doubles match — rough average
   singlesMin: 50,   // 6-/8-game singles match — rough average (varies by round)
-  qfMin: 60,        // QF onward: 8-game pro set, with ad — ~1 hr each
+  qfMin: 60,        // championship QF onward: 8-game pro set, with ad — ~1 hr
+  backdrawMin: 0,   // West/North/South/consolation match length (shorter pro
+                    // sets); 0/unset = fall back to the event length. Config
+                    // key: "Backdraw min".
+  restMin: 10,      // rest window between a team's matches — a match can't be
+                    // called until 10 min after its feeder ends. Config key:
+                    // "Rest min" / "Break min".
   warmupMin: 10,    // on-court warm-up; parsed from Config for compat but NOT
                     // added to estimates — first-wave times read 9:00, not 9:10
 };
@@ -60,7 +66,12 @@ export function matchMinFor(event, sched, round) {
   const s = { ...SCHEDULE_DEFAULTS, ...(sched || {}) };
   const isD = /doub/i.test(event || '');
   const longSet = isD ? LONG_ROUNDS.Doubles : LONG_ROUNDS.Singles;
-  if (round && longSet.has(String(round).trim())) return s.qfMin;
+  const tag = String(round || '').trim();
+  if (tag && longSet.has(tag)) return s.qfMin;
+  // Backdraw rounds (West/North/South, comeback, play-in consolation) play
+  // shorter pro sets when the desk sets "Backdraw min" — front-loading them
+  // keeps courts turning without delaying the championship path.
+  if (s.backdrawMin > 0 && /west|north|south|comeback|consol/i.test(tag)) return s.backdrawMin;
   return isD ? s.doublesMin : s.singlesMin;
 }
 

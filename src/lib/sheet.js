@@ -261,6 +261,14 @@ export function mapConfig(rows) {
     } else if (/warm/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n >= 0) out.warmupMin = n;
+    } else if (/back.?draw|consol/.test(key) && /min/.test(key)) {
+      // "Backdraw min" — shorter pro sets for West/North/South/consolation
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n > 0) out.backdrawMin = n;
+    } else if (/rest|break/.test(key) && /min/.test(key)) {
+      // "Rest min" — minimum turnaround between a team's matches
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n >= 0) out.restMin = n;
     }
   });
   return out;
