@@ -1591,8 +1591,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Site-wide announcement banner — newest non-dismissed post, every tab */}
-      {announcements.length > 0 && announcements[0].id !== dismissedAnnounce && (
+      {/* Site-wide announcement banner — newest non-dismissed post, every tab.
+          An "all clear" post (category 'clear', from ops "Clear the banner")
+          suppresses the banner entirely; it still appears in the Home feed. */}
+      {announcements.length > 0 && announcements[0].category !== 'clear' && announcements[0].id !== dismissedAnnounce && (
         <AnnouncementBanner
           item={announcements[0]}
           now={now}
