@@ -35,6 +35,26 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd19. Session Summary — 2026-07-10 PM: realistic match-time estimates + Sat/Sun weather refresh
+
+- **Match-time realism** (`src/lib/schedule.js`): owner felt a 1 PM doubles finish
+  read too early for best-of-3 Fast-4 (first to 4, 10-pt match TB for the 3rd).
+  Bumped the estimates to fold in warm-up + walk-on/off: `doublesMin`/`singlesMin`
+  **40→50** (no-ad early rounds), `qfMin` **60→65** (ad QF onward). Projected
+  doubles East final now **~1:30 PM start, whole draw done ~2:35 PM** (was ~2:00);
+  real-world slippage → plan ~3 PM. Config-overridable via the Schedule card.
+  Match ORDER is unchanged and re-audited: all 33 matches, 0 feeder/rest
+  violations, East↔West still interleave (QF M9 + West M16 share the 10:00 wave).
+- **Weather refresh** (`src/App.jsx` `FALLBACK_ANNOUNCEMENTS`): Saturday's light
+  overnight rain (~0.25") clears by ~6 AM (hourly → ~0%); note now says the
+  set-up crew squeegees + rolls the shed out at 8 AM and first serve HOLDS at
+  9:00. Sunday updated to the new forecast — **0% rain, all sun**, low 65 → high
+  86; the only factor is heat.
+- Verified: lint/build clean, contract 91/0 (pins its own durations, unaffected),
+  audit-order 6/6 under the new defaults.
+
+---
+
 ## 1-cd18. Session Summary — 2026-07-10: UNIFIED format (Fast-4, ad from QF) across both events + schedule alignment
 
 Owner consult: "what's the highest-leverage single format? … make sure doubles

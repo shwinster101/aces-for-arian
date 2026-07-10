@@ -383,26 +383,26 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // Fallback announcements — shown until the live Announcements tab returns
 // rows (same pattern as fallbackRoster), so the section launches with real
 // content even before the Apps Script redeploy that activates live posting.
-// Forecast source: Apple Weather (Dunlap), pulled Fri 2026-07-10 ~10:45 AM,
-// Saturday note refreshed Fri 7/10 PM. Array order = display order; Saturday
-// leads as the nearer day. Temps are Apple-exact. Rain sits in both mornings —
-// wet overnight/early-AM, drying by ~9 AM. Saturday first serve HOLDS at 9:00:
-// only ~0.25" of light rain overnight, and a squeegee crew clears the courts at
-// dawn. Singles Sunday first serve is 9 AM (see EVENT_START in lib/schedule.js).
+// Forecast source: Apple Weather (Dunlap), refreshed Fri 2026-07-10 PM. Array
+// order = display order; Saturday leads as the nearer day. Temps are Apple-exact.
+// Saturday: the light overnight rain (~0.25") clears by ~6 AM (hourly chance
+// drops to ~0% after 6), so the squeegee crew + shed set-up run at 8 AM and
+// first serve HOLDS at 9:00. Sunday now reads perfect — 0% rain, all sun.
+// First serve 9 AM both days (see EVENT_START in lib/schedule.js).
 const FALLBACK_ANNOUNCEMENTS = [
   {
     id: 'fallback-weather-sat-0710',
-    ts: '2026-07-10T18:35:00-05:00',
+    ts: '2026-07-10T18:40:00-05:00',
     event: 'Doubles',
     category: 'weather',
-    message: "Saturday doubles is ON — first serve holds at 9:00 AM (update Fri 7/10 PM). Overnight into early morning brings light rain, only about a quarter inch, tapering by dawn. Our squeegee crew is on the courts at first light to clear any standing water, so they'll be dry and ready by 9. Expect a cool, cloudy start (low ~67°F) breaking to partly sunny by late morning and full sun in the afternoon (high ~84°F), with hourly rain risk near 0% once we're underway. Bring a towel for the early games; hydrate and grab shade once the sun's out. Watch Announcements for any change.",
+    message: "Saturday doubles is ON — first serve holds at 9:00 AM (update Fri 7/10 PM). The rain is an overnight story only: about a quarter inch of light rain before dawn, and the hourly chance drops to near 0% after 6 AM — dry the rest of the day. Set-up crew is out at 8 AM to squeegee the courts and roll the shed out, so everything's ready for a 9:00 start. Cool, cloudy at the open (low ~67°F), breaking to full sun by afternoon (high ~84°F). Bring a towel for the early games and sunscreen for later. Watch Announcements for any change.",
   },
   {
     id: 'fallback-weather-sun-0710',
-    ts: '2026-07-10T10:46:00-05:00',
+    ts: '2026-07-10T18:41:00-05:00',
     event: 'Singles',
     category: 'weather',
-    message: "Sunday singles now starts at 9 AM (Apple Weather, as of Fri 7/10): rain moves through overnight and early morning, so we pushed first serve back an hour to let the courts dry. Pre-match — showers before dawn taper by ~7–8 AM; by the 9 AM start the hourly rain risk is back to 0%. During play — clearing to full sun from mid-morning on, dry the rest of the day. Low 67°F at the start, high 85°F mid-afternoon — once the sun's out, heat is the opponent: hydrate, sunscreen, shade between matches.",
+    message: "Sunday singles looks perfect — first serve 9:00 AM, 0% chance of rain all day and wall-to-wall sun. Cool at the start (low ~65°F) warming to a high of ~86°F mid-afternoon, so once the sun's up the only opponent is the heat: hydrate early and often, sunscreen, and grab shade between matches. No weather holds expected — just great tennis weather.",
   },
 ];
 
