@@ -663,7 +663,7 @@ function DrawBoard({ event, ops, participants }) {
           </DndContext>
         </>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here</strong> — not only in Scores — so the bracket, the queue, and the public draw stay in step. The GF reset match appears only if the Comeback champ takes the Grand Final.</p>
+      <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here or on the Scores tab</strong> — either advances the bracket, the queue, and the public draw together. The GF reset match appears only if the Comeback champ takes the Grand Final.</p>
     </Card>
   );
 }

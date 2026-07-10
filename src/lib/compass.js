@@ -360,8 +360,17 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
     meta: meta(1, 1, 62, rows),
     reset: !!rowOf(rows, 63), // posted reset row → M63 is ON
   };
+  // Champion is only truly decided once the bracket-reset question is settled:
+  //  - if the reset M63 was played, ITS winner takes the title (with M63's score);
+  //  - a Winners-bracket win in M62 (side 'a') ends it outright — no reset;
+  //  - a Comeback win in M62 (side 'b') only FORCES the reset, so the title stays
+  //    undecided until M63 is final. Crowning M62's winner unconditionally would
+  //    crown the comeback player early and wrongly if they then lose the reset.
   const r62 = rowOf(rows, 62);
-  const champion = { name: isFinal(r62) ? winnerName(r62) : null, score: isFinal(r62) ? (r62.score || '') : '' };
+  const r63 = rowOf(rows, 63);
+  let champion = { name: null, score: '' };
+  if (isFinal(r63)) champion = { name: winnerName(r63), score: r63.score || '' };
+  else if (isFinal(r62) && r62.winner === 'a') champion = { name: winnerName(r62), score: r62.score || '' };
 
   return { winners, comeback, gf, champion };
 }

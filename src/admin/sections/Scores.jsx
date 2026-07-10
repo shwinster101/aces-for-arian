@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Trophy, Zap } from 'lucide-react';
+import { Trophy, Zap, Check } from 'lucide-react';
 import { playPos } from '../../lib/schedule';
+import { isEngineRow } from '../store';
 import { Card, PageHeader, Pills, TextInput, Select, EmptyState } from '../ui';
+
+const clockTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -28,7 +31,7 @@ export default function Scores({ ops }) {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Scores & Courts" subtitle="Work the queue in playing order: set a match live + assign its court when it goes on, then tap the winner and enter the score. The public board follows automatically. Reorder the queue from Seeding & Draws." />
+      <PageHeader title="Scores & Courts" subtitle="Work the queue in playing order: set a match live + assign its court when it goes on, then tap the winner and enter the score. Tap Save result to send it — the button turns to “Saved ✓” so you know it went. Reorder the queue from Seeding & Draws." />
 
       <AceTracker ops={ops} />
 
@@ -54,14 +57,36 @@ export default function Scores({ ops }) {
 }
 
 function ScoreRow({ m, ops }) {
-  const setWinner = (side) => ops.updateMatch(m.id, { winner: m.winner === side ? '' : side, status: 'final' });
+  const engine = isEngineRow(m);
+  const savedAt = ops.matchSavedAt[m.id] || 0;
+  // Dirty/saved without reading a clock in render: on each edit we remember the
+  // row's saved-timestamp AS OF that edit. If no push has landed since (savedAt
+  // unchanged) the row is dirty; once any push bumps savedAt past that marker
+  // (debounced auto-flush, the Save button, or a bracket re-sync) it's saved.
+  const [editMarker, setEditMarker] = useState(null);
+  const update = (patch) => { ops.updateMatch(m.id, patch); setEditMarker(savedAt); };
+
+  // Winner: on a bracket-managed (engine) row, route through the draw engine so
+  // the result ADVANCES the bracket — populates the next round and re-syncs
+  // this flat row, exactly like the Draw board — instead of only flagging the
+  // row final. Tapping the same side again un-marks it (markBracketWinner
+  // toggles). It pushes immediately + stamps the row saved. Hand-added rows
+  // (no bracket behind them) just set the flat winner/final.
+  const setWinner = (side) => {
+    if (engine) { setEditMarker(savedAt); ops.markBracketWinner(m.event, m.id, side); }
+    else update({ winner: m.winner === side ? '' : side, status: 'final' });
+  };
+
+  const dirty = editMarker !== null && savedAt === editMarker;
+  const saved = editMarker !== null && savedAt > editMarker;
+
   return (
     <div className="bg-[#111] border border-zinc-800 rounded-xl p-3 space-y-2.5">
       <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
         {m.round && <span className="text-[#fbbf24]">{m.round}</span>}
         {m.num !== '' && <span>· Match {m.num}</span>}
         <span className="ml-auto flex items-center gap-1.5 normal-case tracking-normal font-medium text-zinc-400">
-          Court <Select value={m.court} onChange={(v) => ops.updateMatch(m.id, { court: v })} options={COURTS} placeholder="—" />
+          Court <Select value={m.court} onChange={(v) => update({ court: v })} options={COURTS} placeholder="—" />
         </span>
       </div>
 
@@ -78,10 +103,29 @@ function ScoreRow({ m, ops }) {
       </div>
 
       <div className="flex items-center gap-2.5">
-        <TextInput value={m.score} onChange={(v) => ops.updateMatch(m.id, { score: v })}
+        <TextInput value={m.score} onChange={(v) => update({ score: v })}
           placeholder="Score, e.g. 6-4, 3-6, 10-7" className="flex-1" />
-        <Select value={m.status} onChange={(v) => ops.updateMatch(m.id, { status: v })}
+        <Select value={m.status} onChange={(v) => update({ status: v })}
           options={['scheduled', 'live', 'final']} placeholder="Status" />
+      </div>
+
+      {/* Explicit save so a volunteer gets a per-row receipt, not just the
+          global header. Flushes any pending push right now; "Saved ✓ H:MM"
+          reads honest — no-cors means "sent", not "confirmed delivered" — so
+          the tooltip nudges a spot-check on the public board for big results. */}
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => ops.flushMatch(m.id)}
+          title="Sends this row to the sheet now. Delivery can't be auto-confirmed — spot-check the public board (View live) for important results."
+          className={`flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl text-[11px] font-black uppercase tracking-wider border transition active:scale-95 ${
+            saved
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : dirty
+                ? 'bg-[#fbbf24] border-[#fbbf24] text-black'
+                : 'bg-[#111] border-zinc-700 text-zinc-300 hover:border-[#fbbf24]/40 hover:text-[#fbbf24]'
+          }`}>
+          {saved ? <><Check className="w-4 h-4" /> Saved ✓ · {clockTime(savedAt)}</> : 'Save result'}
+        </button>
       </div>
     </div>
   );
