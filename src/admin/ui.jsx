@@ -71,11 +71,12 @@ export function Pills({ value, onChange, options }) {
   );
 }
 
-export function SearchBox({ value, onChange, placeholder = "Search by name…" }) {
+export function SearchBox({ value, onChange, placeholder = "Search by name…", inputRef }) {
   return (
     <div className="flex items-center gap-2.5 bg-[#111] border border-zinc-800 rounded-xl px-3.5 py-2.5 focus-within:border-[#fbbf24]/40 transition-colors">
       <Search className="w-4 h-4 text-zinc-600 shrink-0" />
       <input
+        ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

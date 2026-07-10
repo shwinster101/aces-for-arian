@@ -35,6 +35,51 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd7. Session Summary — 2026-07-10: unified check-in row + cash drawer
+
+Owner-forwarded arrival-rush audit; directive: "implement the unified
+check-in row and cash-float controls directly." Note for future auditors:
+that audit's P0 "contradictory source of truth" came from a STALE checkout —
+the OpsDesk multi-device sync (poll + per-field upsert + local-edit guard)
+has been in store.js since 1-cd-era work; nothing to reconcile. What shipped:
+
+- **Unified arrival row** (src/admin/sections/CheckIns.jsx rewrite): each
+  player row now carries the WHOLE arrival — Unpaid/Paid·method chip on the
+  name, `Collect $40` opens an inline method panel (Venmo / Zelle / Cash… /
+  Comped-exception), Cash shows one-tap tendered shortcuts ($40/$50/$60/
+  $100 + custom) labeled with the change due, `Give M` (shirt, size in the
+  button), and `Finish check-in` which REFUSES until payment is resolved
+  (tapping it unpaid opens the collect panel instead). Finishing clears and
+  refocuses the search for the next player in line. Green chips/buttons tap
+  to undo (payment unmark asks confirm). Payments tab is repositioned as
+  the reconciliation view ('Comped' added to its method list so it
+  round-trips).
+- **Supporters split from players**: Supporter rows have no fee, no shirt,
+  no Collect — just arrival — and are excluded from the checked-in/paid/
+  shirts counts (a P1 from the audit that fell out of the fee gating).
+- **Cash drawer** (src/admin/CashDrawer.jsx, new; store `cash` slice):
+  starting float + volunteer/shift name, auto-ledger (a Cash collect on
+  Check-ins logs name/tendered/change), quick-adjust row for merch cash /
+  refunds, expected-in-drawer total (float + net cash in), close-out counted
+  total with over/short variance, entry delete as the mistake-undo, and a
+  "small bills running low" warning when change given ≥ 80% of the float.
+  Mounted collapsed on Check-ins (working surface, banner always visible)
+  and expanded on Payments (reconciliation). **DELIBERATELY LOCAL-ONLY**:
+  one physical cash box = one device; syncing a drawer ledger is how two
+  phones drift one count. Payment *status* still syncs like before.
+- **Pinned volunteer script** (store `deskScript`, local): "Say this to
+  every player" card at the top of Check-ins — Warm-up at / Report scores /
+  Next matches (default "Website + court board"), editable blanks HQ fills
+  each morning, big high-contrast text for outdoor phones.
+- Store additions are all local-only (`cash`, `deskScript` + setCash/
+  recordCash/removeCashEntry/setDeskScript); SYNCED_OVERLAY_FIELDS is
+  unchanged, so the Apps Script needs NO redeploy.
+- Verified: new admin flow suite 21/21 (payment gate, cash math incl.
+  float/variance/low-bills, search refocus, supporter path, Payments
+  round-trip), round-trip 15/15, doubles view 57/57, lint/build clean.
+
+---
+
 ## 1-cd6. Session Summary — 2026-07-10: singles bridge — double-elim sheet canvas + bye-aware schedule
 
 Owner ops-audit request: "audit the singles bracket on the ops end… make sure
