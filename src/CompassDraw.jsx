@@ -13,7 +13,7 @@
 // with one CSS transform. Paper-light for sunlight; dark tokens one prop away.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { buildCompassModel, COL_W, ROW_H } from './lib/compass';
+import { buildCompassModel, COL_W, ROW_H, THEMES } from './lib/compass';
 import { SEED_CUT } from './lib/entrants';
 
 const HDR = 1; // header row offset — model rows are 1-based below the column headers
@@ -23,25 +23,10 @@ const WEST_W = 4 * COL_W;
 const EAST_W = 5 * COL_W;
 const CANVAS_W = PAD * 2 + WEST_W + GAP + EAST_W; // 1640
 
-const THEMES = {
-  paper: {
-    '--cd-canvas': '#faf7f0', '--cd-ink': '#171310', '--cd-faint': 'rgba(23,19,16,0.52)',
-    '--cd-rule': '#57534e', '--cd-gold': '#996c00', '--cd-gold-bg': '#fbbf24',
-    '--cd-hit': 'rgba(251,191,36,0.45)', '--cd-live': '#047857', '--cd-live-bg': 'rgba(4,120,87,0.09)',
-    '--cd-panel': '#f3ede1', '--cd-border': '#d8d2c4',
-  },
-  dark: {
-    '--cd-canvas': '#101010', '--cd-ink': '#e4e4e7', '--cd-faint': 'rgba(228,228,231,0.45)',
-    '--cd-rule': '#71717a', '--cd-gold': '#fbbf24', '--cd-gold-bg': '#fbbf24',
-    '--cd-hit': 'rgba(251,191,36,0.25)', '--cd-live': '#34d399', '--cd-live-bg': 'rgba(52,211,153,0.09)',
-    '--cd-panel': '#171717', '--cd-border': '#27272a',
-  },
-};
-
 // One draw line: a name sitting on an underline rule, sheet-style. Names all
 // start flush-left; the seed badge rides the RIGHT edge so alignment never
 // staggers. The feeder's score is pinned to the empty top half of the cell.
-function LineCell({ l, highlight, mirrored, hdr = HDR }) {
+export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
   const hit = !!(highlight && l.kind === 'name' && !l.wo && l.name && l.name.toLowerCase().includes(highlight));
   const text = l.kind === 'name' ? l.name : l.kind === 'bye' ? 'BYE' : l.kind === 'from' ? l.from : '';
   const faded = l.kind !== 'name' || l.wo;
@@ -80,7 +65,7 @@ function LineCell({ l, highlight, mirrored, hdr = HDR }) {
 // ONE compact token per match — "M2 · ~9:00 AM" scheduled, "M1 · Ct 3 LIVE"
 // live, bare "M2" otherwise — hugging the connector edge so it reads as the
 // pair's metadata, never as a third line of text.
-function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
+export function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
   let extra = null, color = 'var(--cd-faint)';
   if (m.live) { extra = m.court ? `Ct ${m.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
   // UNPOSTED matches carry a projected time too (9-court simulation) — every
@@ -97,7 +82,7 @@ function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
   );
 }
 
-function DirectionGrid({ g, clockFor, highlight }) {
+export function DirectionGrid({ g, clockFor, highlight }) {
   return (
     <div className="grid" style={{ gridTemplateColumns: `repeat(${g.cols}, ${COL_W}px)`, gridAutoRows: `${ROW_H}px` }}>
       {g.headers.map((h, i) => (
@@ -136,7 +121,7 @@ function DirectionGrid({ g, clockFor, highlight }) {
 
 // Play-in / consolation panels — the sheet's top-left slot (first on court).
 // Two rules per match, one compact meta line, no prose.
-function PairPanel({ dataDir, title, items, clockFor, highlight }) {
+export function PairPanel({ dataDir, title, items, clockFor, highlight }) {
   if (!items || !items.length) return null;
   return (
     <div data-dir={dataDir} className="rounded-lg border px-3 pt-1.5 pb-2.5 shrink-0" style={{ background: 'var(--cd-panel)', borderColor: 'var(--cd-border)' }}>
@@ -165,7 +150,7 @@ function PairPanel({ dataDir, title, items, clockFor, highlight }) {
   );
 }
 
-function DirLabel({ children, caption }) {
+export function DirLabel({ children, caption }) {
   return (
     <div className="flex items-baseline gap-2.5 mb-0.5">
       <span className="text-xl font-black uppercase tracking-wide leading-none" style={{ color: 'var(--cd-ink)' }}>{children}</span>

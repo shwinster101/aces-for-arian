@@ -10,7 +10,7 @@
 // truth for routing, so the public projection can never drift from the ops
 // bracket.
 
-import { graphFor, seedOrder } from './draw';
+import { graphFor, seedOrder, buildDraw, resolve } from './draw';
 import { playPos, stakesFor, waitsOnLabel, matchMinFor, dayStartMs, SCHEDULE_DEFAULTS } from './schedule';
 
 const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
@@ -22,6 +22,22 @@ const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
 // integer by construction for every round below.
 export const COL_W = 176;
 export const ROW_H = 22;
+
+// Paper/dark canvas token sets — shared by CompassDraw and SinglesDraw.
+export const THEMES = {
+  paper: {
+    '--cd-canvas': '#faf7f0', '--cd-ink': '#171310', '--cd-faint': 'rgba(23,19,16,0.52)',
+    '--cd-rule': '#57534e', '--cd-gold': '#996c00', '--cd-gold-bg': '#fbbf24',
+    '--cd-hit': 'rgba(251,191,36,0.45)', '--cd-live': '#047857', '--cd-live-bg': 'rgba(4,120,87,0.09)',
+    '--cd-panel': '#f3ede1', '--cd-border': '#d8d2c4',
+  },
+  dark: {
+    '--cd-canvas': '#101010', '--cd-ink': '#e4e4e7', '--cd-faint': 'rgba(228,228,231,0.45)',
+    '--cd-rule': '#71717a', '--cd-gold': '#fbbf24', '--cd-gold-bg': '#fbbf24',
+    '--cd-hit': 'rgba(251,191,36,0.25)', '--cd-live': '#34d399', '--cd-live-bg': 'rgba(52,211,153,0.09)',
+    '--cd-panel': '#171717', '--cd-border': '#27272a',
+  },
+};
 
 const rowOf = (rows, n) => rows.get(Number(n)) || null;
 const isFinal = (r) => !!r && r.status === 'final' && (r.winner === 'a' || r.winner === 'b');
@@ -227,6 +243,130 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
 }
 
 // ---------------------------------------------------------------------------
+// SINGLES DOUBLE-ELIM MODEL — same sheet grammar as the compass (lines on
+// rules, elbow connectors, one token per match), same NUMBERING CONTRACT
+// (winners rounds start [1,25,41,53,59]; comeback [17,33,45,49,55,57,60,61];
+// Grand Final 62, reset 63). Winners is a plain single-elim grid
+// (row = 2^r·(2j+1)); the comeback alternates PAIR-UP rounds (halve) with
+// DROP-IN rounds (same match count: the survivor line meets a fresh loser
+// dropping from the winners side — reversed order, per the engine). All
+// feeder/next wiring below mirrors graphFor('Singles') and is asserted
+// against it in the verification suite.
+// ---------------------------------------------------------------------------
+export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = false }) {
+  const S = 32;
+  const order = seedOrder(S);
+
+  // --- Winners grid (6 cols: R32 … Winners Final → GF line) ---------------
+  const leafSpecs = order.map((seed, i) => ({
+    key: `w1-${i}`, col: 1, row: 2 * i + 1, seed,
+    tName: names[seed - 1] || null,
+    nextNum: Math.floor(i / 2) + 1, nextSide: i % 2 === 0 ? 'a' : 'b',
+  }));
+  if (showByes) {
+    for (let i = 0; i < S; i++) {
+      const me = leafSpecs[i], sib = leafSpecs[i ^ 1];
+      if (!me.tName && sib.tName) me.bye = true;
+    }
+  }
+  const winners = {
+    cols: 6, rows: 64, lines: [], connectors: [], metas: [],
+    headers: ['Round of 32', 'Round of 16', 'Quarterfinals', 'Semifinals', 'Winners Final', 'To Grand Final'],
+  };
+  for (const s of leafSpecs) winners.lines.push(resolveLine(s, rows));
+  const W_BASE = [1, 25, 41, 53, 59], W_COUNT = [16, 8, 4, 2, 1];
+  for (let c = 2; c <= 6; c++) {
+    const rIdx = c - 2;                 // feeder round index into W_BASE
+    const winnersOf = W_COUNT[rIdx];    // lines in this column
+    for (let j = 0; j < winnersOf; j++) {
+      const feederNum = W_BASE[rIdx] + j;
+      const a = c === 2 ? leafSpecs[2 * j] : null, b = c === 2 ? leafSpecs[2 * j + 1] : null;
+      const woName = a && a.bye ? (b && b.tName) : b && b.bye ? (a && a.tName) : null;
+      winners.lines.push(resolveLine({
+        key: `w${c}-${j}`, col: c, row: Math.pow(2, c - 1) * (2 * j + 1),
+        feederNum, feederTake: 'winner', woName, from: `W of M${feederNum}`,
+        nextNum: c === 6 ? 62 : W_BASE[rIdx + 1] + Math.floor(j / 2),
+        nextSide: c === 6 ? 'a' : (j % 2 === 0 ? 'a' : 'b'),
+      }, rows));
+    }
+    for (let k = 0; k < winnersOf / (c === 6 ? 1 : 2); k++) {
+      if (c === 6) break; // no matches inside the GF-line column
+      const num = W_BASE[rIdx + 1] + k;
+      const rA = Math.pow(2, c - 1) * (4 * k + 1), rB = Math.pow(2, c - 1) * (4 * k + 3);
+      winners.connectors.push(conn(c, rA, rB, num, rows));
+      winners.metas.push(meta(c, rB + 1, num, rows));
+    }
+  }
+  // W1 matches connect from column 1
+  for (let k = 0; k < 16; k++) { winners.connectors.push(conn(1, 4 * k + 1, 4 * k + 3, k + 1, rows)); winners.metas.push(meta(1, 4 * k + 4, k + 1, rows)); }
+  winners.winner = { col: 6, row: 33, caption: '→ Grand Final (M62)' };
+
+  // --- Comeback grid (9 cols, pair-up / drop-in alternation) ---------------
+  const comeback = {
+    cols: 9, rows: 33, lines: [], connectors: [], metas: [],
+    headers: ['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Round 6', 'Round 7', 'Comeback Final', 'To Grand Final'],
+  };
+  const CL = comeback.lines, CC = comeback.connectors, CM = comeback.metas;
+  // L1 (M17-24): losers of W1 cross-half — L of M(k+1) vs L of M(k+9)
+  for (let j = 0; j < 16; j++) {
+    const k = Math.floor(j / 2);
+    const feederNum = j % 2 === 0 ? k + 1 : k + 9;
+    CL.push(resolveLine({
+      key: `l1-${j}`, col: 1, row: 2 * j + 1,
+      feederNum, feederTake: 'loser', from: `L of M${feederNum}`,
+      nextNum: 17 + k, nextSide: j % 2 === 0 ? 'a' : 'b',
+    }, rows));
+  }
+  for (let k = 0; k < 8; k++) { CC.push(conn(1, 4 * k + 1, 4 * k + 3, 17 + k, rows)); CM.push(meta(1, 4 * k + 4, 17 + k, rows)); }
+  // L2 (M33-40): W of L1 vs L of W2 (reversed drop — L of M(32-k))
+  for (let k = 0; k < 8; k++) {
+    CL.push(resolveLine({ key: `l2w-${k}`, col: 2, row: 4 * k + 2, feederNum: 17 + k, feederTake: 'winner', from: `W of M${17 + k}`, nextNum: 33 + k, nextSide: 'a' }, rows));
+    CL.push(resolveLine({ key: `l2d-${k}`, col: 2, row: 4 * k + 4, feederNum: 32 - k, feederTake: 'loser', from: `L of M${32 - k}`, nextNum: 33 + k, nextSide: 'b' }, rows));
+    CC.push(conn(2, 4 * k + 2, 4 * k + 4, 33 + k, rows)); CM.push(meta(2, 4 * k + 5, 33 + k, rows));
+  }
+  // L3 (M45-48): pair-up of L2 winners
+  for (let j = 0; j < 8; j++) CL.push(resolveLine({ key: `l3-${j}`, col: 3, row: 4 * j + 3, feederNum: 33 + j, feederTake: 'winner', from: `W of M${33 + j}`, nextNum: 45 + Math.floor(j / 2), nextSide: j % 2 === 0 ? 'a' : 'b' }, rows));
+  for (let k = 0; k < 4; k++) { CC.push(conn(3, 8 * k + 3, 8 * k + 7, 45 + k, rows)); CM.push(meta(3, 8 * k + 8, 45 + k, rows)); }
+  // L4 (M49-52): W of L3 vs L of W3 (reversed — L of M(44-k))
+  for (let k = 0; k < 4; k++) {
+    CL.push(resolveLine({ key: `l4w-${k}`, col: 4, row: 8 * k + 5, feederNum: 45 + k, feederTake: 'winner', from: `W of M${45 + k}`, nextNum: 49 + k, nextSide: 'a' }, rows));
+    CL.push(resolveLine({ key: `l4d-${k}`, col: 4, row: 8 * k + 7, feederNum: 44 - k, feederTake: 'loser', from: `L of M${44 - k}`, nextNum: 49 + k, nextSide: 'b' }, rows));
+    CC.push(conn(4, 8 * k + 5, 8 * k + 7, 49 + k, rows)); CM.push(meta(4, 8 * k + 8, 49 + k, rows));
+  }
+  // L5 (M55-56): pair-up
+  for (let j = 0; j < 4; j++) CL.push(resolveLine({ key: `l5-${j}`, col: 5, row: 8 * j + 6, feederNum: 49 + j, feederTake: 'winner', from: `W of M${49 + j}`, nextNum: 55 + Math.floor(j / 2), nextSide: j % 2 === 0 ? 'a' : 'b' }, rows));
+  for (let k = 0; k < 2; k++) { CC.push(conn(5, 16 * k + 6, 16 * k + 14, 55 + k, rows)); CM.push(meta(5, 16 * k + 15, 55 + k, rows)); }
+  // L6 (M57-58): W of L5 vs L of W4 (reversed — L of M(54-k))
+  for (let k = 0; k < 2; k++) {
+    CL.push(resolveLine({ key: `l6w-${k}`, col: 6, row: 16 * k + 10, feederNum: 55 + k, feederTake: 'winner', from: `W of M${55 + k}`, nextNum: 57 + k, nextSide: 'a' }, rows));
+    CL.push(resolveLine({ key: `l6d-${k}`, col: 6, row: 16 * k + 12, feederNum: 54 - k, feederTake: 'loser', from: `L of M${54 - k}`, nextNum: 57 + k, nextSide: 'b' }, rows));
+    CC.push(conn(6, 16 * k + 10, 16 * k + 12, 57 + k, rows)); CM.push(meta(6, 16 * k + 13, 57 + k, rows));
+  }
+  // L7 (M60): pair-up of the two survivors
+  for (let j = 0; j < 2; j++) CL.push(resolveLine({ key: `l7-${j}`, col: 7, row: 16 * j + 11, feederNum: 57 + j, feederTake: 'winner', from: `W of M${57 + j}`, nextNum: 60, nextSide: j === 0 ? 'a' : 'b' }, rows));
+  CC.push(conn(7, 11, 27, 60, rows)); CM.push(meta(7, 28, 60, rows));
+  // L8 (M61, Comeback Final): W of L7 vs L of Winners Final
+  CL.push(resolveLine({ key: 'l8w', col: 8, row: 19, feederNum: 60, feederTake: 'winner', from: 'W of M60', nextNum: 61, nextSide: 'a' }, rows));
+  CL.push(resolveLine({ key: 'l8d', col: 8, row: 21, feederNum: 59, feederTake: 'loser', from: 'L of M59', nextNum: 61, nextSide: 'b' }, rows));
+  CC.push(conn(8, 19, 21, 61, rows)); CM.push(meta(8, 22, 61, rows));
+  CL.push(resolveLine({ key: 'l9', col: 9, row: 20, feederNum: 61, feederTake: 'winner', from: 'W of M61', nextNum: 62, nextSide: 'b' }, rows));
+  comeback.winner = { col: 9, row: 21, caption: '→ Grand Final (M62)' };
+
+  // --- Grand Final panel ----------------------------------------------------
+  const gf = {
+    num: 62,
+    a: resolveLine({ key: 'gfa', col: 1, row: 1, feederNum: 59, feederTake: 'winner', from: 'W of M59', nextNum: 62, nextSide: 'a' }, rows),
+    b: resolveLine({ key: 'gfb', col: 1, row: 2, feederNum: 61, feederTake: 'winner', from: 'W of M61', nextNum: 62, nextSide: 'b' }, rows),
+    meta: meta(1, 1, 62, rows),
+    reset: !!rowOf(rows, 63), // posted reset row → M63 is ON
+  };
+  const r62 = rowOf(rows, 62);
+  const champion = { name: isFinal(r62) ? winnerName(r62) : null, score: isFinal(r62) ? (r62.score || '') : '' };
+
+  return { winners, comeback, gf, champion };
+}
+
+// ---------------------------------------------------------------------------
 // PROJECTED SCHEDULE / CALL ORDER — a start time for EVERY match in the
 // draw, posted or not. Match NUMBERS stay pure bracket identity (the
 // num+event overlay contract is untouchable); the CALL ORDER is derived
@@ -242,7 +382,26 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
 // Anchored at first serve (9:00 Sat / 8:00 Sun) until anything goes
 // live/final, then re-projects from `now`. All consumers label with "~".
 // ---------------------------------------------------------------------------
-export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now()) {
+// Matches that will NEVER be played — R1 byes and the walkover cascade they
+// trigger (including comeback drop-ins fed by dead losers). Derived by
+// running the REAL engine over the public seed list (buildDraw + resolve are
+// pure and exported), so the skip set matches the ops board exactly. Bye
+// placement depends only on field size and seed ranks — ops drag-swaps move
+// real entrants between non-bye slots — so public seeds are sufficient.
+export function structuralSkips(event, seedList) {
+  const skips = new Set();
+  const bracket = buildDraw(event, seedList || [], {});
+  if (!bracket) return skips;
+  const view = resolve(bracket);
+  for (const sec of view.sections) {
+    for (const m of sec.matches) {
+      if (!m.active || m.bye) skips.add(Number(m.num));
+    }
+  }
+  return skips;
+}
+
+export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), skips = null) {
   const s = { ...SCHEDULE_DEFAULTS, ...(sched || {}) };
   const courts = Math.max(1, Number(s.courts) || 1);
   const restMs = Math.max(0, Number(s.restMin) || 0) * 60000;
@@ -278,6 +437,9 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now()) {
   const pending = [];
   for (const m of g.matches) {
     if (m.resetOf) continue; // GF reset is conditional — never booked
+    // Structural byes/walkovers never occupy a court; their "winner" has
+    // been through no match, so dependents owe no rest either.
+    if (skips && skips.has(Number(m.num))) { finish.set(m.id, anchor - restMs); continue; }
     const row = rows.get(Number(m.num));
     if (row && row.status === 'final') { finish.set(m.id, anchor - restMs); continue; }
     if (row && row.status === 'live') {
@@ -341,17 +503,23 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now()) {
 // placement: overflow seeds (17+) and their host seeds open in the play-ins;
 // everyone else starts on their East/Winners R1 line. Opponent is either a
 // seed rank or a "winner of M29"-style pointer.
-export function firstMatchFor(event, pIns, rank) {
+export function firstMatchFor(event, pIns, rank, fieldCount = Infinity) {
   if (!rank || rank < 1) return null;
   if (event === 'Doubles') {
     if (rank > T) return rank - 17 < pIns ? { num: 29 + (rank - 17), round: 'Play-in', oppRank: 33 - rank } : null;
     if (pIns > 0 && rank > T - pIns) return { num: 29 + (T - rank), round: 'Play-in', oppRank: 33 - rank };
     const order = seedOrder(T);
     const idx = order.indexOf(rank);
-    const oppSeed = order[idx % 2 === 0 ? idx + 1 : idx - 1];
+    const k = Math.floor(idx / 2);
+    const oppSeed = order[idx ^ 1];
+    if (oppSeed > fieldCount) {
+      // first-round bye — the real first match is next round, vs the winner
+      // of the sibling opening match
+      return { num: 9 + Math.floor(k / 2), round: 'QF', oppRank: null, oppFrom: `winner of M${(k ^ 1) + 1}` };
+    }
     const oppHost = pIns > 0 && oppSeed > T - pIns;
     return {
-      num: Math.floor(idx / 2) + 1, round: 'R1',
+      num: k + 1, round: 'R1',
       oppRank: oppHost ? null : oppSeed,
       oppFrom: oppHost ? `winner of M${29 + (T - oppSeed)}` : null,
     };
@@ -359,7 +527,12 @@ export function firstMatchFor(event, pIns, rank) {
   const order = seedOrder(32);
   const idx = order.indexOf(rank);
   if (idx < 0) return null;
-  return { num: Math.floor(idx / 2) + 1, round: 'R1', oppRank: order[idx % 2 === 0 ? idx + 1 : idx - 1] };
+  const k = Math.floor(idx / 2);
+  const oppSeed = order[idx ^ 1];
+  if (oppSeed > fieldCount) {
+    return { num: 25 + Math.floor(k / 2), round: 'R2', oppRank: null, oppFrom: `winner of M${(k ^ 1) + 1}` };
+  }
+  return { num: k + 1, round: 'R1', oppRank: oppSeed };
 }
 
 // ---------------------------------------------------------------------------
