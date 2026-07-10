@@ -20,6 +20,12 @@ export const SCHEDULE_DEFAULTS = {
                     // "Rest min" / "Break min".
   warmupMin: 10,    // on-court warm-up; parsed from Config for compat but NOT
                     // added to estimates — first-wave times read 9:00, not 9:10
+  finalsMin: 0,     // singles championship SEMIS + FINALS as best-of-3 (10-pt
+                    // 3rd) run longer than a pro set — applies to Winners SF,
+                    // the Winners/Comeback finals, the Grand Final + reset.
+                    // 0 = fall back to qfMin (pro sets, current default). Set to
+                    // ~90 (Config key "Finals min" / Schedule card) to model
+                    // best-of-3 — pushes the projected final ~1 hr later.
 };
 
 // First-serve anchors — the highest-leverage matches go on court at these
@@ -27,7 +33,9 @@ export const SCHEDULE_DEFAULTS = {
 // Central) wall-clock, same parse style as the reg-deadline constant.
 export const EVENT_START = {
   Doubles: '2026-07-11T09:00:00', // Sat — doubles, 9:00 AM
-  Singles: '2026-07-12T08:00:00', // Sun — singles, 8:00 AM
+  Singles: '2026-07-12T09:00:00', // Sun — singles, 9:00 AM (pushed from 8:00
+                                  // so the overnight/early-AM rain dries off
+                                  // the courts — owner call 2026-07-10)
 };
 export function dayStartMs(event) {
   return new Date(/doub/i.test(event || '') ? EVENT_START.Doubles : EVENT_START.Singles).getTime();
@@ -41,6 +49,9 @@ const LONG_ROUNDS = {
   Doubles: new Set(['QF', 'SF', 'F']),
   Singles: new Set(['R3', 'SF', 'F', 'Grand Final']),
 };
+// Singles rounds that run best-of-3 when finalsMin is set — the marquee
+// "semis and finals" (NOT the quarters/R3). Round tags per src/lib/draw.js.
+const SINGLES_FINALS = new Set(['SF', 'F', 'Comeback F', 'Grand Final', 'GF Reset']);
 
 const num = (m) => Number(m && m.num) || 0;
 const isFinal = (m) => (m && m.status) === 'final';
@@ -67,6 +78,11 @@ export function matchMinFor(event, sched, round) {
   const isD = /doub/i.test(event || '');
   const longSet = isD ? LONG_ROUNDS.Doubles : LONG_ROUNDS.Singles;
   const tag = String(round || '').trim();
+  // Singles semis + finals can run best-of-3 (10-pt 3rd) — longer than a pro
+  // set. finalsMin (>0) covers Winners SF, the Winners & Comeback finals, the
+  // Grand Final and its reset; QF (R3) stays a pro set. Checked before the
+  // qfMin/backdraw fallbacks so "Comeback F"/"GF Reset" resolve here too.
+  if (!isD && s.finalsMin > 0 && SINGLES_FINALS.has(tag)) return s.finalsMin;
   if (tag && longSet.has(tag)) return s.qfMin;
   // Backdraw rounds (West/North/South, comeback, play-in consolation) play
   // shorter pro sets when the desk sets "Backdraw min" — front-loading them
@@ -249,7 +265,7 @@ export function estimateLabel(match, allMatches, sched, nowMs = Date.now()) {
   const aheadTxt = e.ahead === 0 ? 'You’re up next' : `~${e.ahead} match${e.ahead === 1 ? '' : 'es'} ahead`;
   if (e.waitMin <= 0) {
     // Before the day starts, "about now" is nonsense (Friday night reading a
-    // Sunday 8 AM match) — anchor the label at first serve instead.
+    // Sunday 9 AM match) — anchor the label at first serve instead.
     if (e.startAt.getTime() - nowMs > 15 * 60000) return `${aheadTxt} · around ${clock(e.startAt)}`;
     return `${aheadTxt} · about now`;
   }

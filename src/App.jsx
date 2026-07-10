@@ -122,7 +122,7 @@ function AddToCalendarButton({ className = "" }) {
       'DTEND:20260712T220000Z',   // Sun Jul 12, ~5:00 PM CDT
       'SUMMARY:Aces for Arian 2026 — Memorial Tennis Tournament',
       'LOCATION:Dunlap High School\\, Dunlap\\, IL',
-      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~8 AM). Start times vary by final counts. Details: https://acesforarian.com/',
+      'DESCRIPTION:5th Annual Aces for Arian. Doubles Sat July 11 (~9 AM)\\, Singles Sun July 12 (~9 AM). Start times vary by final counts. Details: https://acesforarian.com/',
       'URL:https://acesforarian.com/',
       'END:VEVENT',
       'END:VCALENDAR',
@@ -383,24 +383,25 @@ const GALLERY = ALBUMS.flatMap(a => a.images.map(src => ({ src, caption: a.year 
 // Fallback announcements — shown until the live Announcements tab returns
 // rows (same pattern as fallbackRoster), so the section launches with real
 // content even before the Apps Script redeploy that activates live posting.
-// Forecast source: Apple Weather (Dunlap), pulled Thu 2026-07-09 ~12:15 PM.
+// Forecast source: Apple Weather (Dunlap), pulled Fri 2026-07-10 ~10:45 AM.
 // Array order = display order; Saturday leads as the nearer day. Temps are
-// Apple-exact; the earlier "wet Saturday start" washed out of the forecast —
-// both days now read dry through play hours.
+// Apple-exact. Update from the 7/9 pull: rain moved back INTO both mornings —
+// wet overnight/early-AM each day, drying by ~9 AM. Singles Sunday is pushed
+// to a 9 AM first serve so the courts dry (see EVENT_START in lib/schedule.js).
 const FALLBACK_ANNOUNCEMENTS = [
   {
-    id: 'fallback-weather-sat-0709',
-    ts: '2026-07-09T12:15:00-05:00',
+    id: 'fallback-weather-sat-0710',
+    ts: '2026-07-10T10:45:00-05:00',
     event: 'Doubles',
     category: 'weather',
-    message: "Saturday doubles outlook (Apple Weather, as of Thu 7/9): cloudy start, dry day — the earlier wet-morning risk has washed out of the forecast. Pre-match — overcast early with only a brief ~10% sprinkle chance around 6 AM; courts should be dry at first serve. During play — clouds break to partly sunny late morning and full sun by late afternoon; hourly rain risk stays under ~10% all day (Apple's 40% daily figure is front-loaded overnight — no play hour shows real rain). Evening — a small ~10% blip around 5–8 PM, otherwise clearing. Low 64°F early, high 84°F mid-afternoon — sunscreen for the back half.",
+    message: "Saturday doubles outlook (Apple Weather, as of Fri 7/10): rain overnight and early morning, then drying for play. Pre-match — showers taper through dawn; Apple's 85% daily chance is front-loaded before ~8 AM, so the courts should be playable by the 9 AM first serve, just expect a damp start. During play — cloudy early, breaking to partly sunny by late morning and full sun in the afternoon; hourly rain risk falls to near 0% from ~9 AM on. Low 67°F early, high 83°F mid-afternoon. Watch Announcements in case a wet start nudges the first wave back.",
   },
   {
-    id: 'fallback-weather-sun-0709',
-    ts: '2026-07-09T12:10:00-05:00',
+    id: 'fallback-weather-sun-0710',
+    ts: '2026-07-10T10:46:00-05:00',
     event: 'Singles',
     category: 'weather',
-    message: 'Sunday singles outlook (Apple Weather, as of Thu 7/9): sunny and hot with 0% rain — not a drop in the hourly forecast all day. Clear overnight, then full sun from mid-morning on. Low 65°F at the 8 AM start, climbing to a high of 86°F by mid-afternoon. Heat is the opponent — hydrate, sunscreen, shade between matches.',
+    message: "Sunday singles now starts at 9 AM (Apple Weather, as of Fri 7/10): rain moves through overnight and early morning, so we pushed first serve back an hour to let the courts dry. Pre-match — showers before dawn taper by ~7–8 AM; by the 9 AM start the hourly rain risk is back to 0%. During play — clearing to full sun from mid-morning on, dry the rest of the day. Low 67°F at the start, high 85°F mid-afternoon — once the sun's out, heat is the opponent: hydrate, sunscreen, shade between matches.",
   },
 ];
 
@@ -698,7 +699,7 @@ function AnnouncementBanner({ item, now, onOpen, onDismiss }) {
 }
 
 // Approximate championship round times (QF / SF / Final), projected from
-// first serve (Sat doubles 9:00, Sun singles 8:00). Computed from the posted
+// first serve (Sat doubles 9:00, Sun singles 9:00). Computed from the posted
 // match counts (byes shrink early rounds), round-aware (QF onward = 8-game
 // pro sets). Times only, no names — safe to show pre-reveal; hidden until the
 // draw is generated. `now` is a heartbeat dep so it refreshes.
@@ -706,7 +707,7 @@ function RoundTimesBanner({ matches, sched, now }) {
   const clock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const rows = [
     { ev: 'Doubles', label: 'Sat · Doubles', first: '9:00 AM' },
-    { ev: 'Singles', label: 'Sun · Singles', first: '8:00 AM' },
+    { ev: 'Singles', label: 'Sun · Singles', first: '9:00 AM' },
   ]
     .map(r => ({ ...r, m: roundMilestones(matches, r.ev, sched, now) }))
     .filter(r => r.m);
@@ -740,7 +741,7 @@ function RoundTimesBanner({ matches, sched, now }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Quarterfinals onward are 8-game pro sets (~{sched.qfMin} min). Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
+      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Quarterfinals are 8-game pro sets (~{sched.qfMin} min){sched.finalsMin > 0 ? `; singles semis & finals are best-of-3 (~${sched.finalsMin} min)` : ''}. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
     </div>
   );
 }
@@ -1704,7 +1705,7 @@ export default function App() {
               </h2>
               <ul className="space-y-2 text-[13px] text-zinc-300 leading-relaxed">
                 {[
-                  <>First matches: <strong className="text-white">Sat 9:00 AM</strong> (Doubles) · <strong className="text-white">Sun 8:00 AM</strong> (Singles) — Dunlap HS courts.</>,
+                  <>First matches: <strong className="text-white">Sat 9:00 AM</strong> (Doubles) · <strong className="text-white">Sun 9:00 AM</strong> (Singles) — Dunlap HS courts.</>,
                   <>Arrive <strong className="text-white">15 minutes</strong> before your first match.</>,
                   <>Bring your racquet, water, and court shoes.</>,
                   <>Haven't paid? <strong className="text-white">$40 via Venmo</strong> (see the Scholarship tab) or cash at the desk.</>,
@@ -1867,7 +1868,7 @@ export default function App() {
                     <li>• <a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">Dunlap High School tennis courts — map &amp; directions</a></li>
                     <li>• Free parking in the school lot by the courts.</li>
                     <li>• Spectators welcome all weekend — bring a chair.</li>
-                    <li>• First serve ~9 AM Saturday · ~8 AM Sunday.</li>
+                    <li>• First serve ~9 AM Saturday · ~9 AM Sunday.</li>
                   </ul>
                 </div>
               </div>
@@ -2106,7 +2107,7 @@ export default function App() {
                   {/* Play order, not sheet order: live courts first, then the
                       queue by playPos, finals last. A scheduled match's badge
                       is its projected start time (anchored at first serve —
-                      9:00 Sat doubles / 8:00 Sun singles), not "Scheduled". */}
+                      9:00 Sat doubles / 9:00 Sun singles), not "Scheduled". */}
                   {[...publicMatches].sort((a, b) => {
                     const rank = (s) => (s === 'live' ? 0 : s === 'final' ? 2 : 1);
                     return rank(a.status) - rank(b.status) || playPos(a) - playPos(b);
@@ -2261,7 +2262,7 @@ export default function App() {
                   <Trophy className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1">Sunday Singles</h3>
-                <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 8:00 AM</p>
+                <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 9:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
                   <li><strong className="text-zinc-200">Scoring:</strong> 6-game no-ad sets; 7-point tiebreak at 6–6.</li>
@@ -2309,7 +2310,7 @@ export default function App() {
                 </div>
                 <div>
                   <div className="text-xs font-black uppercase tracking-widest text-[#fbbf24] mb-3">Sunday · Singles</div>
-                  {[["8:00 AM", "First matches"], ["Morning", "Main & back-draw rounds"], ["Afternoon", "Quarterfinals → Final"]].map(([t, l]) => (
+                  {[["9:00 AM", "First matches"], ["Morning", "Main & back-draw rounds"], ["Afternoon", "Quarterfinals → Final"]].map(([t, l]) => (
                     <div key={l} className="flex items-baseline gap-3 py-1.5 border-b border-zinc-800/50 last:border-0">
                       <span className="text-xs font-mono font-bold text-[#fbbf24] w-20 shrink-0">{t}</span>
                       <span className="text-sm text-zinc-300">{l}</span>
