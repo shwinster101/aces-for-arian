@@ -56,6 +56,32 @@ jobs:
           sleep 2
           echo "===== confirm gone"
           curl -sSL -m 20 "$EXEC?tab=Announcements&token=$READ" | head -c 400; echo
+      - name: Roster class-year audit (public columns only)
+        run: |
+          # Name + class year are already rendered on the public roster page,
+          # so printing them here adds zero exposure. Used to diagnose class
+          # years that fail to render in the draw labels (odd formats, blanks).
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          curl -sS -m 20 -A "$UA" -o roster.csv "https://acesforarian.com/api/sheet?tab="
+          echo "bytes: $(wc -c < roster.csv)"
+          python3 - <<'EOF'
+          import csv
+          rows = list(csv.reader(open('roster.csv')))
+          if not rows:
+              print('EMPTY ROSTER RESPONSE'); raise SystemExit
+          hdr = [h.strip().lower() for h in rows[0]]
+          print('HEADERS:', rows[0])
+          iname = next((i for i, h in enumerate(hdr) if 'name' in h), None)
+          iclass = next((i for i, h in enumerate(hdr) if 'class' in h or 'grad' in h or ('year' in h and 'yearbook' not in h)), None)
+          print(f'name col: {iname}  class col: {iclass}')
+          if iname is None or iclass is None:
+              raise SystemExit
+          for r in rows[1:]:
+              name = r[iname].strip() if iname < len(r) else ''
+              cy = r[iclass].strip() if iclass < len(r) else ''
+              if name:
+                  print(f'{name!r} -> {cy!r}')
+          EOF
       - name: Freshness marker in the main bundle
         run: |
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"

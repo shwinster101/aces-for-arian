@@ -40,7 +40,37 @@ export function shortName(fullName, classYear) {
   const first = toks[0];
   const initial = toks.length > 1 ? ` ${toks[toks.length - 1][0].toUpperCase()}.` : '';
   const yr = classTag(classYear);
-  return `${first}${initial}${yr ? ` ${yr}` : ''}`;
+  // Only a tag that reads as a class survives ('YY or Alumni). The form's
+  // class-year question collects stray non-answers too ("Parent"), and a
+  // passthrough there renders like a last name ("Chandra Parent").
+  const tag = /^'\d\d$/.test(yr) || /alum/i.test(yr) ? yr : '';
+  return `${first}${initial}${tag ? ` ${tag}` : ''}`;
+}
+
+// Resolve a person's class year from the roster yearMap. Exact full-name
+// match first; otherwise fall back to first name (+ last initial when the
+// name has one) as long as that identifies exactly ONE rostered player with
+// a year — so a hand-typed seed entry like "Ati" / "Ati O." still picks up
+// Ati Oberoi's 2016 instead of silently dropping the year. Ambiguous
+// partials return '' (never guess a year onto the wrong person).
+export function lookupClassYear(name, yearMap) {
+  if (!yearMap) return '';
+  const k = normName(name);
+  const exact = yearMap.get(k);
+  if (exact) return exact;
+  const toks = k.split(' ');
+  const first = toks[0];
+  if (!first) return '';
+  const initial = toks.length > 1 ? (toks[toks.length - 1].replace(/[^a-z]/g, '')[0] || '') : '';
+  let hit = '', n = 0;
+  for (const [full, cy] of yearMap) {
+    if (!cy) continue;
+    const ft = full.split(' ');
+    if (ft[0] !== first) continue;
+    if (initial && !(ft.length > 1 && ft[ft.length - 1][0] === initial)) continue;
+    hit = cy; n += 1;
+  }
+  return n === 1 ? hit : '';
 }
 
 // Draw label for a seed entry — formats singles names and both sides of a
@@ -48,7 +78,7 @@ export function shortName(fullName, classYear) {
 // Map(normName -> classYear) built from the roster).
 export function shortLabel(name, yearMap) {
   const team = splitTeamName(name);
-  const yr = (n) => (yearMap && yearMap.get(normName(n))) || '';
+  const yr = (n) => lookupClassYear(n, yearMap);
   if (team) return team.map(m => shortName(m, yr(m))).join(' & ');
   return shortName(name, yr(name));
 }

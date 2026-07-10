@@ -631,6 +631,16 @@ function DrawBoard({ event, ops, participants }) {
               <Trash2 className="w-3.5 h-3.5" /> Clear
             </button>
           )}
+          {bracket && (
+            // Re-derives every slot label from the current roster (names +
+            // class years) WITHOUT touching results or manual name fixes —
+            // unlike Regenerate. Use when a year was missing at generate time.
+            <button onClick={() => ops.relabelBracket(event, labelFor)}
+              title="Re-apply roster names & class years to every slot — keeps all results and name edits"
+              className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-zinc-300 bg-zinc-900 hover:text-[#fbbf24] border border-zinc-800 rounded-lg px-3 py-1.5 transition-colors">
+              Refresh names
+            </button>
+          )}
           <button onClick={generate} disabled={!hasSeeds}
             className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 disabled:opacity-30 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
             {bracket ? <RotateCcw className="w-3.5 h-3.5" /> : <Swords className="w-3.5 h-3.5" />} {bracket ? 'Regenerate' : 'Generate draw'}

@@ -193,6 +193,37 @@ comeback player. Shipped (model-only for the geometry, singles-comeback-only;
 
 ---
 
+## 1-cd15b. Session Summary — 2026-07-10: check-in payment intent + draw class-year fixes (parallel work, merged from PR #59)
+
+Owner: show each player's intended payment method (from the registration
+form) at check-in, and make every registered class year render in the
+doubles draw (Ati Oberoi '16 was missing).
+
+- **Payment intent** rides the private opsdesk channel: `rosterPayIntent_`
+  in the Apps Script reads the raw roster's /pay/ column and `mode=opsdesk`
+  now returns `reg: [{name, pay}]` (⚠️ REQUIRES A REDEPLOY — until then the
+  field is simply absent and nothing breaks). `pullDesk` stores it as
+  `store.regPay` (normName → answer); Check-ins shows a "plans Venmo" chip
+  on unpaid rows + a "(form said: …)" hint inside the Collect panel. The
+  public read path still strips payment columns — this never crosses it.
+- **Class years**: real cause found via the CI roster audit step (new
+  check-deploy step prints name + class-year cells — both already public on
+  the roster page): Ati's 2016 exists; the draw label lookup was exact-full-
+  name only. `lookupClassYear` (entrants.js) now falls back to first name
+  (+ last initial) when it identifies exactly ONE rostered player — never
+  guesses on ambiguity (the Ethans still need initials). `shortName` also
+  stops rendering non-class tags ("Parent" no longer reads as a last name;
+  'YY and Alumni still show).
+- **"Refresh names" button** (Draw board header, both events): re-derives
+  every slot label from the CURRENT roster WITHOUT touching seeds, results,
+  or manual name edits — unlike Regenerate. Hard no-op on a device that has
+  no local bracket (falling through would clear the event's sheet rows).
+  Verified: result marked pre-refresh survives; one atomic matches-replace.
+- Run "Refresh names" on the HQ device after the redeploy to push the
+  corrected labels ("Ati O. '16") to the public draw.
+
+---
+
 ## 1-cd14. Session Summary — 2026-07-10: collapsible Seed order card
 
 Owner (seeds locked): "hide/unhide the seed order — I don't want to scroll past
