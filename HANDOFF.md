@@ -35,6 +35,44 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd12. Session Summary — 2026-07-10: public-view audit → Tier-1 day-of enhancements
+
+Owner asked for a tab-by-tab audit of the public view (drivers, missing/
+assumed/needs-context, highest-leverage enhancement per tab). Full audit in the
+plan file; verdict: site is data-correct (one gate, one time model, one engine),
+gaps are context/wayfinding + a few stale dates. Event is imminent (doubles
+7/11), so shipped the participant-facing "Tier 1" set:
+
+- **Home — Game Day card** (App.jsx, top of Home body): shows only in the event
+  window (`now` between 2026-07-10 and 2026-07-13; `now` is the ms heartbeat), so
+  it auto-appears this weekend and auto-hides after. Four cards: First serve
+  9 AM both days + arrive 15 min · **how you'll learn your court/time** (courts
+  assigned live, open Brackets, Follow my team) · pay-if-unpaid (Venmo/cash) ·
+  rain plan. Reuses `setActiveTab`.
+- **Rules — payment method + coordinators** (Check-In & Conduct card): the $40
+  is now paired with "Venmo @acesforarian or cash at the desk" (was method-less),
+  and the three coordinator `tel:` contacts (same trio as Home) are on the tab.
+- **Brackets — "Reading the draw" caption** above BOTH draws: find-your-name,
+  gold=winner, dimmed (bye)=walkover, `M# · ~time` are estimates from 9 AM that
+  shift, "W of M12" = undecided. The singles caption folds in the bye
+  explanation ("top seeds have a first-round bye → first match is the Round of
+  16; Follow my team shows your exact first match").
+- **Scholarship — meter on the tab body**: the raised/goal bar + a prominent
+  Donate button now live on the Scholarship tab (were header-only), with a
+  "100% of every $40 … no overhead" line. Reuses `calculatedFunding`/
+  `scholarshipGoal`/`percentageGoal`/`DONATE_URL`.
+- **Stale-date fixes**: flyer alt "Register by July 6" → "first serve 9 AM both
+  days" (reg closed 7/8); stale `~8:00 AM` comment in SinglesDraw.jsx → 9 AM.
+- Copy/layout only — no new data pipelines, reveal gate + time model untouched.
+- **Tier 2 (deferred, post-event, in the plan):** Legacy 2026 champions · Photos
+  2026 album placeholder · Merch stock/size clarity · Ace `$5/ace` disclosure.
+- Verified: new enhancements probe 13/13 (Playwright `clock.install` pins the
+  event window for the Game Day gate), regressions all green — compass 58,
+  singles 13 (relaxed one clock-fragile time assertion to a token-shape check),
+  round-trip 15, scores 12, check-in 21, contract 78, weather 3; lint/build clean.
+
+---
+
 ## 1-cd11. Session Summary — 2026-07-10: SINGLES DRAW REVEALED (gate flipped live)
 
 Owner: "Flip singles to live." After the full build + audit this session, the

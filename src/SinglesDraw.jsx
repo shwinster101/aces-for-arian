@@ -3,7 +3,7 @@
 // ==========================================
 // Same visual grammar as the doubles compass (shared primitives): names on
 // underline rules, elbow connectors grouping matches, one compact token per
-// match ("M2 · ~8:00 AM" / "Ct 5 LIVE"), scores riding the advancing line,
+// match ("M2 · ~9:00 AM" / "Ct 5 LIVE"), scores riding the advancing line,
 // projected times on EVERY match from the 9-court simulation. Layout:
 // Winners bracket left (Round of 32 → Winners Final), Grand Final panel to
 // its right, full Comeback backdraw below — pair-up rounds halve, drop-in

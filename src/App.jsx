@@ -1617,6 +1617,45 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
 
+            {/* GAME DAY card — the day-of essentials, surfaced only during the
+                event window (Fri before → end of Sun) when registration is done
+                and the register-centric hero is no longer the point. Answers the
+                four things a player needs on site this weekend: when/where,
+                how they'll learn their court & time, how to pay if they haven't,
+                and the rain plan. `now` is the 30s heartbeat (ms). */}
+            {(() => {
+              const preMs = new Date('2026-07-10T00:00:00').getTime();
+              const endMs = new Date('2026-07-13T00:00:00').getTime();
+              if (!(now >= preMs && now < endMs)) return null;
+              return (
+                <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 rounded-3xl p-5 md:p-7 shadow-2xl shadow-black">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <Award className="w-5 h-5 text-[#fbbf24]" />
+                    <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">Game Day</h2>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25 rounded px-1.5 py-0.5">July 11–12</span>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#fbbf24] mb-1.5"><Clock className="w-4 h-4" /> First serve · 9:00 AM</div>
+                      <p className="text-sm text-zinc-300 leading-relaxed"><strong className="text-white">Doubles</strong> Sat July 11 · <strong className="text-white">Singles</strong> Sun July 12 — Dunlap HS courts. <strong className="text-zinc-200">Arrive 15 minutes before your match</strong> (more than 15 late is a default).</p>
+                    </div>
+                    <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#fbbf24] mb-1.5"><Award className="w-4 h-4" /> Your court &amp; time</div>
+                      <p className="text-sm text-zinc-300 leading-relaxed">Courts are assigned <strong className="text-zinc-200">as they open</strong> — no fixed schedule. The <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">Brackets tab</button> has the live court board, the up-next queue, and <strong className="text-zinc-200">Follow my team</strong> (your matches + estimated times).</p>
+                    </div>
+                    <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#fbbf24] mb-1.5"><Heart className="w-4 h-4" /> Haven't paid?</div>
+                      <p className="text-sm text-zinc-300 leading-relaxed">$40 covers the weekend — <strong className="text-zinc-200">Venmo @acesforarian</strong> or <strong className="text-zinc-200">cash at the desk</strong> before your first match. Pick up your tee at the gear locker.</p>
+                    </div>
+                    <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#fbbf24] mb-1.5"><CloudRain className="w-4 h-4" /> If it rains</div>
+                      <p className="text-sm text-zinc-300 leading-relaxed">We play when the courts are safe. If weather pauses play, we hold and post updates in <strong className="text-zinc-200">Announcements</strong> — keep this page handy and your phone on.</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Live-day strip — routes everyone to the court board the moment
                 ops posts the first match. Hidden all draw week. */}
             {liveDay && (
@@ -1685,7 +1724,7 @@ export default function App() {
                 >
                   <img
                     src="/flyer.jpg"
-                    alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12. Register by July 6."
+                    alt="Aces for Arian 2026 Tennis Tournament at Dunlap High School courts. Doubles Saturday July 11, Singles Sunday July 12 — first serve 9 AM both days."
                     className="w-full"
                     loading="lazy"
                   />
@@ -1922,6 +1961,10 @@ export default function App() {
                   play-ins 29+). Legend rides BELOW the sheet. */}
               {DRAWS_PUBLIC.Doubles && bracketEvent === 'doubles' && (
                 <>
+                  <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
+                    <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
+                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it and jump there. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover. Each tag reads <span className="font-mono text-zinc-300">M# · ~time</span> — times are <strong className="text-zinc-200">estimates</strong> counted from the 9:00 AM first serve and they shift as rounds finish. “W of M12” = the winner of match 12, not decided yet.</span>
+                  </div>
                   <CompassDraw
                     eastNames={dEastNames}
                     teams={dTeams}
@@ -1981,6 +2024,10 @@ export default function App() {
           // reset 63).
           const singlesDraws = DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-4 md:p-6">
+              <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
+                <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
+                <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish.</span>
+              </div>
               <SinglesDraw
                 names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
                 rowsByNum={engineRowsFor('Singles')}
@@ -2284,11 +2331,24 @@ export default function App() {
                 <h3 className="text-lg font-black text-white uppercase tracking-wider">Check-In &amp; Conduct</h3>
               </div>
               <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
-                <li>Pay the <strong className="text-zinc-200">$40</strong> at sign-in before your first match — and grab your t-shirt.</li>
+                <li>Pay the <strong className="text-zinc-200">$40</strong> at sign-in before your first match — <strong className="text-zinc-200">Venmo @acesforarian</strong> or <strong className="text-zinc-200">cash at the desk</strong> — and grab your t-shirt.</li>
                 <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong> — <a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">map &amp; directions</a>. Free parking in the school lot by the courts.</li>
                 <li><strong className="text-zinc-200">Arrive early and sign in.</strong> More than 15 minutes past match time is a default.</li>
-                <li>Schedule conflict? Tell a coordinator <strong className="text-zinc-200">ASAP</strong>.</li>
+                <li>Schedule conflict, running late, or a question day-of? <strong className="text-zinc-200">Call a coordinator</strong> (below) ASAP.</li>
               </ul>
+              {/* Coordinator contacts — same trio as Home; a player on the courts
+                  needs a number without hunting for the Home tab. */}
+              <div className="mt-5 pt-4 border-t border-zinc-800/60">
+                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2.5">Day-of coordinators</div>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  {[['Ashwin Yedavalli', '3093618746', '309-361-8746'], ['Venil Tummarakota', '3093406375', '309-340-6375'], ['Aanan Kashyap', '3097136182', '309-713-6182']].map(([name, tel, shown]) => (
+                    <a key={tel} href={`tel:${tel}`} className="flex items-center justify-between gap-2 bg-[#111] px-3 py-2.5 rounded-xl border border-zinc-800/60 hover:border-[#fbbf24]/40 transition-colors">
+                      <span className="text-xs text-zinc-300 font-semibold truncate">{name}</span>
+                      <span className="text-[#fbbf24] font-mono text-[11px] shrink-0">{shown}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Day-of schedule (tentative, from the 2025 timeline) */}
@@ -2525,6 +2585,32 @@ export default function App() {
               </div>
               <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl">
                 An award honoring Arian's legacy of academic excellence and radiating positivity on the court — granted to graduating Dunlap tennis seniors through a short essay and their record as scholar-athletes.
+              </p>
+            </div>
+
+            {/* Fundraising progress — the whole reason for the tournament. The
+                header carries a mini version; this is the full meter on the tab
+                that's actually about the cause. Same live Config-sourced numbers. */}
+            <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6 md:p-8">
+              <div className="flex items-end justify-between gap-4 flex-wrap mb-3">
+                <div>
+                  <div className="text-[10px] text-[#fbbf24] font-black uppercase tracking-widest mb-1">This year's fund</div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl md:text-4xl font-black text-white">${calculatedFunding}</span>
+                    <span className="text-sm text-zinc-400">raised of ${scholarshipGoal} goal</span>
+                  </div>
+                </div>
+                <a href={DONATE_URL} target="_blank" rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                  <Heart className="w-4 h-4" />
+                  <span>Donate</span>
+                </a>
+              </div>
+              <div className="h-2.5 bg-black/50 rounded-full overflow-hidden">
+                <div className="h-full bg-[#fbbf24] rounded-full transition-all" style={{ width: `${percentageGoal}%` }}></div>
+              </div>
+              <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
+                <strong className="text-zinc-200">100% of every $40 entry and every donation</strong> goes to the Arian Rahbar Memorial Scholarship — no overhead. Donations run through Venmo <span className="text-zinc-300 font-semibold">@acesforarian</span>.
               </p>
             </div>
 
