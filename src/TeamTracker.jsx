@@ -24,7 +24,7 @@ function loadSel() {
   } catch { return null; }
 }
 
-export default function TeamTracker({ seeds, matches, events, labelFor, sched, now, pInsFor, clocks, onHighlight, query = '', onQuery }) {
+export default function TeamTracker({ seeds, matches, events, labelFor, nameFor, sched, now, pInsFor, clocks, onHighlight, query = '', onQuery }) {
   const groups = teamOptions(seeds, matches, events, labelFor);
   const [sel, setSel] = useState(loadSel);
 
@@ -48,7 +48,10 @@ export default function TeamTracker({ seeds, matches, events, labelFor, sched, n
   const selValue = active ? JSON.stringify({ event: active.event, label: active.label }) : '';
   const tl = active ? teamTimeline(active.label, active.event, matches, sched, now, pInsFor(active.event)) : null;
 
-  const oppOf = (m, side) => (side === 'a' ? m.b : m.a) || 'TBD';
+  // Opponents display in board style (first names) when App provides the
+  // formatter; the dropdown keeps full labels for identity.
+  const show = (s) => (nameFor ? nameFor(s) : s) || 'TBD';
+  const oppOf = (m, side) => show((side === 'a' ? m.b : m.a));
 
   return (
     <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
@@ -130,7 +133,7 @@ export default function TeamTracker({ seeds, matches, events, labelFor, sched, n
             const fm = seedRow ? firstMatchFor(active.event, pInsFor(active.event), seedRow.rank) : null;
             const time = fm && clocks && clocks[active.event] ? clocks[active.event](fm.num) : null;
             const oppRow = fm && fm.oppRank ? (seeds || []).find(s => s.type === active.event && s.rank === fm.oppRank) : null;
-            const opp = oppRow ? labelFor(oppRow.name) : (fm && fm.oppFrom) || null;
+            const opp = oppRow ? show(labelFor(oppRow.name)) : (fm && fm.oppFrom) || null;
             if (!fm) return (
               <p className="text-xs text-zinc-500 leading-relaxed">
                 No match posted for <span className="text-zinc-300 font-semibold">{active.label}</span> yet — your first match and the projected path appear here the moment the desk posts the draw.

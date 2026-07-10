@@ -24,7 +24,7 @@ import {
   mapOpsStatus,
   mapAnnouncements,
 } from './lib/sheet';
-import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName } from './lib/entrants';
+import { DRAW_CAP, SEED_CUT, deriveEntrants, shortLabel, normName, boardTeam, dupFirstNames } from './lib/entrants';
 import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
 import CompassDraw from './CompassDraw';
 import TeamTracker from './TeamTracker';
@@ -1147,6 +1147,10 @@ export default function App() {
   const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
   const [matchQuery, setMatchQuery] = useState(''); // day-of "find my match" search
   const navRef = useRef(null);
+  // first-seen-live clocks per event#num (elapsed-time proxy on the board)
+  const [liveSinceMap, setLiveSinceMap] = useState(() => {
+    try { return new Map(JSON.parse(localStorage.getItem('a4a-live-since') || '[]')); } catch { return new Map(); }
+  });
 
   // Field-lock lifecycle: the Config tab's "Seeds Final" row (set from the
   // ops console or by hand in the sheet) overrides the SEEDS_FINAL constant.
@@ -1230,6 +1234,21 @@ export default function App() {
         delay = 60000;
         const m = mapMatches(parseCSV(text));
         if (m.length) {
+          // Elapsed-time proxy: remember when THIS device first saw each
+          // match live ("on court since 9:04"). Persisted so a reload keeps
+          // the clocks; a final wipes its entry.
+          setLiveSinceMap(prev => {
+            let changed = false;
+            const seen = new Map(prev);
+            for (const row of m) {
+              const k = `${row.event}#${row.num}`;
+              if (row.status === 'live' && !seen.has(k)) { seen.set(k, Date.now()); changed = true; }
+              else if (row.status === 'final' && seen.has(k)) { seen.delete(k); changed = true; }
+            }
+            if (!changed) return prev;
+            try { localStorage.setItem('a4a-live-since', JSON.stringify([...seen])); } catch { /* proxy only */ }
+            return seen;
+          });
           setMatches(m);
           setMatchesLive(true);
           setMatchesUpdated(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
@@ -1502,6 +1521,32 @@ export default function App() {
     const c = clockByEvent[m.event];
     return (c && c(m.num)) || startClockLabel(m, publicMatches, scheduleCfg, now);
   };
+  // BOARD names — live surfaces read first names ("Greyson/Andy vs
+  // Alex/Ethan M"); class years + initials stay on the draw sheet. A last
+  // initial survives only to split duplicate first names.
+  const dupSet = useMemo(() => dupFirstNames([
+    ...publicMatches.flatMap(m => [m.a, m.b]),
+    ...seeds.filter(s => DRAWS_PUBLIC[s.type === 'Doubles' ? 'Doubles' : 'Singles']).map(s => publicLabel(s.name)),
+  ]), [publicMatches, seeds]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bTeam = (s) => {
+    const v = (s || '').trim();
+    if (!v) return '?';
+    // placeholder sides ("W of M31", TBD — hand rows) pass through untouched
+    if (/^[WL]\s*of\s*M?\d+$/i.test(v) || /^tbd$/i.test(v)) return v;
+    return boardTeam(v, dupSet) || v;
+  };
+
+  // Elapsed-time proxy ("on court since 9:04 · ~24m") — the cheap ETA signal
+  // that needs NO scorekeeper: this device records the first poll that saw a
+  // match live (persisted so reloads keep it). A page that loads after the
+  // match went live simply shows no chip.
+  const liveSince = (m) => {
+    const t = liveSinceMap.get(`${m.event}#${m.num}`);
+    if (!t) return null;
+    const mins = Math.max(0, Math.round((now - t) / 60000));
+    return `since ${new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ~${mins}m`;
+  };
+
   // Call order for the queue: projected start first, bracket number as the
   // stable fallback/tiebreak.
   const callPos = (m) => {
@@ -2049,6 +2094,7 @@ export default function App() {
               matches={publicMatches}
               events={publicEvents}
               labelFor={publicLabel}
+              nameFor={bTeam}
               sched={scheduleCfg}
               now={now}
               pInsFor={pInsFor}
@@ -2152,7 +2198,7 @@ export default function App() {
                             const w = matchWhere(m);
                             return (
                               <div key={i} className="flex items-center justify-between gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
-                                <span className="text-xs text-zinc-300 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
+                                <span className="text-xs text-zinc-300 font-semibold min-w-0">{bTeam(m.a)} <span className="text-zinc-600 font-normal">vs</span> {bTeam(m.b)}</span>
                                 <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider ${w.cls}`}>{w.label}</span>
                               </div>
                             );
@@ -2170,9 +2216,14 @@ export default function App() {
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
                       {livePlaying.map((m, i) => (
-                        <div key={i} className="bg-[#111] border border-emerald-500/20 rounded-xl p-4">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">{m.court ? `Court ${m.court}` : 'On court'}</div>
-                          <div className="text-sm text-zinc-100 font-bold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</div>
+                        <div key={m.id || i} className="bg-[#111] border border-emerald-500/20 rounded-xl p-4">
+                          <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{m.court ? `Court ${m.court}` : 'On court'}</span>
+                            {liveSince(m) && <span className="text-[10px] font-mono text-emerald-400/80">{liveSince(m)}</span>}
+                          </div>
+                          {/* stacked, never truncated — board names are first names */}
+                          <div className="text-sm text-zinc-100 font-bold">{bTeam(m.a)}</div>
+                          <div className="text-sm text-zinc-100 font-bold"><span className="text-zinc-600 font-normal">vs </span>{bTeam(m.b)}</div>
                           {m.score && <div className="text-xs text-zinc-400 font-mono mt-1">{m.score}</div>}
                         </div>
                       ))}
@@ -2189,7 +2240,8 @@ export default function App() {
                       {upNextQueue.slice(0, 8).map((m, i) => (
                         <div key={m.id || `q${i}`} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
                           <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black ${i === 0 ? 'bg-[#fbbf24] text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>{i + 1}</span>
-                          <span className="text-sm text-zinc-200 font-semibold truncate">{m.a || '?'} <span className="text-zinc-600 font-normal">vs</span> {m.b || '?'}</span>
+                          {/* wraps to a second line rather than truncating */}
+                          <span className="text-sm text-zinc-200 font-semibold min-w-0">{bTeam(m.a)} <span className="text-zinc-600 font-normal">vs</span> {bTeam(m.b)}</span>
                           <span className="ml-auto shrink-0 flex items-center gap-2">
                             {i === 0 && <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">On deck</span>}
                             <span className="text-[10px] font-bold text-[#fbbf24]/80">{rowClock(m)}</span>
@@ -2219,7 +2271,7 @@ export default function App() {
                   <span className="text-[10px] font-mono text-zinc-500">{matchesFresh ? `Updated ${matchesUpdated}` : 'Reconnecting…'}</span>
                 </div>
                 <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
-                  Match results as they're posted courtside — <span className="text-emerald-400 font-semibold">live</span> matches update in real time, and <span className="text-[#fbbf24] font-semibold">winners</span> are highlighted once a match goes final.
+                  Results as the desk posts them — <span className="text-[#fbbf24] font-semibold">winners</span> highlight when a match goes final, and scores appear when the desk has a moment to enter them. For "how long has that court been going," see the timers on the court board above.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Play order, not sheet order: live courts first, then the
@@ -2243,8 +2295,8 @@ export default function App() {
                           <span className={`shrink-0 text-[9px] font-black uppercase tracking-wider border rounded-full px-2 py-0.5 ${badge.cls}`}>{badge.label}</span>
                         </div>
                         <div className="space-y-1.5">
-                          <div className={`text-sm font-bold truncate ${m.winner === 'a' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{m.a || '—'}</div>
-                          <div className={`text-sm font-bold truncate ${m.winner === 'b' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{m.b || '—'}</div>
+                          <div className={`text-sm font-bold ${m.winner === 'a' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{bTeam(m.a) || '—'}</div>
+                          <div className={`text-sm font-bold ${m.winner === 'b' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{bTeam(m.b) || '—'}</div>
                         </div>
                         {m.score && <div className="text-xs text-zinc-400 font-mono mt-2.5 pt-2.5 border-t border-zinc-800/60">{m.score}</div>}
                       </div>

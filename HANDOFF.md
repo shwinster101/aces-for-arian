@@ -35,6 +35,46 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd5. Session Summary — 2026-07-10: board names (first names) + elapsed-time proxy
+
+Live-score scope review, owner-endorsed. Scores were ALWAYS optional here
+(render only when the desk posts them) — so the "don't create a scoring
+staffing dependency" recommendation was already true; what shipped:
+
+- **Board names** (src/lib/entrants.js `boardTeam`/`boardName`/
+  `dupFirstNames`): every LIVE surface (court board, up-next, find-my-match,
+  Live Scores, tracker rows) shows FIRST names — "Greyson/Andy vs
+  Alex/Ethan M". Class years and last initials are gone from the boards;
+  a last initial survives only to split duplicate first names (people
+  deduped before counting so a team appearing on many rows can't fake a
+  dup). The compass draw sheet KEEPS "First L. 'YY" (that's its context).
+  Placeholder sides ("W of M31", TBD) pass through untouched. Tracker
+  dropdown keeps full labels (identity); its rows use board style via the
+  `nameFor` prop.
+- **Stack, never truncate**: on-court cards render partners on line 1,
+  "vs opponents" on line 2; queue/search rows wrap instead of "…" —
+  truncation broke the find-your-match scan.
+- **Elapsed-time proxy** ("since 9:04 · ~24m" on on-court cards): the
+  Matches poll records when THIS device first saw a row live
+  (state + localStorage `a4a-live-since`; cleared on final). No schema or
+  ops change; a page that loads mid-match just shows no chip. This is the
+  cheap "close to done?" signal — no scorekeeper needed. Live Scores intro
+  copy now says scores appear "when the desk has a moment".
+- Lint's react-hooks/refs rule caught the first cut reading a ref during
+  render — moved to state (also makes the chip paint on the poll that
+  sees it).
+- Verified: contract 47/47 (name formatter unit cases incl. the two-Ethan
+  disambiguation + no self-dup from repeated team labels), view 57/57
+  (first-name boards, year-free board containers while the sheet keeps
+  years, elapsed chip after first live poll, no ellipsis), round-trip
+  15/15, lint/build clean.
+- OPEN QUESTION for the owner (from the review): is remote-spectator
+  engagement a goal? If yes, scores stay worth entering when there's a
+  marshal; if no, the elapsed timer alone carries the board. Nothing in
+  the build forces either answer.
+
+---
+
 ## 1-cd4. Session Summary — 2026-07-10: CALL ORDER ≠ match numbers (rest windows + backdraw priority)
 
 Owner reviewed an external call-order proposal for the 19-team compass. The
