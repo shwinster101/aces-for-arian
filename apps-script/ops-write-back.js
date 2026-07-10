@@ -592,7 +592,35 @@ function opsDeskOut_(token) {
     try { bracket = r[2] ? JSON.parse(r[2]) : null; } catch (e2) { bracket = null; }
     return { event: r[0] || '', seeds: seeds, bracket: bracket, updatedAt: r[3] || '' };
   }).filter(function (d) { return d.event === 'Singles' || d.event === 'Doubles'; });
-  return jsonOut_({ desk: deskRows, walkups: walkupRows, draw: drawRows });
+  return jsonOut_({ desk: deskRows, walkups: walkupRows, draw: drawRows, reg: rosterPayIntent_() });
+}
+
+// Intended payment method straight off the registration form (the raw
+// roster's /pay/ column) — shown at the check-in desk so the volunteer
+// collecting knows what each player PLANNED to pay with. Served ONLY through
+// the token-gated mode=opsdesk read above; the public read path strips every
+// payment column (filterRosterCols_ here + the Cloudflare Function again).
+// Missing column or empty roster -> empty list, never an error.
+function rosterPayIntent_() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]; // roster = first tab
+  if (!sheet) return [];
+  var rows = sheet.getLastRow(), cols = sheet.getLastColumn();
+  if (rows < 2 || cols < 1) return [];
+  var values = sheet.getRange(1, 1, rows, cols).getValues();
+  var iName = -1, iPay = -1;
+  for (var i = 0; i < values[0].length; i++) {
+    var h = String(values[0][i] || '').trim().toLowerCase();
+    if (iName < 0 && h.indexOf('name') >= 0) iName = i;
+    if (iPay < 0 && (h.indexOf('pay') >= 0 || h.indexOf('venmo') >= 0)) iPay = i;
+  }
+  if (iName < 0 || iPay < 0) return [];
+  var out = [];
+  for (var r = 1; r < values.length; r++) {
+    var name = String(values[r][iName] || '').trim();
+    var pay = String(values[r][iPay] || '').trim();
+    if (name && pay) out.push({ name: name, pay: pay.slice(0, 60) });
+  }
+  return out;
 }
 
 // Staff-set scholarship meter — upserts raised/goal into the Config tab (Key |

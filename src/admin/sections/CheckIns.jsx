@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { UserCheck, Clock, Shirt, CircleDollarSign, Megaphone } from 'lucide-react';
+import { normName } from '../../lib/entrants';
 import { Card, PageHeader, Stat, Pills, SearchBox, EmptyState } from '../ui';
 import CashDrawer from '../CashDrawer';
 
@@ -49,6 +50,13 @@ export default function CheckIns({ participants, ops }) {
   }, [participants, filter, query]);
 
   const keyOf = (p) => `${p.source}-${p.name}`;
+
+  // What the registration form says they PLAN to pay with — reference for the
+  // volunteer collecting ("form said Venmo, did that go through?"). Arrives
+  // via the private opsdesk pull (store.regPay); empty until the Apps Script
+  // carrying rosterPayIntent_ is deployed, and never a substitute for
+  // actually marking Paid.
+  const payIntent = (p) => (ops.store.regPay || {})[normName(p.name)] || '';
 
   const markPaid = (p, method) => {
     ops.setOverlay(p.name, { paid: true, paymentMethod: method });
@@ -114,6 +122,7 @@ export default function CheckIns({ participants, ops }) {
               const size = p.overlay.shirtSize || p.shirtSize || '—';
               const supporter = isSupporter(p);
               const open = collect && collect.key === key;
+              const plan = payIntent(p);
               return (
                 <div key={key} className="px-4 py-3.5 hover:bg-zinc-900/40 transition-colors">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -130,6 +139,12 @@ export default function CheckIns({ participants, ops }) {
                             Unpaid
                           </span>
                         ))}
+                        {!supporter && !p.overlay.paid && plan && (
+                          <span title={`Registration form: ${plan}`}
+                            className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border bg-[#111] border-zinc-700 text-zinc-400 truncate max-w-32">
+                            plans {plan}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
                         <span>{p.events}{p.classYear ? ` · '${p.classYear}` : ''}</span>
@@ -193,6 +208,7 @@ export default function CheckIns({ participants, ops }) {
                     <div className="mt-3 rounded-xl border border-[#fbbf24]/25 bg-[#1c1408] p-3 space-y-3">
                       <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">
                         Collect ${ENTRY_FEE} entry — how are they paying?
+                        {plan && <span className="ml-2 normal-case tracking-normal font-bold text-zinc-400">(form said: {plan})</span>}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {['Venmo', 'Zelle'].map(mth => (
