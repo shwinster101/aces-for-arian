@@ -36,13 +36,13 @@ export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
       style={{
         gridColumn: l.col, gridRow: l.row + hdr,
         background: hit ? 'var(--cd-hit)' : l.live ? 'var(--cd-live-bg)' : undefined,
-        borderBottom: `1.5px solid ${l.live ? 'var(--cd-live)' : 'var(--cd-rule)'}`,
+        borderBottom: `1.5px ${l.drop && !l.live ? 'dashed' : 'solid'} ${l.live ? 'var(--cd-live)' : 'var(--cd-rule)'}`,
       }}
       className="relative flex items-end gap-1 px-1.5 min-w-0"
     >
       <span
         className={`text-[10px] leading-tight pb-px truncate ${faded ? 'italic font-normal' : hit ? 'font-black' : 'font-semibold'}`}
-        style={{ color: l.live ? 'var(--cd-live)' : faded ? 'var(--cd-faint)' : 'var(--cd-ink)' }}
+        style={{ color: l.live ? 'var(--cd-live)' : l.kind === 'from' ? 'var(--cd-from)' : faded ? 'var(--cd-faint)' : 'var(--cd-ink)' }}
         title={l.kind === 'name' ? l.name : undefined}
       >
         {text}{l.wo ? ' (bye)' : ''}
@@ -52,7 +52,7 @@ export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
           <span className="text-[8px] font-black pb-px" style={{ color: 'var(--cd-live)' }}>Ct {l.court}</span>
         )}
         {l.seed != null && l.seed <= SEED_CUT && l.kind === 'name' && !l.wo && (
-          <span className="text-[8px] font-mono font-bold pb-px" style={{ color: 'var(--cd-gold)' }}>{l.seed}</span>
+          <span className="text-[8px] font-mono font-bold pb-px" style={{ color: 'var(--cd-gold)' }}>#{l.seed}</span>
         )}
       </span>
       {l.score && (
@@ -77,7 +77,7 @@ export function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
       className="flex items-start gap-1 px-2 pt-px min-w-0"
     >
       <span className="text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-faint)' }}>M{m.num}</span>
-      {extra && <span className="text-[8px] font-mono font-bold whitespace-nowrap" style={{ color }}>· {extra}</span>}
+      {extra && <span className="text-[9px] font-mono font-bold whitespace-nowrap" style={{ color }}>· {extra}</span>}
     </div>
   );
 }

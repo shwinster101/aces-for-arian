@@ -35,6 +35,43 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd15. Session Summary — 2026-07-10: free-hanging comeback drop-ins + bracket formatting pass
+
+Owner compared the live singles **Comeback** (loser's) bracket to the 2025
+PrintYourBrackets sheet and prefers the sheet's convention: the **drop-in
+feeder** — the fresh loser falling from the Winners bracket into a drop-in round
+— should hang **free/detached**, not be joined by the elbow to the surviving
+comeback player. Shipped (model-only for the geometry, singles-comeback-only;
+**doubles compass untouched**, guarded by verify-compass staying 58/0):
+
+- **Free-hang** (`src/lib/compass.js`, `buildDoubleElimModel`): the four drop-in
+  connectors L2/L4/L6/L8 had `rowEnd` pulled up to the pair's output midpoint
+  (`4k+4→4k+3`, `8k+7→8k+6`, `16k+12→16k+11`, `21→20`), so the vertical bar
+  reaches only the survivor + output, and the drop line hangs detached. The four
+  `l2d/l4d/l6d/l8d` specs carry a new `dropIn:true`; `resolveLine` sets
+  `out.drop`. L1 lines (also `feederTake:'loser'` but the genuine first round)
+  are NOT flagged.
+- **Dashed cue** (`src/CompassDraw.jsx` `LineCell`): `l.drop` renders the
+  underline **dashed** (vs solid) — a redundant "arrives from elsewhere" signal
+  matching the detached geometry. Live/hit styling still wins.
+- **Formatting pass** (shared canvas): MetaCell projected-time/status token
+  `8px→9px`; seed badge prefixed `#`; "W/L of M#" placeholder raised to a new
+  `--cd-from` mid-tone (paper `rgba(23,19,16,0.72)`, dark `rgba(228,228,231,0.7)`)
+  for legibility; the singles Comeback band (`src/SinglesDraw.jsx`) got a top
+  rule + faint `--cd-panel` tint to separate it from the Winners grid, and its
+  DirLabel caption now calls out the dashed drop-in line.
+- Verified: contract 84/0 (new: 15 drop connectors detached `rowEnd===rowStart+1`,
+  pair-ups keep full span, exactly l2d/l4d/l6d/l8d flagged `drop`, L1/survivors
+  not), verify-compass **58/0** (doubles unchanged regression guard),
+  verify-singles 13/0, lint/build clean, before/after comeback screenshots
+  (paper desktop + 390px) confirm the drop-ins visibly detach.
+- **Deferred** (too risky the night before both events go live): column widening
+  / name wrapping (`COL_W`), the absolute-position score fix in `LineCell`, and a
+  "current round → your next match" highlight affordance. Follow-ups for after
+  the tournament.
+
+---
+
 ## 1-cd14. Session Summary — 2026-07-10: collapsible Seed order card
 
 Owner (seeds locked): "hide/unhide the seed order — I don't want to scroll past

@@ -27,12 +27,14 @@ export const ROW_H = 22;
 export const THEMES = {
   paper: {
     '--cd-canvas': '#faf7f0', '--cd-ink': '#171310', '--cd-faint': 'rgba(23,19,16,0.52)',
+    '--cd-from': 'rgba(23,19,16,0.72)',
     '--cd-rule': '#57534e', '--cd-gold': '#996c00', '--cd-gold-bg': '#fbbf24',
     '--cd-hit': 'rgba(251,191,36,0.45)', '--cd-live': '#047857', '--cd-live-bg': 'rgba(4,120,87,0.09)',
     '--cd-panel': '#f3ede1', '--cd-border': '#d8d2c4',
   },
   dark: {
     '--cd-canvas': '#101010', '--cd-ink': '#e4e4e7', '--cd-faint': 'rgba(228,228,231,0.45)',
+    '--cd-from': 'rgba(228,228,231,0.7)',
     '--cd-rule': '#71717a', '--cd-gold': '#fbbf24', '--cd-gold-bg': '#fbbf24',
     '--cd-hit': 'rgba(251,191,36,0.25)', '--cd-live': '#34d399', '--cd-live-bg': 'rgba(52,211,153,0.09)',
     '--cd-panel': '#171717', '--cd-border': '#27272a',
@@ -55,6 +57,7 @@ function resolveLine(spec, rows) {
     key: spec.key, col: spec.col, row: spec.row,
     seed: spec.seed || null, name: null, kind: 'tbd',
     score: '', live: false, court: '', wo: false, from: spec.from || null,
+    drop: !!spec.dropIn,
   };
   const nr = spec.nextNum ? rowOf(rows, spec.nextNum) : null;
   if (nr && nr[spec.nextSide]) { out.name = nr[spec.nextSide]; out.kind = 'name'; }
@@ -321,8 +324,8 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   // L2 (M33-40): W of L1 vs L of W2 (reversed drop — L of M(32-k))
   for (let k = 0; k < 8; k++) {
     CL.push(resolveLine({ key: `l2w-${k}`, col: 2, row: 4 * k + 2, feederNum: 17 + k, feederTake: 'winner', from: `W of M${17 + k}`, nextNum: 33 + k, nextSide: 'a' }, rows));
-    CL.push(resolveLine({ key: `l2d-${k}`, col: 2, row: 4 * k + 4, feederNum: 32 - k, feederTake: 'loser', from: `L of M${32 - k}`, nextNum: 33 + k, nextSide: 'b' }, rows));
-    CC.push(conn(2, 4 * k + 2, 4 * k + 4, 33 + k, rows)); CM.push(meta(2, 4 * k + 5, 33 + k, rows));
+    CL.push(resolveLine({ key: `l2d-${k}`, col: 2, row: 4 * k + 4, feederNum: 32 - k, feederTake: 'loser', from: `L of M${32 - k}`, nextNum: 33 + k, nextSide: 'b', dropIn: true }, rows));
+    CC.push(conn(2, 4 * k + 2, 4 * k + 3, 33 + k, rows)); CM.push(meta(2, 4 * k + 5, 33 + k, rows));
   }
   // L3 (M45-48): pair-up of L2 winners
   for (let j = 0; j < 8; j++) CL.push(resolveLine({ key: `l3-${j}`, col: 3, row: 4 * j + 3, feederNum: 33 + j, feederTake: 'winner', from: `W of M${33 + j}`, nextNum: 45 + Math.floor(j / 2), nextSide: j % 2 === 0 ? 'a' : 'b' }, rows));
@@ -330,8 +333,8 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   // L4 (M49-52): W of L3 vs L of W3 (reversed — L of M(44-k))
   for (let k = 0; k < 4; k++) {
     CL.push(resolveLine({ key: `l4w-${k}`, col: 4, row: 8 * k + 5, feederNum: 45 + k, feederTake: 'winner', from: `W of M${45 + k}`, nextNum: 49 + k, nextSide: 'a' }, rows));
-    CL.push(resolveLine({ key: `l4d-${k}`, col: 4, row: 8 * k + 7, feederNum: 44 - k, feederTake: 'loser', from: `L of M${44 - k}`, nextNum: 49 + k, nextSide: 'b' }, rows));
-    CC.push(conn(4, 8 * k + 5, 8 * k + 7, 49 + k, rows)); CM.push(meta(4, 8 * k + 8, 49 + k, rows));
+    CL.push(resolveLine({ key: `l4d-${k}`, col: 4, row: 8 * k + 7, feederNum: 44 - k, feederTake: 'loser', from: `L of M${44 - k}`, nextNum: 49 + k, nextSide: 'b', dropIn: true }, rows));
+    CC.push(conn(4, 8 * k + 5, 8 * k + 6, 49 + k, rows)); CM.push(meta(4, 8 * k + 8, 49 + k, rows));
   }
   // L5 (M55-56): pair-up
   for (let j = 0; j < 4; j++) CL.push(resolveLine({ key: `l5-${j}`, col: 5, row: 8 * j + 6, feederNum: 49 + j, feederTake: 'winner', from: `W of M${49 + j}`, nextNum: 55 + Math.floor(j / 2), nextSide: j % 2 === 0 ? 'a' : 'b' }, rows));
@@ -339,16 +342,16 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   // L6 (M57-58): W of L5 vs L of W4 (reversed — L of M(54-k))
   for (let k = 0; k < 2; k++) {
     CL.push(resolveLine({ key: `l6w-${k}`, col: 6, row: 16 * k + 10, feederNum: 55 + k, feederTake: 'winner', from: `W of M${55 + k}`, nextNum: 57 + k, nextSide: 'a' }, rows));
-    CL.push(resolveLine({ key: `l6d-${k}`, col: 6, row: 16 * k + 12, feederNum: 54 - k, feederTake: 'loser', from: `L of M${54 - k}`, nextNum: 57 + k, nextSide: 'b' }, rows));
-    CC.push(conn(6, 16 * k + 10, 16 * k + 12, 57 + k, rows)); CM.push(meta(6, 16 * k + 13, 57 + k, rows));
+    CL.push(resolveLine({ key: `l6d-${k}`, col: 6, row: 16 * k + 12, feederNum: 54 - k, feederTake: 'loser', from: `L of M${54 - k}`, nextNum: 57 + k, nextSide: 'b', dropIn: true }, rows));
+    CC.push(conn(6, 16 * k + 10, 16 * k + 11, 57 + k, rows)); CM.push(meta(6, 16 * k + 13, 57 + k, rows));
   }
   // L7 (M60): pair-up of the two survivors
   for (let j = 0; j < 2; j++) CL.push(resolveLine({ key: `l7-${j}`, col: 7, row: 16 * j + 11, feederNum: 57 + j, feederTake: 'winner', from: `W of M${57 + j}`, nextNum: 60, nextSide: j === 0 ? 'a' : 'b' }, rows));
   CC.push(conn(7, 11, 27, 60, rows)); CM.push(meta(7, 28, 60, rows));
   // L8 (M61, Comeback Final): W of L7 vs L of Winners Final
   CL.push(resolveLine({ key: 'l8w', col: 8, row: 19, feederNum: 60, feederTake: 'winner', from: 'W of M60', nextNum: 61, nextSide: 'a' }, rows));
-  CL.push(resolveLine({ key: 'l8d', col: 8, row: 21, feederNum: 59, feederTake: 'loser', from: 'L of M59', nextNum: 61, nextSide: 'b' }, rows));
-  CC.push(conn(8, 19, 21, 61, rows)); CM.push(meta(8, 22, 61, rows));
+  CL.push(resolveLine({ key: 'l8d', col: 8, row: 21, feederNum: 59, feederTake: 'loser', from: 'L of M59', nextNum: 61, nextSide: 'b', dropIn: true }, rows));
+  CC.push(conn(8, 19, 20, 61, rows)); CM.push(meta(8, 22, 61, rows));
   CL.push(resolveLine({ key: 'l9', col: 9, row: 20, feederNum: 61, feederTake: 'winner', from: 'W of M61', nextNum: 62, nextSide: 'b' }, rows));
   comeback.winner = { col: 9, row: 21, caption: '→ Grand Final (M62)' };
 

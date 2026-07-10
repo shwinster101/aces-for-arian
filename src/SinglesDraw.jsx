@@ -139,9 +139,10 @@ export default function SinglesDraw({
               </div>
             </div>
 
-            {/* Comeback backdraw below — every player's second life */}
-            <div data-dir="comeback" className="mt-4">
-              <DirLabel caption="Lose once, fight back — drop-in rounds meet a fresh loser from the Winners side">Comeback</DirLabel>
+            {/* Comeback backdraw below — every player's second life. A top rule +
+                faint tint separates the second-life bracket from the Winners grid. */}
+            <div data-dir="comeback" className="mt-4 pt-3 rounded-lg" style={{ borderTop: '2px solid var(--cd-border)', background: 'var(--cd-panel)' }}>
+              <DirLabel caption="Lose once, fight back — drop-in rounds (dashed line) meet a fresh loser falling from the Winners side">Comeback</DirLabel>
               <DirectionGrid g={model.comeback} clockFor={clockFor} highlight={highlight} />
             </div>
           </div>
