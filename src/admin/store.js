@@ -163,6 +163,18 @@ export const nextId = () => `${Date.now().toString(36)}-${(uid++).toString(36)}`
 export function useOpsStore() {
   const [store, setStore] = useState(load);
   const [lastPushAt, setLastPushAt] = useState(0);
+  // Per-match "saved" receipts: id -> ts of the last match POST that actually
+  // left this device (debounced flush, explicit Save flush, or the bracket
+  // re-sync). Fire-and-forget no-cors, so this is "sent", same honesty caveat
+  // as lastPushAt — but per-row, so the Scores tab can show "Saved ✓ H:MM" on
+  // the exact match a volunteer just edited instead of only the global header.
+  const [matchSavedAt, setMatchSavedAt] = useState({});
+  const stampSaved = (ids) => {
+    const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (!list.length) return;
+    const now = Date.now();
+    setMatchSavedAt(m => { const next = { ...m }; for (const id of list) next[id] = now; return next; });
+  };
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch { /* storage full/unavailable */ }
@@ -312,11 +324,22 @@ export function useOpsStore() {
     clearTimeout(p.timer);
     delete pendingMatchPush.current[id];
     pushToSheet('match', p.payload);
+    stampSaved(id);
+  };
+  // Immediate flush for the Scores-tab "Save result" button — sends whatever's
+  // pending for this row right now (no 400ms wait) and stamps the saved time.
+  // A no-op stamp if nothing was pending keeps the button reassuring even when
+  // the debounce already fired.
+  const flushMatch = (id) => {
+    if (pendingMatchPush.current[id]) flushMatchPush(id);
+    else stampSaved(id);
   };
   useEffect(() => {
     const flushAll = () => Object.keys(pendingMatchPush.current).forEach(flushMatchPush);
     window.addEventListener('pagehide', flushAll);
     return () => window.removeEventListener('pagehide', flushAll);
+    // Mount-only pagehide safety net; flushMatchPush reads live refs at call time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const updateMatch = (id, patch) => {
     setStore(s => ({ ...s, matches: s.matches.map(m => (m.id === id ? { ...m, ...patch } : m)) }));
@@ -460,6 +483,9 @@ export function useOpsStore() {
     // old per-row match + match-delete burst could interleave server-side and
     // clobber itself; hand-added rows are untouched by replace semantics).
     pushToSheet('matches-replace', { event, prefix, list: rows.map(publicMatchPayload) });
+    // Stamp each engine row saved so a winner marked here (or on the unified
+    // Scores tab) shows "Saved ✓" on the row, same as a debounced score push.
+    stampSaved(rows.map(r => r.id));
     // Share the full draw (seed order + bracket state, incl. winner marks) so
     // every ops device converges on it. A null bracket (clear) syncs too.
     pushDraw(event, store.seeds[event], nextBracket);
@@ -668,6 +694,7 @@ export function useOpsStore() {
   return {
     store,
     lastPushAt,
+    matchSavedAt, flushMatch,
     deskSync, pullDesk,
     getOverlay, setOverlay,
     addWalkUp, removeWalkUp,

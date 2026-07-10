@@ -35,6 +35,56 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd8. Session Summary — 2026-07-10: singles readiness audit + explicit "Save result" affordance
+
+Owner: "is singles ready to flip? audit the logic and scores. make sure the ops
+side has a way to edit score and match orders and results. intuitive 'button' to
+save results so a volunteer knows it's saved."
+
+**Audit verdict — singles logic & scores are correct and safe to reveal.** Byes
+for the 27-in-32 field feed M1/M5/M7/M9/M13 (seeds 1–5 walk into R2);
+`structuralSkips` = the right 11 nums; loser/comeback routing incl. reversed drops
+(L of M54 → M57) matches `graphFor` on all 92 edges; scores ride the winner's
+advancing line; the M63 bracket-reset conditional (active only if the comeback
+player wins M62) is correct. **Gate stays `Singles: false`** — owner flips Sunday.
+
+**One real bug found + fixed:**
+- **Champion cell** (`src/lib/compass.js` `buildDoubleElimModel`): was derived
+  from M62 alone, so on the reset branch it crowned the comeback player the
+  instant they won M62 (before M63 was played) and showed the WRONG champion if
+  the Winners player then won the M63 reset. Now: champion = M63 winner when the
+  reset is final; else the M62 winner only if side 'a' (Winners player wins
+  outright); a comeback win in M62 forces the reset and crowns nobody until M63.
+
+**Explicit "Save result" affordance (the volunteer ask):**
+- `src/admin/store.js`: new `matchSavedAt` state (per-match "sent" timestamps,
+  stamped inside `flushMatchPush` and the bracket re-sync) + `flushMatch(id)` for
+  the button. Debounced 400 ms auto-push kept as the safety net.
+- `src/admin/sections/Scores.jsx`: each `ScoreRow` now has a **Save result**
+  button that flips to green **"Saved ✓ · H:MM"** once the row's push lands (via
+  the button OR the auto-flush). Dirty/saved derived without a clock in render
+  (capture the saved-timestamp at edit time; a later push bumps it past the
+  marker). Honest tooltip — no-cors = "sent", spot-check the public board.
+- **Unified winner marking:** tapping a winner on a bracket (engine `S-`/`D-`) row
+  on the Scores tab now routes through `markBracketWinner` — it ADVANCES the draw
+  (populates the next round + re-syncs the flat row) exactly like the Draw board,
+  instead of only flagging the flat row final. Closes the footgun where a "saved"
+  result silently didn't advance. Hand-added rows keep the flat winner/final path.
+  Draw-board helper copy relaxed accordingly.
+- Match order + score/result editing already existed (Match-order card ↑/↓ +
+  add/remove; Draw board "Won"); this adds the missing per-row save confirmation.
+- Lint notes: React-compiler rules reject `Date.now()` and set-state-in-effect in
+  render scope — hence the edit-marker approach. The pagehide flush effect got an
+  `eslint-disable-next-line react-hooks/exhaustive-deps` (mount-only, reads live
+  refs) once `flushMatchPush` began closing over a state setter.
+- Verified: contract 71/71 (added the M63-reset-winner + comeback-forces-reset +
+  Winners-outright champion cases; fixed the stale premature-crown assertion),
+  new Scores flow 12/12 (Save→Saved✓, edit re-dirties, winner tap fires a
+  matches-replace and propagates downstream), round-trip 15/15, doubles view
+  57/57, check-in 21/21, lint/build clean.
+
+---
+
 ## 1-cd7. Session Summary — 2026-07-10: unified check-in row + cash drawer
 
 Owner-forwarded arrival-rush audit; directive: "implement the unified
