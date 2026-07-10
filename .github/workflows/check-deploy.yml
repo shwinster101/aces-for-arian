@@ -63,9 +63,9 @@ jobs:
           echo "main asset: ${asset:-NONE FOUND}"
           if [ -n "$asset" ]; then
             curl -sS -m 20 -A "$UA" -o main.js "https://acesforarian.com$asset"
-            if grep -q "as of Thu 7/9" main.js; then
-              echo "WEATHER MARKER: current (Thu 7/9) — deploy carries the latest main"
+            if grep -q "as of Fri 7/10" main.js; then
+              echo "WEATHER MARKER: current (Fri 7/10) — deploy carries the latest main"
             else
-              echo "WEATHER MARKER: NOT FOUND — deploy may be stale (pre-Thu-7/9 build)"
+              echo "WEATHER MARKER: NOT FOUND — deploy may be stale (pre-Fri-7/10 build)"
             fi
           fi
