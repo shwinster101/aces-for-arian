@@ -1006,6 +1006,7 @@ export default function App() {
   const [bracketEvent, setBracketEvent] = useState(DRAWS_PUBLIC.Doubles ? 'doubles' : 'singles');
   const [drawQuery, setDrawQuery] = useState(''); // "find yourself in the draw" highlight
   const drawHighlight = drawQuery.trim().length >= 2 ? drawQuery.trim().toLowerCase() : '';
+  const [nextMatch, setNextMatch] = useState(null); // { event, num } — the ▸ Next ring target from Follow-my-team
   // Randomize which photo set lands on the left vs. right on each visit.
   const [heroSwap] = useState(() => Math.random() < 0.5);
   const heroLeft = heroSwap ? HERO_SET_B : HERO_SET_A;
@@ -1974,6 +1975,7 @@ export default function App() {
                     rowsByNum={engineRowsFor('Doubles')}
                     clockFor={clockByEvent.Doubles}
                     highlight={drawHighlight}
+                    nextNum={nextMatch && nextMatch.event === 'Doubles' ? nextMatch.num : null}
                     showByes={showByes && dPIns === 0}
                   />
                   <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
@@ -2011,6 +2013,7 @@ export default function App() {
               pInsFor={pInsFor}
               clocks={clockByEvent}
               onHighlight={setDrawQuery}
+              onNextMatch={setNextMatch}
               query={drawQuery}
               onQuery={setDrawQuery}
             />
@@ -2035,6 +2038,7 @@ export default function App() {
                 rowsByNum={engineRowsFor('Singles')}
                 clockFor={clockByEvent.Singles}
                 highlight={drawHighlight}
+                nextNum={nextMatch && nextMatch.event === 'Singles' ? nextMatch.num : null}
                 showByes={showByes}
               />
               <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">

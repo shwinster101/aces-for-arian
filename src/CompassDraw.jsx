@@ -21,7 +21,7 @@ const GAP = 32;
 const PAD = 20;
 const WEST_W = 4 * COL_W;
 const EAST_W = 5 * COL_W;
-const CANVAS_W = PAD * 2 + WEST_W + GAP + EAST_W; // 1640
+const CANVAS_W = PAD * 2 + WEST_W + GAP + EAST_W; // 1872 @ COL_W 200
 
 // One draw line: a name sitting on an underline rule, sheet-style. Names all
 // start flush-left; the seed badge rides the RIGHT edge so alignment never
@@ -56,7 +56,12 @@ export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
         )}
       </span>
       {l.score && (
-        <span className="absolute top-0 text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-gold)', [mirrored ? 'left' : 'right']: '6px' }}>{l.score}</span>
+        // Rides the empty top half of the cell; a canvas-colored chip keeps it
+        // legible if it ever sits over the connector spine or a neighbor token.
+        <span
+          className="absolute top-0 text-[8px] font-mono font-bold whitespace-nowrap rounded px-1 pointer-events-none"
+          style={{ color: 'var(--cd-gold)', background: 'var(--cd-canvas)', maxWidth: 'calc(100% - 8px)', overflow: 'hidden', textOverflow: 'ellipsis', [mirrored ? 'left' : 'right']: '4px' }}
+        >{l.score}</span>
       )}
     </div>
   );
@@ -65,24 +70,29 @@ export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
 // ONE compact token per match — "M2 · ~9:00 AM" scheduled, "M1 · Ct 3 LIVE"
 // live, bare "M2" otherwise — hugging the connector edge so it reads as the
 // pair's metadata, never as a third line of text.
-export function MetaCell({ m, clockFor, mirrored, hdr = HDR }) {
+export function MetaCell({ m, clockFor, mirrored, hdr = HDR, isNext = false }) {
   let extra = null, color = 'var(--cd-faint)';
   if (m.live) { extra = m.court ? `Ct ${m.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
   // UNPOSTED matches carry a projected time too (9-court simulation) — every
   // team can read their first match's start straight off the sheet.
   else if (!m.final && clockFor) { const c = clockFor(m.num); if (c) { extra = c; color = 'var(--cd-gold)'; } }
+  const nextColor = m.live ? 'var(--cd-live)' : 'var(--cd-gold)';
   return (
     <div
+      data-next={isNext || undefined}
       style={{ gridColumn: m.col, gridRow: m.row + hdr, justifyContent: mirrored ? 'flex-start' : 'flex-end' }}
       className="flex items-start gap-1 px-2 pt-px min-w-0"
     >
       <span className="text-[8px] font-mono font-bold whitespace-nowrap" style={{ color: 'var(--cd-faint)' }}>M{m.num}</span>
+      {isNext && (
+        <span className="text-[8px] font-black uppercase tracking-wider whitespace-nowrap rounded px-1 leading-none py-px" style={{ color: nextColor, border: `1px solid ${nextColor}` }}>▸ Next</span>
+      )}
       {extra && <span className="text-[9px] font-mono font-bold whitespace-nowrap" style={{ color }}>· {extra}</span>}
     </div>
   );
 }
 
-export function DirectionGrid({ g, clockFor, highlight }) {
+export function DirectionGrid({ g, clockFor, highlight, nextNum = null }) {
   return (
     <div className="grid" style={{ gridTemplateColumns: `repeat(${g.cols}, ${COL_W}px)`, gridAutoRows: `${ROW_H}px` }}>
       {g.headers.map((h, i) => (
@@ -100,7 +110,7 @@ export function DirectionGrid({ g, clockFor, highlight }) {
           }}
         />
       ))}
-      {g.metas.map((m) => <MetaCell key={m.key} m={m} clockFor={clockFor} mirrored={g.mirrored} />)}
+      {g.metas.map((m) => <MetaCell key={m.key} m={m} clockFor={clockFor} mirrored={g.mirrored} isNext={nextNum != null && Number(m.num) === Number(nextNum)} />)}
       {g.winner && (
         <div style={{ gridColumn: g.winner.col, gridRow: g.winner.row + HDR, textAlign: g.mirrored ? 'right' : 'left' }} className="px-1.5 pt-0.5 text-[8px] font-black uppercase tracking-widest">
           <span style={{ color: 'var(--cd-gold)' }}>{g.winner.caption}</span>
@@ -121,7 +131,7 @@ export function DirectionGrid({ g, clockFor, highlight }) {
 
 // Play-in / consolation panels — the sheet's top-left slot (first on court).
 // Two rules per match, one compact meta line, no prose.
-export function PairPanel({ dataDir, title, items, clockFor, highlight }) {
+export function PairPanel({ dataDir, title, items, clockFor, highlight, nextNum = null }) {
   if (!items || !items.length) return null;
   return (
     <div data-dir={dataDir} className="rounded-lg border px-3 pt-1.5 pb-2.5 shrink-0" style={{ background: 'var(--cd-panel)', borderColor: 'var(--cd-border)' }}>
@@ -131,14 +141,17 @@ export function PairPanel({ dataDir, title, items, clockFor, highlight }) {
           let extra = null, color = 'var(--cd-gold)';
           if (p.meta.live) { extra = p.meta.court ? `Ct ${p.meta.court} LIVE` : 'LIVE'; color = 'var(--cd-live)'; }
           else if (!p.meta.final && clockFor) extra = clockFor(p.num);
+          const isNext = nextNum != null && Number(p.num) === Number(nextNum);
+          const nextColor = p.meta.live ? 'var(--cd-live)' : 'var(--cd-gold)';
           return (
-            <div key={p.num} style={{ width: COL_W }}>
+            <div key={p.num} data-next={isNext || undefined} style={{ width: COL_W }}>
               <div className="grid" style={{ gridTemplateColumns: `${COL_W}px`, gridAutoRows: `${ROW_H}px` }}>
                 <LineCell l={p.a} highlight={highlight} hdr={0} />
                 <LineCell l={p.b} highlight={highlight} hdr={0} />
               </div>
               <div className="flex items-baseline gap-1 pt-0.5 min-w-0">
                 <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: 'var(--cd-faint)' }}>M{p.num}</span>
+                {isNext && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider rounded px-1 leading-none py-px" style={{ color: nextColor, border: `1px solid ${nextColor}` }}>▸ Next</span>}
                 {extra && <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color }}>· {extra}</span>}
                 {p.note && <span className="text-[8px] truncate" style={{ color: 'var(--cd-faint)' }} title={p.note}>· {p.note}</span>}
               </div>
@@ -164,7 +177,7 @@ const JUMPS = [
 ];
 
 export default function CompassDraw({
-  eastNames, teams, pIns = 0, rowsByNum, clockFor, highlight = '', showByes = false,
+  eastNames, teams, pIns = 0, rowsByNum, clockFor, highlight = '', nextNum = null, showByes = false,
   theme = 'paper', title = 'Aces for Arian 2026 Doubles',
 }) {
   // Cheap to rebuild every render (a few hundred tiny objects); rowsByNum is
@@ -214,15 +227,17 @@ export default function CompassDraw({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // "Find yourself" — bring the first highlighted line into view.
+  // "Find yourself" — bring your NEXT match into view (the ▸ Next cell), or
+  // failing that the first highlighted line. Next wins so a picked team lands on
+  // where they play next, not the first alphabetical hit.
   useEffect(() => {
-    if (!highlight || !canvasRef.current || !wrapRef.current) return;
-    const el = canvasRef.current.querySelector('[data-hit]');
+    if ((!highlight && nextNum == null) || !canvasRef.current || !wrapRef.current) return;
+    const el = canvasRef.current.querySelector('[data-next]') || canvasRef.current.querySelector('[data-hit]');
     if (!el) return;
     const wrap = wrapRef.current;
     const { x, y } = offsetIn(el);
     wrap.scrollTo({ left: Math.max(0, x * scale - wrap.clientWidth / 2), top: Math.max(0, y * scale - wrap.clientHeight / 3), behavior: 'smooth' });
-  }, [highlight, scale]);
+  }, [highlight, nextNum, scale]);
 
   const chip = (active) => `whitespace-nowrap px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition ${active ? 'bg-[#fbbf24] text-black border-[#fbbf24]' : 'bg-[#111] text-zinc-400 border-zinc-800 hover:bg-zinc-900'}`;
 
@@ -259,13 +274,13 @@ export default function CompassDraw({
             <div className="flex items-end gap-5 mb-4">
               {model.playIns.length > 0 && (
                 <div className="flex flex-col gap-2 shrink-0" style={{ maxWidth: 4 * COL_W + 120 }}>
-                  <PairPanel dataDir="playin" title="Play-ins · first on court Saturday" items={model.playIns} clockFor={clockFor} highlight={highlight} />
-                  <PairPanel title="Play-in consolation · everyone plays twice" items={model.consolation} clockFor={clockFor} highlight={highlight} />
+                  <PairPanel dataDir="playin" title="Play-ins · first on court Saturday" items={model.playIns} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
+                  <PairPanel title="Play-in consolation · everyone plays twice" items={model.consolation} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
                 </div>
               )}
               <div data-dir="north" className="ml-auto shrink-0" style={{ width: 3 * COL_W, marginRight: COL_W }}>
                 <DirLabel caption="East quarterfinal exits — placement path">North</DirLabel>
-                <DirectionGrid g={model.north} clockFor={clockFor} highlight={highlight} />
+                <DirectionGrid g={model.north} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
               </div>
             </div>
 
@@ -273,18 +288,18 @@ export default function CompassDraw({
             <div className="flex items-start" style={{ gap: GAP }}>
               <div data-dir="west">
                 <DirLabel caption="East Round-of-16 exits — second path">West</DirLabel>
-                <DirectionGrid g={model.west} clockFor={clockFor} highlight={highlight} />
+                <DirectionGrid g={model.west} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
               </div>
               <div data-dir="east">
                 <DirLabel caption="Championship path — every team starts here">East</DirLabel>
-                <DirectionGrid g={model.east} clockFor={clockFor} highlight={highlight} />
+                <DirectionGrid g={model.east} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
               </div>
             </div>
 
             {/* Bottom band: South tucked under the West bracket */}
             <div data-dir="south" className="-mt-1" style={{ marginLeft: COL_W, width: 3 * COL_W }}>
               <DirLabel caption="Opening West-round exits — final placement path">South</DirLabel>
-              <DirectionGrid g={model.south} clockFor={clockFor} highlight={highlight} />
+              <DirectionGrid g={model.south} clockFor={clockFor} highlight={highlight} nextNum={nextNum} />
             </div>
           </div>
         </div>

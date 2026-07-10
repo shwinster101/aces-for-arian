@@ -35,6 +35,44 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd16. Session Summary — 2026-07-10: deferred bracket enhancements (MVP tier)
+
+Shipped the **MVP tier** of the three items cd15 deferred (owner chose "MVP, all
+three" given the event is this weekend — additive, no grid-geometry re-baseline).
+Shared canvas, so **doubles compass + singles both** get them; verify-compass
+(58) + verify-singles (13) stayed green as geometry guards.
+
+- **Item 1 — name legibility:** `COL_W` 176 → **200** (`src/lib/compass.js`).
+  One constant; `CANVAS_W`/`WEST_W`/`EAST_W` derive from it, Fit-scale absorbs the
+  width. ~14% more room for long doubles names. (Full = 2-line wrap + taller
+  `ROW_H`, still deferred to post-event.)
+- **Item 2 — score chip:** the absolute feeder score in `LineCell`
+  (`src/CompassDraw.jsx`) is now wrapped in a rounded chip with
+  `background: var(--cd-canvas)` + `pointer-events:none` + ellipsis clamp, so it
+  stays legible over a connector spine or neighbor token. (Full = inline
+  deterministic slot, deferred.)
+- **Item 3 — "your next match" ring (headline win):** picking a team in
+  **Follow-my-team** now marks exactly ONE match with a **▸ Next** pill and
+  scrolls the sheet to it (was: light every name-match the same gold, scroll to
+  the first alphabetical hit). `TeamTracker` computes `nextNum` (priority: live →
+  next posted → projected next round once won → pre-post `firstMatchFor`) and
+  pushes `{event,num}` up via a new `onNextMatch`; `App` holds `nextMatch` and
+  passes an event-scoped `nextNum` to `CompassDraw`/`SinglesDraw`. `MetaCell` +
+  play-in `PairPanel` render the ▸ Next pill (emerald if live, gold if upcoming)
+  and tag `data-next`; the "find yourself" scroll effect prefers `[data-next]`
+  over `[data-hit]`. Correctly rings a top seed's real R16 first match, not their
+  bye (verified: singles seed 5 → M28).
+- Verified: lint/build clean; new **verify-nextmatch 10/0** (ring appears only
+  after a pick, exactly one, follows live match, event-scoped so a singles pick
+  doesn't ring doubles); verify-compass 58, verify-singles 13, contract 84 all
+  green; screenshots (doubles live-ring + singles bye-seed ring, wider cols,
+  score chips).
+- **Still deferred → post-tournament (Full tier):** 2-line name wrapping + taller
+  sheet, inline score refactor, full route/path highlighting with a legend. Spec
+  in the plan file.
+
+---
+
 ## 1-cd15. Session Summary — 2026-07-10: free-hanging comeback drop-ins + bracket formatting pass
 
 Owner compared the live singles **Comeback** (loser's) bracket to the 2025

@@ -20,7 +20,7 @@ const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
 // lines are at rows rA < rB elbows through a border-only item spanning
 // rows rA+1..rB, and its output line lands exactly on the midpoint row —
 // integer by construction for every round below.
-export const COL_W = 176;
+export const COL_W = 200;
 export const ROW_H = 22;
 
 // Paper/dark canvas token sets — shared by CompassDraw and SinglesDraw.
