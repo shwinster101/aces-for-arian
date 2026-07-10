@@ -164,6 +164,19 @@ function SeedList({ event, ops, namesInEvent, entrants }) {
   const datalistId = `seed-names-${event}`;
   const issues = useMemo(() => seedListIssues(list, entrants), [list, entrants]);
 
+  // Collapse the (tall) seed list once the order is set, so it isn't dead
+  // scroll between the Field card and the Draw board. Persisted per event so
+  // Singles/Doubles remember independently and it survives reloads.
+  const [collapsedMap, setCollapsedMap] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('a4a-seedcollapse') || '{}'); } catch { return {}; }
+  });
+  const collapsed = !!collapsedMap[event];
+  const toggleCollapsed = () => setCollapsedMap(m => {
+    const next = { ...m, [event]: !m[event] };
+    try { localStorage.setItem('a4a-seedcollapse', JSON.stringify(next)); } catch { /* private mode */ }
+    return next;
+  });
+
   // Each mutation derives "next" from the updater's own `prev`, not the
   // `list` snapshot from this render — keeps rapid taps (e.g. rows reordered
   // right after one is added) from clobbering each other.
@@ -194,38 +207,52 @@ function SeedList({ event, ops, namesInEvent, entrants }) {
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Swords className="w-4 h-4 text-[#fbbf24]" /> Seed order — {event}</h3>
-        <button onClick={addRow} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
-          <Plus className="w-3.5 h-3.5" /> Add seed
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={toggleCollapsed} className="flex items-center gap-2 min-w-0 text-left group" aria-expanded={!collapsed}>
+          <Swords className="w-4 h-4 text-[#fbbf24] shrink-0" />
+          <h3 className="text-xs font-black text-white uppercase tracking-widest truncate">Seed order — {event}{list.length ? ` · ${list.length}` : ''}</h3>
+          {collapsed
+            ? <ChevronDown className="w-4 h-4 text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0" />
+            : <ChevronUp className="w-4 h-4 text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0" />}
         </button>
+        {collapsed ? (
+          <button onClick={toggleCollapsed} className="shrink-0 text-[10px] font-black uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors">Show</button>
+        ) : (
+          <button onClick={addRow} className="flex items-center justify-center gap-1.5 min-h-11 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/25 rounded-lg px-3 py-1.5 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add seed
+          </button>
+        )}
       </div>
 
-      <datalist id={datalistId}>
-        {namesInEvent.map(n => <option key={n} value={n} />)}
-      </datalist>
+      {!collapsed && (
+        <div className="mt-3">
+          <datalist id={datalistId}>
+            {namesInEvent.map(n => <option key={n} value={n} />)}
+          </datalist>
 
-      {list.length === 0 ? (
-        <EmptyState title="No seeds set yet" hint={`Tap entrants in the Field card above to build the ${event.toLowerCase()} seed order.`} />
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={list.map(r => r.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
-              {list.map((row, i) => {
-                const divider = bandDividerFor(event, i);
-                return (
-                  <Fragment key={row.id}>
-                    {divider && <BandDivider label={divider} />}
-                    <SortableSeedRow row={row} index={i} issue={issues[i] || {}}
-                      datalistId={datalistId} patchRow={patchRow} removeRow={removeRow} move={move} />
-                  </Fragment>
-                );
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
+          {list.length === 0 ? (
+            <EmptyState title="No seeds set yet" hint={`Tap entrants in the Field card above to build the ${event.toLowerCase()} seed order.`} />
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={list.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {list.map((row, i) => {
+                    const divider = bandDividerFor(event, i);
+                    return (
+                      <Fragment key={row.id}>
+                        {divider && <BandDivider label={divider} />}
+                        <SortableSeedRow row={row} index={i} issue={issues[i] || {}}
+                          datalistId={datalistId} patchRow={patchRow} removeRow={removeRow} move={move} />
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+          <p className="text-[10px] text-zinc-600 mt-3">Position in the list = bracket placement. Only 1–8 are individually seeded — 9–16{event === 'Singles' ? ' and 17–32' : ''} go into the draw as groups, but order within a group still sets which line they land on.{event === 'Doubles' ? ' Teams 17+ enter via the play-in round — they are in the tournament, not alternates.' : ''} Drag the grip to reorder, or use the up/down arrows.</p>
+        </div>
       )}
-      <p className="text-[10px] text-zinc-600 mt-3">Position in the list = bracket placement. Only 1–8 are individually seeded — 9–16{event === 'Singles' ? ' and 17–32' : ''} go into the draw as groups, but order within a group still sets which line they land on.{event === 'Doubles' ? ' Teams 17+ enter via the play-in round — they are in the tournament, not alternates.' : ''} Drag the grip to reorder, or use the up/down arrows.</p>
     </Card>
   );
 }

@@ -35,6 +35,21 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd14. Session Summary — 2026-07-10: collapsible Seed order card
+
+Owner (seeds locked): "hide/unhide the seed order — I don't want to scroll past
+it to set up matches." `SeedList` (`src/admin/sections/Seeding.jsx`) header is
+now a collapse toggle (chevron + seed count in the title, e.g. "Seed order —
+Singles · 27"). Collapsed hides the datalist + DnD list + footer + Add seed,
+leaving a one-line card so the Draw board / Match order sit right below. State
+persists per event in localStorage `a4a-seedcollapse` (`{Singles,Doubles}`), so
+Singles/Doubles remember independently across reloads. Default expanded; pure
+local UI — no store/sync/gate change. Verified: new probe 8/8 (count in header,
+collapse hides rows + Add seed, persists across reload, per-event independence,
+re-expand), lint/build clean.
+
+---
+
 ## 1-cd13. Session Summary — 2026-07-10: ops TD audit → Command Center, Logistics, Announce upgrades
 
 Tournament-director audit of the whole ops console + the owner's ask to
