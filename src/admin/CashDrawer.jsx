@@ -12,30 +12,13 @@
 import { useMemo, useState } from 'react';
 import { Banknote, ChevronDown, ChevronUp, Trash2, TriangleAlert } from 'lucide-react';
 import { Card, Stat, IconButton } from './ui';
+import { cashMath } from './store';
 
 const money = (n) => {
   const v = Math.round(Number(n) * 100) / 100;
   const abs = Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
   return `${v < 0 ? '−' : ''}$${abs}`;
 };
-
-// All drawer math in one place. The cash-low banner renders even when the
-// card is collapsed, so mounting the drawer on Check-ins surfaces it there.
-function cashMath(cash) {
-  const float = parseFloat(cash.float) || 0;
-  const log = cash.log || [];
-  const cashIn = log.reduce((t, r) => t + (Number(r.amount) || 0), 0);
-  const changeGiven = log.reduce((t, r) => t + (Number(r.change) || 0), 0);
-  const expected = float + cashIn;
-  const closing = cash.closing === '' || cash.closing == null ? NaN : parseFloat(cash.closing);
-  const variance = isNaN(closing) ? null : closing - expected;
-  // Change comes out of the float (plus whatever small bills get collected):
-  // once change given approaches the starting float, assume small bills are
-  // thin. Heuristic, not bookkeeping — it exists to prompt a restock BEFORE
-  // the line stalls on a $100 bill.
-  const lowBills = float > 0 && changeGiven >= 0.8 * float;
-  return { float, cashIn, changeGiven, expected, variance, lowBills };
-}
 
 function Field({ label, value, onChange, placeholder = '', type = 'text', width = 'w-32' }) {
   return (

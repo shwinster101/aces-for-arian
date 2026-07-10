@@ -39,6 +39,21 @@ const STATUS_PRESETS = [
   { label: 'Resumed', category: 'schedule', message: 'Play has resumed — courts are back on.' },
 ];
 
+// Round-call templates — the other under-pressure post. Fill in the [brackets]
+// / Court __ before posting (same fill-then-Post flow; nothing sends on tap).
+const ROUND_PRESETS = [
+  { label: 'Calling a round', category: 'round', message: 'Now calling the [round] — please report to the desk for your court assignment.' },
+  { label: 'On deck', category: 'round', message: 'On deck: [players] — please be ready courtside for Court __.' },
+  { label: 'Finals starting', category: 'round', message: 'Finals are starting on Court __ — come watch and cheer!' },
+  { label: 'Report scores', category: 'round', message: 'Winners: please report your score at the front desk before you leave the court.' },
+];
+
+// One-tap "clear the banner": posts a benign all-clear that the PUBLIC banner
+// suppresses (App.jsx AnnouncementBanner hides on category 'clear'), so a
+// lingering rain-hold/round banner actually disappears. Posts directly (it's a
+// fixed message); the Home feed still lists it as history.
+const CLEAR_POST = { event: 'Both', category: 'clear', message: 'All clear — back to normal play.' };
+
 // Staff announcements — weather delays, schedule changes, round calls, court
 // moves, lost & found. Posts land in the public Announcements tab (via the
 // 'announce' write-back) and surface as the site-wide banner + Home feed.
@@ -59,6 +74,13 @@ export default function Announce({ ops }) {
     setMessage(preset.message);
   };
 
+  // Clear the public banner — posts the all-clear directly (no edit step).
+  const clearBanner = () => {
+    ops.postAnnouncement(CLEAR_POST);
+    setMessage('');
+  };
+  const bannerLive = posted[0] && posted[0].category !== 'clear';
+
   return (
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Announcements" subtitle="Post site-wide updates — weather delays, schedule changes, round calls, court moves, lost & found. The newest post becomes the banner on every public page." />
@@ -67,13 +89,32 @@ export default function Announce({ ops }) {
         <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><Megaphone className="w-4 h-4 text-[#fbbf24]" /> New announcement</h3>
 
         <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5">Quick status — fills in below, still needs Post</div>
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {STATUS_PRESETS.map((preset) => (
             <button key={preset.label} onClick={() => applyPreset(preset)}
               className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#111] text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] transition-colors">
               {preset.label}
             </button>
           ))}
+        </div>
+
+        <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5">Round calls — fill the [blanks] / Court, then Post</div>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {ROUND_PRESETS.map((preset) => (
+            <button key={preset.label} onClick={() => applyPreset(preset)}
+              className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#111] text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] transition-colors">
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Clear the banner — one tap, posts directly (suppresses the public banner). */}
+        <div className="flex items-center gap-2 mb-4">
+          <button onClick={clearBanner}
+            className="flex items-center gap-1.5 min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors">
+            <Check className="w-3.5 h-3.5" /> Clear the banner
+          </button>
+          <span className="text-[10px] text-zinc-600">{bannerLive ? 'A banner is live — this hides it (posts one time).' : 'Banner is clear.'}</span>
         </div>
 
         <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5">Category</div>

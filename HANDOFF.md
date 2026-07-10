@@ -35,6 +35,51 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd13. Session Summary — 2026-07-10: ops TD audit → Command Center, Logistics, Announce upgrades
+
+Tournament-director audit of the whole ops console + the owner's ask to
+document a day-of buy list + merch/trophy order confirmations. Audit verdict:
+the seven task tabs are individually strong; the gaps are AGGREGATION and
+LOGISTICS. Shipped (all additive, HQ-only, public gate/time model untouched):
+
+- **Command Center** (`src/admin/sections/CommandCenter.jsx`, new): read-only
+  day-of dashboard, now the HQ default landing tab (`AdminApp.jsx`
+  `tab` default → `'command'`, first `TABS` entry, NOT in `DESK_TAB_IDS`).
+  Pure composition of the store — On court now (live matches by court), Check-in
+  N/total (players only), Money (paid/unpaid + $ collected via `cashMath`),
+  Live banner (`announcements[0]`, hidden when it's a `clear`), aces + $,
+  roster/push freshness. Each card deep-links to its tab (`onGoTab={setTab}`).
+- **Logistics** (`src/admin/sections/Logistics.jsx` + `docs/day-of-logistics.md`,
+  new; HQ-only tab): buy list (Water/Gatorade/fruit/savory/fruit snacks/paper
+  towels/napkins/ice/sundries — tick "Got", edit qty/note) + Orders &
+  confirmations (Player tees, doubles/singles trophies top-3, extra gear —
+  Ordered→Confirmed, vendor, cost). Backed by a new LOCAL-only `logistics`
+  store slice (`{buyList, orders}`) seeded in `initialStore()` so it survives
+  `clearOps`; array-guarded `load()`; setters `setLogItem`/`addLogItem`/
+  `removeLogItem`/`resetLogistics`. `docs/day-of-logistics.md` is the durable
+  next-year runbook (suggested quantities scaled to ~46 players, order tables,
+  prep timeline) — mirrors the seed template.
+- **Announce upgrades** (`src/admin/sections/Announce.jsx`): a round-call preset
+  row (category `round`: Calling a round / On deck / Finals starting / Report
+  scores — fill-then-Post) + a one-tap **Clear the banner** that posts a
+  `category:'clear'` announcement. The public banner (`App.jsx`
+  `AnnouncementBanner` gate) hides when the newest post is `clear`; the Home
+  feed still lists it. No Apps Script change.
+- **`cashMath` moved to `store.js`** (exported) so CashDrawer + Command Center
+  share it (avoids the react-refresh only-export-components rule on a component
+  file).
+- Documented-not-built (lower TD leverage): court assignment is manual/the
+  `courtBoard` slice is orphaned; Registrations has no partner-edit for sheet
+  regs; Scores' court list ignores `schedule.courts`; Regenerate wipes results
+  with no undo; shell has no tab badges.
+- Verified: new ops probe 17/17 (Command Center tiles from a seeded live/cash/
+  checked-in fixture, card deep-link, Logistics seed + tick + localStorage
+  persist, round preset fill, clear-banner posts `clear` + public banner hides
+  while the feed keeps it); regressions all green — check-in 21, scores 12,
+  enhancements 13, compass 58, round-trip 15, weather 3; lint/build clean.
+
+---
+
 ## 1-cd12. Session Summary — 2026-07-10: public-view audit → Tier-1 day-of enhancements
 
 Owner asked for a tab-by-tab audit of the public view (drivers, missing/

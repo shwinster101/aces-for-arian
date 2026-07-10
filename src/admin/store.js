@@ -53,11 +53,52 @@ const emptyOverlay = () => ({
 });
 
 // One physical cash box → one device. float/closing stay raw strings (they
-// back number inputs); the CashDrawer component derives all the math.
+// back number inputs); cashMath derives all the numbers.
 const emptyCash = () => ({ float: '', volunteer: '', closing: '', log: [] });
+// Pure drawer math — shared by CashDrawer (full view) and the Command Center
+// ("$ collected"). Expected = starting float + net cash in; variance compares
+// the counted close-out; lowBills warns when change given nears the float.
+export function cashMath(cash = {}) {
+  const float = parseFloat(cash.float) || 0;
+  const log = cash.log || [];
+  const cashIn = log.reduce((t, r) => t + (Number(r.amount) || 0), 0);
+  const changeGiven = log.reduce((t, r) => t + (Number(r.change) || 0), 0);
+  const expected = float + cashIn;
+  const closing = cash.closing === '' || cash.closing == null ? NaN : parseFloat(cash.closing);
+  const variance = isNaN(closing) ? null : closing - expected;
+  const lowBills = float > 0 && changeGiven >= 0.8 * float;
+  return { float, cashIn, changeGiven, expected, variance, lowBills };
+}
 // Check-in script read to every player (warm-up spot, where to report
 // scores, where next matches show) — HQ fills these at the desk each morning.
 const emptyDeskScript = () => ({ warmup: '', scores: '', next: 'Website + court board' });
+
+// Day-of logistics — the buy list (consumables) + merch/trophy order
+// confirmations. LOCAL-only committee prep data (like cash/deskScript). Seeded
+// with the standard checklist so it's ready every year; edit quantities/vendors
+// on the tab. Stable ids on the seed rows so a re-seed can't duplicate them.
+// The durable next-year reference is docs/day-of-logistics.md (this mirrors it).
+const defaultLogistics = () => ({
+  buyList: [
+    { id: 'buy-water', item: 'Water (cases)', target: '5', got: false, note: '' },
+    { id: 'buy-gatorade', item: 'Gatorade (cases)', target: '3', got: false, note: '' },
+    { id: 'buy-fruit', item: 'Fruit — bananas / oranges', target: '4 dozen', got: false, note: '' },
+    { id: 'buy-savory', item: 'Savory snack — chips / pretzels', target: '8 bags', got: false, note: '' },
+    { id: 'buy-fruitsnacks', item: 'Fruit snacks', target: '2 boxes', got: false, note: '' },
+    { id: 'buy-paper', item: 'Paper towels', target: '3 rolls', got: false, note: '' },
+    { id: 'buy-napkins', item: 'Napkins', target: '1 pack', got: false, note: '' },
+    { id: 'buy-ice', item: 'Ice + coolers', target: '3 bags', got: false, note: '' },
+    { id: 'buy-sundries', item: 'Cups / trash bags', target: '', got: false, note: '' },
+  ],
+  orders: [
+    { id: 'ord-tees', item: 'Player tees', vendor: '', ordered: false, confirmed: false, cost: '', note: 'Size counts live on the Merch tab' },
+    { id: 'ord-trophies-d', item: 'Trophies — doubles top 3', vendor: '', ordered: false, confirmed: false, cost: '', note: '' },
+    { id: 'ord-trophies-s', item: 'Trophies — singles top 3', vendor: '', ordered: false, confirmed: false, cost: '', note: '' },
+    { id: 'ord-hats', item: 'Extra gear — hats', vendor: '', ordered: false, confirmed: false, cost: '', note: '' },
+    { id: 'ord-bands', item: 'Extra gear — sweatbands', vendor: '', ordered: false, confirmed: false, cost: '', note: '' },
+    { id: 'ord-towels', item: 'Extra gear — court towels', vendor: '', ordered: false, confirmed: false, cost: '', note: '' },
+  ],
+});
 
 const emptyCourtBoard = () => ({
   updated: '',
@@ -79,6 +120,7 @@ const initialStore = () => ({
   emails: [],                                // email-blast BCC list (Announce tab) — manual adds + sheet fetch
   cash: emptyCash(),                         // day-of cash drawer ledger — LOCAL to the drawer device (see setCash)
   deskScript: emptyDeskScript(),             // pinned check-in script lines volunteers read out
+  logistics: defaultLogistics(),             // buy list + merch/trophy order confirmations — LOCAL (see setLogItem)
 });
 
 // Match Order rows managed by the bracket engine carry ids prefixed 'S-'
@@ -124,6 +166,14 @@ function load() {
         ? { ...emptyCash(), ...parsed.cash, log: Array.isArray(parsed.cash.log) ? parsed.cash.log : [] }
         : emptyCash(),
       deskScript: { ...emptyDeskScript(), ...(parsed.deskScript && typeof parsed.deskScript === 'object' ? parsed.deskScript : {}) },
+      // Missing slice (pre-logistics store) → seed the standard checklist; an
+      // edited array (even emptied on purpose) is preserved as-is.
+      logistics: parsed.logistics && typeof parsed.logistics === 'object'
+        ? {
+            buyList: Array.isArray(parsed.logistics.buyList) ? parsed.logistics.buyList : defaultLogistics().buyList,
+            orders: Array.isArray(parsed.logistics.orders) ? parsed.logistics.orders : defaultLogistics().orders,
+          }
+        : defaultLogistics(),
     };
   } catch {
     return initialStore();
@@ -565,6 +615,22 @@ export function useOpsStore() {
   // like the drawer: it's desk signage, not shared state.
   const setDeskScript = (patch) => setStore(s => ({ ...s, deskScript: { ...s.deskScript, ...patch } }));
 
+  // Day-of logistics — buy list + merch/trophy order confirmations. LOCAL-only
+  // committee prep (like the drawer/script). `kind` is 'buyList' | 'orders'.
+  const setLogItem = (kind, id, patch) =>
+    setStore(s => ({ ...s, logistics: { ...s.logistics, [kind]: s.logistics[kind].map(r => (r.id === id ? { ...r, ...patch } : r)) } }));
+  const addLogItem = (kind) => {
+    const row = kind === 'orders'
+      ? { id: nextId(), item: '', vendor: '', ordered: false, confirmed: false, cost: '', note: '' }
+      : { id: nextId(), item: '', target: '', got: false, note: '' };
+    setStore(s => ({ ...s, logistics: { ...s.logistics, [kind]: [...s.logistics[kind], row] } }));
+    return row.id;
+  };
+  const removeLogItem = (kind, id) =>
+    setStore(s => ({ ...s, logistics: { ...s.logistics, [kind]: s.logistics[kind].filter(r => r.id !== id) } }));
+  // Restore the seeded checklist (for the "reset to standard list" button).
+  const resetLogistics = () => setStore(s => ({ ...s, logistics: defaultLogistics() }));
+
   // Email-blast BCC list (Announce tab). Local to this device — emails are
   // PII and never pushed to the sheet or the public endpoint from here; the
   // optional "fetch from sheet" path is a direct Apps Script read the section
@@ -707,6 +773,7 @@ export function useOpsStore() {
     pushPublicStatus, pushConfig, setSchedule,
     addEmails, removeEmail, clearEmails,
     setCash, recordCash, removeCashEntry, setDeskScript,
+    setLogItem, addLogItem, removeLogItem, resetLogistics,
     exportJSON, clearOps,
   };
 }

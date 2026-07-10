@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
+  LayoutDashboard,
   ClipboardList,
   UserCheck,
   CircleDollarSign,
   Swords,
   Grid3x3,
   Package,
+  ShoppingCart,
   Megaphone,
   RefreshCw,
   LogOut,
@@ -17,6 +19,7 @@ import AuthGate from './AuthGate';
 import { isUnlocked, lock, role } from './auth';
 import { useOpsStore } from './store';
 import { BrandLogo } from './ui';
+import CommandCenter from './sections/CommandCenter';
 import Registrations from './sections/Registrations';
 import CheckIns from './sections/CheckIns';
 import Payments from './sections/Payments';
@@ -24,26 +27,31 @@ import Seeding from './sections/Seeding';
 import Scores from './sections/Scores';
 import Announce from './sections/Announce';
 import Merch from './sections/Merch';
+import Logistics from './sections/Logistics';
 
 const TABS = [
+  { id: 'command', label: 'Command Center', icon: LayoutDashboard },
   { id: 'registrations', label: 'Registrations', icon: ClipboardList },
   { id: 'checkins', label: 'Check-ins', icon: UserCheck },
   { id: 'payments', label: 'Payments', icon: CircleDollarSign },
   { id: 'seeding', label: 'Seeding & Draws', icon: Swords },
   { id: 'scores', label: 'Scores & Courts', icon: Grid3x3 },
   { id: 'announce', label: 'Announce', icon: Megaphone },
+  { id: 'logistics', label: 'Logistics', icon: ShoppingCart },
   { id: 'merch', label: 'Merch', icon: Package },
 ];
 
-// The volunteer PIN unlocks just the day-of desk + courtside jobs. Draws,
-// announcements (incl. the email list), registrations admin, and merch stay
-// HQ-only. UI-level gate — same deterrent trust model as the PIN itself.
+// The volunteer PIN unlocks just the day-of desk + courtside jobs. Command
+// Center, draws, announcements (incl. the email list), registrations admin,
+// logistics, and merch stay HQ-only. UI-level gate — same deterrent model.
 const DESK_TAB_IDS = new Set(['checkins', 'payments', 'scores']);
 
 // Where each admin section shows up on the public site — drives the contextual
 // "View live ↗" link (deep-links into the public app's hash router) so staff
 // can one-tap confirm "what I entered shows correctly."
 const PUBLIC_VIEW = {
+  command: { hash: 'home', label: 'public site' },
+  logistics: { hash: 'home', label: 'public site' },
   registrations: { hash: 'home', label: 'public roster' },
   checkins: { hash: 'home', label: 'public roster' },
   payments: { hash: 'home', label: 'public roster' },
@@ -64,7 +72,7 @@ function OpsConsole({ onLock }) {
   const myRole = role(); // 'hq' | 'desk' — read once; a role change requires re-unlocking
   const isDesk = myRole === 'desk';
   const visibleTabs = isDesk ? TABS.filter(t => DESK_TAB_IDS.has(t.id)) : TABS;
-  const [tab, setTab] = useState(isDesk ? 'checkins' : 'registrations');
+  const [tab, setTab] = useState(isDesk ? 'checkins' : 'command');
   const [roster, setRoster] = useState(fallbackRoster);
   const [rosterLive, setRosterLive] = useState(false);
   const [syncedAt, setSyncedAt] = useState(null);
@@ -188,12 +196,14 @@ function OpsConsole({ onLock }) {
 
       {/* --- MAIN --- */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-5 sm:px-6">
+        {tab === 'command' && <CommandCenter {...sectionProps} onGoTab={setTab} rosterLive={rosterLive} syncedAt={syncedAt} />}
         {tab === 'registrations' && <Registrations {...sectionProps} />}
         {tab === 'checkins' && <CheckIns {...sectionProps} />}
         {tab === 'payments' && <Payments {...sectionProps} />}
         {tab === 'seeding' && <Seeding {...sectionProps} />}
         {tab === 'scores' && <Scores {...sectionProps} />}
         {tab === 'announce' && <Announce {...sectionProps} />}
+        {tab === 'logistics' && <Logistics {...sectionProps} />}
         {tab === 'merch' && <Merch {...sectionProps} />}
       </main>
 
