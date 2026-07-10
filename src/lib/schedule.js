@@ -42,12 +42,15 @@ export function dayStartMs(event) {
 }
 
 // Rounds played as 8-game pro sets (QF onward) — longer than the earlier
-// rounds. Doubles championship = East QF/SF/F; singles = Winners R3 (round of
-// 8 = QF) / SF / Final, and the Grand Final. Keyed off the flat rows' `round`
-// tag (see roundTag in src/lib/draw.js).
+// rounds. Doubles championship = East QF/SF/F. Singles is a TRUE double
+// elimination: the Winners QF/SF/F (R3/SF/F), the Grand Final + reset, AND the
+// Backdraw's own quarter/semi/final (Comeback R6 = M57/58, R7 = M60, F = M61)
+// are all 8-game pro sets — the backdraw isn't a shortened consolation. Only
+// the earlier winners/comeback rounds run the standard singles length. Keyed
+// off the flat rows' `round` tag (see roundTag in src/lib/draw.js).
 const LONG_ROUNDS = {
   Doubles: new Set(['QF', 'SF', 'F']),
-  Singles: new Set(['R3', 'SF', 'F', 'Grand Final']),
+  Singles: new Set(['R3', 'SF', 'F', 'Grand Final', 'GF Reset', 'Comeback R6', 'Comeback R7', 'Comeback F']),
 };
 // Singles rounds that run best-of-3 when finalsMin is set — the marquee
 // "semis and finals" (NOT the quarters/R3). Round tags per src/lib/draw.js.

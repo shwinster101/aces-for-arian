@@ -741,7 +741,7 @@ function RoundTimesBanner({ matches, sched, now }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Quarterfinals are 8-game pro sets (~{sched.qfMin} min){sched.finalsMin > 0 ? `; singles semis & finals are best-of-3 (~${sched.finalsMin} min)` : ''}. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
+      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Quarters, semis & finals — including the singles backdraw's (true double elimination) — are 8-game pro sets (~{sched.qfMin} min){sched.finalsMin > 0 ? `; singles semis & finals run best-of-3 (~${sched.finalsMin} min)` : ''}. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
     </div>
   );
 }

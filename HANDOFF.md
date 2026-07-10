@@ -35,6 +35,35 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd10. Session Summary — 2026-07-10: true double-elim — backdraw QF/SF/F are 8-game pro sets
+
+Owner: "8 game pro quarter semis and finals including the backdraw play in
+(true double elimination)." Decision: 8-game pro sets (NOT best-of-3) for the
+championship QF/SF/F, and the SAME pro-set length for the backdraw's own
+quarter/semi/final — the loser's bracket isn't a shortened consolation.
+
+- **`LONG_ROUNDS.Singles`** (`src/lib/schedule.js`) gains `Comeback R6` (M57/58
+  = backdraw QF), `Comeback R7` (M60 = backdraw SF), `Comeback F` (M61 =
+  backdraw final), and `GF Reset` (M63). They now resolve to `qfMin` (8-game
+  pro set, 60) via matchMinFor. Because LONG_ROUNDS is checked BEFORE the
+  backdraw-shortening regex, these stay full pro sets even if the desk sets
+  "Backdraw min" to speed the EARLY comeback rounds. Early winners/comeback
+  rounds keep the standard singles length (50).
+- finalsMin stays 0 (pro sets, the owner's choice over best-of-3); the knob
+  remains for flexibility.
+- Public "Planned round times" footnote updated: "Quarters, semis & finals —
+  including the singles backdraw's (true double elimination) — are 8-game pro
+  sets."
+- **Projected end** (9-court sim, 27 players, 9 AM start): with the backdraw
+  QF/SF/F now pro sets, the Grand Final ends **~8:20 PM** (was ~7:50 PM when the
+  backdraw ran the shorter length); a bracket reset → ~9:20 PM.
+- Verified: contract 78/78 (backdraw QF/SF/F + GF-reset = 60; early rounds = 50;
+  backdrawMin shortens early comeback rounds but not the backdraw QF/SF/F;
+  doubles unaffected), Scores 12/12, round-trip 15/15, doubles view 57/57,
+  check-in 21/21, weather probe 3/3, lint/build clean.
+
+---
+
 ## 1-cd9. Session Summary — 2026-07-10: singles pushed to 9 AM (rain) + best-of-3 finals knob + weather update
 
 New Fri 7/10 forecast (Apple, Dunlap): rain moved back INTO both mornings —
