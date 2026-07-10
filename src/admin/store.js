@@ -52,6 +52,13 @@ const emptyOverlay = () => ({
   notes: '',
 });
 
+// One physical cash box → one device. float/closing stay raw strings (they
+// back number inputs); the CashDrawer component derives all the math.
+const emptyCash = () => ({ float: '', volunteer: '', closing: '', log: [] });
+// Check-in script read to every player (warm-up spot, where to report
+// scores, where next matches show) — HQ fills these at the desk each morning.
+const emptyDeskScript = () => ({ warmup: '', scores: '', next: 'Website + court board' });
+
 const emptyCourtBoard = () => ({
   updated: '',
   courts: Array.from({ length: 9 }, (_, i) => ({ court: i + 1, now: '', next: '' })),
@@ -70,6 +77,8 @@ const initialStore = () => ({
   brackets: { Singles: null, Doubles: null },// generated draws (src/lib/draw.js) — see generateBracket
   schedule: { ...SCHEDULE_DEFAULTS },        // courts + per-event match minutes for the "next match" estimate
   emails: [],                                // email-blast BCC list (Announce tab) — manual adds + sheet fetch
+  cash: emptyCash(),                         // day-of cash drawer ledger — LOCAL to the drawer device (see setCash)
+  deskScript: emptyDeskScript(),             // pinned check-in script lines volunteers read out
 });
 
 // Match Order rows managed by the bracket engine carry ids prefixed 'S-'
@@ -111,6 +120,10 @@ function load() {
         : { Singles: null, Doubles: null },
       schedule: { ...SCHEDULE_DEFAULTS, ...(parsed.schedule && typeof parsed.schedule === 'object' ? parsed.schedule : {}) },
       emails: Array.isArray(parsed.emails) ? parsed.emails.filter(e => typeof e === 'string') : [],
+      cash: parsed.cash && typeof parsed.cash === 'object'
+        ? { ...emptyCash(), ...parsed.cash, log: Array.isArray(parsed.cash.log) ? parsed.cash.log : [] }
+        : emptyCash(),
+      deskScript: { ...emptyDeskScript(), ...(parsed.deskScript && typeof parsed.deskScript === 'object' ? parsed.deskScript : {}) },
     };
   } catch {
     return initialStore();
@@ -506,6 +519,26 @@ export function useOpsStore() {
     if (Object.keys(clean).length) pushConfig(clean);
   };
 
+  // --- Cash drawer (LOCAL ONLY — deliberate) -------------------------------
+  // There is ONE physical cash box, so its ledger lives on the device sitting
+  // next to it. Syncing it would let two phones "run" the same drawer and
+  // drift the count — the exact failure cash controls exist to prevent. Cash
+  // entry fees land here automatically from the Check-ins collect flow; merch
+  // cash and refunds go through the drawer's quick-adjust row.
+  const setCash = (patch) => setStore(s => ({ ...s, cash: { ...s.cash, ...patch } }));
+  const recordCash = (entry) => {
+    const row = { id: nextId(), ts: new Date().toISOString(), name: '', kind: 'entry', amount: 0, tendered: 0, change: 0, ...entry };
+    setStore(s => ({ ...s, cash: { ...s.cash, log: [...s.cash.log, row] } }));
+    return row.id;
+  };
+  const removeCashEntry = (id) =>
+    setStore(s => ({ ...s, cash: { ...s.cash, log: s.cash.log.filter(r => r.id !== id) } }));
+
+  // Pinned check-in script (warm-up spot, score reporting, next matches) —
+  // HQ types it once at setup; volunteers read it on every check-in. Local
+  // like the drawer: it's desk signage, not shared state.
+  const setDeskScript = (patch) => setStore(s => ({ ...s, deskScript: { ...s.deskScript, ...patch } }));
+
   // Email-blast BCC list (Announce tab). Local to this device — emails are
   // PII and never pushed to the sheet or the public endpoint from here; the
   // optional "fetch from sheet" path is a direct Apps Script read the section
@@ -646,6 +679,7 @@ export function useOpsStore() {
     generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket,
     pushPublicStatus, pushConfig, setSchedule,
     addEmails, removeEmail, clearEmails,
+    setCash, recordCash, removeCashEntry, setDeskScript,
     exportJSON, clearOps,
   };
 }

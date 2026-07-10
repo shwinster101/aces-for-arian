@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { CircleDollarSign, Shirt } from 'lucide-react';
 import { Card, PageHeader, Stat, Pills, SearchBox, Toggle, Select, EmptyState } from '../ui';
+import CashDrawer from '../CashDrawer';
 import { CONFIG_CSV_URL, parseCSV, mapConfig } from '../../lib/sheet';
 
 const FILTERS = [
@@ -9,7 +10,9 @@ const FILTERS = [
   { value: 'no-shirt', label: 'No shirt yet' },
 ];
 
-const PAYMENT_METHODS = ['Venmo', 'Zelle', 'Cash', 'Other'];
+// 'Comped' is what the Check-ins collect flow writes for a fee exception —
+// keep it selectable here so the reconciliation view round-trips it.
+const PAYMENT_METHODS = ['Venmo', 'Zelle', 'Cash', 'Comped', 'Other'];
 const SHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export default function Payments({ participants, ops }) {
@@ -36,7 +39,7 @@ export default function Payments({ participants, ops }) {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Payments" subtitle="Track who's paid the $40 entry (and how) and who's collected their tournament tee. Order quantities live in the Merch tab." />
+      <PageHeader title="Payments" subtitle="Reconciliation view — day-of collection happens on the Check-ins tab (one row per arrival). Use this to audit who's paid, how, and to close out the cash box." />
       <p className="text-[10px] text-emerald-400/70 -mt-1">Synced across devices (~30s) via the private ops sheet — safe to run from multiple phones/the laptop at once.</p>
 
       <p className="text-[10px] text-zinc-600 -mt-1">
@@ -111,6 +114,7 @@ export default function Payments({ participants, ops }) {
           </div>
         )}
       </Card>
+      <CashDrawer ops={ops} defaultOpen title="Cash drawer — reconciliation" />
       <p className="text-[10px] text-zinc-600 flex items-center gap-1.5"><Shirt className="w-3 h-3" /> Entry includes one tournament tee ($25 value) — sizes feed the order count for the gear locker.</p>
     </div>
   );
