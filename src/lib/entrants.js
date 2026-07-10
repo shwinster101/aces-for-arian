@@ -53,6 +53,55 @@ export function shortLabel(name, yearMap) {
   return shortName(name, yr(name));
 }
 
+// --- BOARD NAMES (live surfaces) ---------------------------------------------
+// The court board / queue / live scores read fastest as FIRST NAMES:
+// "Greyson/Andy vs Alex/Ethan M". Class years and last initials stay on the
+// draw sheet (that's the context where they matter); a last initial is kept
+// on the boards ONLY to split duplicate first names (the two Ethans →
+// "Ethan K" / "Ethan M"). All pure parsers over the display labels the sheet
+// already carries ("First L. 'YY" / "A & B" teams).
+
+// One person's board name from a display label side ("Ethan K. '25").
+export function boardName(sideLabel, dupSet) {
+  const toks = (sideLabel || '').trim().split(/\s+/).filter(Boolean);
+  if (!toks.length) return '';
+  const first = toks[0];
+  if (dupSet && dupSet.has(first.toLowerCase())) {
+    // next alphabetic token gives the disambiguating initial — "Ethan K"
+    const next = toks.slice(1).map(t => t.replace(/[^A-Za-z]/g, '')).find(Boolean);
+    if (next) return `${first} ${next.charAt(0).toUpperCase()}`;
+  }
+  return first;
+}
+
+// A whole line's board form: teams joined with "/" — "Greyson/Andy".
+export function boardTeam(label, dupSet) {
+  const team = splitTeamName(label);
+  if (team) return team.map(m => boardName(m, dupSet)).join('/');
+  return boardName(label, dupSet);
+}
+
+// First names appearing 2+ times across every PERSON in the given labels
+// (teams split first) — these keep their last initial on the boards.
+export function dupFirstNames(labels) {
+  // dedupe PEOPLE first — the same team label appears on many match rows,
+  // and re-counting it would make every first name look duplicated
+  const people = new Set();
+  for (const label of labels || []) {
+    const team = splitTeamName(label);
+    for (const side of team || [label]) {
+      const v = normName(side);
+      if (v) people.add(v);
+    }
+  }
+  const count = new Map();
+  for (const p of people) {
+    const k = p.split(' ')[0];
+    count.set(k, (count.get(k) || 0) + 1);
+  }
+  return new Set([...count].filter(([, n]) => n > 1).map(([k]) => k));
+}
+
 // Split "A & B" / "A and B" / "A + B" / "A / B" into the two sides.
 export function splitTeamName(s) {
   const parts = (s || '').split(/\s*(?:&|\+|\/|,|\band\b)\s*/i).map(p => p.trim()).filter(Boolean);
