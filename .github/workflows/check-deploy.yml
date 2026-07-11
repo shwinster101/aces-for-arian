@@ -33,29 +33,43 @@ jobs:
             # OpsStatus/Matches carry participant names — counts are enough.
             if [ "$tab" = "Announcements" ] || [ "$tab" = "Config" ]; then head -c 600 body.txt; echo; fi
           done
-      - name: Probe Apps Script write path (announce round-trip)
+      - name: Probe Apps Script write path (event-day safe)
         run: |
           # Tokens below are already committed in this public repo (deterrents,
-          # not secrets) — using them here adds zero exposure.
+          # not secrets) — using them here adds zero exposure. The write
+          # round-trip uses a fake event 'Probe' with id prefix 'P-': the
+          # public site renders only Doubles/Singles rows (DRAWS_PUBLIC
+          # filter), so unlike the old announce round-trip nothing can flash
+          # on the live banner mid-tournament, AND it exercises the newest
+          # deployed handler (matches-replace under LockService).
           EXEC="https://script.google.com/macros/s/AKfycby1CP-FQNwOoKYkDiiFEzoUbrEkg2427Iyt4x_GXwjeVsB9rlOPMYJOZQiygkI5fDbM7Q/exec"
           WRITE="a4a-ea5316b9f5d5b04e49115a20"
           READ="a4a-read-8db082a282da9e0b622178164cd9b202"
+          DESK="a4a-desk-2f9b6a1e4c7d0358b1a9e6f2"
           echo "===== anonymous-access check (bad-token GET should give empty JSON, not a Google login page)"
           curl -sSL -m 20 -o resp.txt -w "final URL: %{url_effective}\nHTTP %{http_code}\n" "$EXEC?mode=opsdesk&token=nope"
           head -c 200 resp.txt; echo
-          echo "===== write probe: post a throwaway announcement"
-          PID="probe-$(date +%s)"
-          curl -sSL -m 20 -o /dev/null -w "POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
-            -d "{\"type\":\"announce\",\"token\":\"$WRITE\",\"payload\":{\"id\":\"$PID\",\"ts\":\"$(date -u +%FT%TZ)\",\"event\":\"Both\",\"category\":\"general\",\"message\":\"Connectivity test - ignore.\"}}" "$EXEC"
+          echo "===== opsdesk response SHAPE (keys + counts only — check-in/payment contents stay out of public CI logs)"
+          curl -sSL -m 20 -o desk.json "$EXEC?mode=opsdesk&token=$DESK"
+          python3 -c "
+          import json
+          d = json.load(open('desk.json'))
+          print('top-level keys:', sorted(d.keys()))
+          for k, v in sorted(d.items()):
+              print(f'  {k}: {len(v) if isinstance(v, list) else type(v).__name__}')
+          print('reg feed deployed:', 'YES' if 'reg' in d else 'NO — Apps Script predates rosterPayIntent_')
+          "
+          echo "===== write probe: matches-replace round-trip on fake event 'Probe'"
+          curl -sSL -m 20 -o /dev/null -w "insert POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
+            -d "{\"type\":\"matches-replace\",\"token\":\"$WRITE\",\"payload\":{\"event\":\"Probe\",\"prefix\":\"P-\",\"list\":[{\"id\":\"P-ci\",\"event\":\"Probe\",\"round\":\"X\",\"num\":\"999\",\"a\":\"probe-a\",\"b\":\"probe-b\",\"status\":\"scheduled\"}]}}" "$EXEC"
           sleep 3
-          echo "===== read back Announcements via doGet"
-          curl -sSL -m 20 "$EXEC?tab=Announcements&token=$READ" | head -c 400; echo
-          echo "===== delete the probe row"
-          curl -sSL -m 20 -o /dev/null -w "POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
-            -d "{\"type\":\"announce-delete\",\"token\":\"$WRITE\",\"payload\":{\"id\":\"$PID\"}}" "$EXEC"
-          sleep 2
-          echo "===== confirm gone"
-          curl -sSL -m 20 "$EXEC?tab=Announcements&token=$READ" | head -c 400; echo
+          n=$(curl -sSL -m 20 "$EXEC?tab=Matches&token=$READ" | grep -c 'probe-a' || true)
+          echo "probe row present after insert (want 1): $n"
+          curl -sSL -m 20 -o /dev/null -w "cleanup POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
+            -d "{\"type\":\"matches-replace\",\"token\":\"$WRITE\",\"payload\":{\"event\":\"Probe\",\"prefix\":\"P-\",\"list\":[]}}" "$EXEC"
+          sleep 3
+          n=$(curl -sSL -m 20 "$EXEC?tab=Matches&token=$READ" | grep -c 'probe-a' || true)
+          echo "probe row present after cleanup (want 0): $n"
       - name: Roster class-year audit (public columns only)
         run: |
           # Name + class year are already rendered on the public roster page,
@@ -89,9 +103,13 @@ jobs:
           echo "main asset: ${asset:-NONE FOUND}"
           if [ -n "$asset" ]; then
             curl -sS -m 20 -A "$UA" -o main.js "https://acesforarian.com$asset"
-            if grep -q "as of Fri 7/10" main.js; then
-              echo "WEATHER MARKER: current (Fri 7/10) — deploy carries the latest main"
+            # Secondary signal only — comparing the live asset hash against a
+            # clean local build of main is the authoritative freshness check
+            # (Vite content-hashes filenames). Update the string when the
+            # fallback weather copy changes.
+            if grep -q "update Fri 7/10 PM" main.js; then
+              echo "WEATHER MARKER: current (Fri 7/10 PM copy) — deploy carries the latest main"
             else
-              echo "WEATHER MARKER: NOT FOUND — deploy may be stale (pre-Fri-7/10 build)"
+              echo "WEATHER MARKER: NOT FOUND — deploy may be stale, or the fallback copy changed (trust the asset-hash check)"
             fi
           fi
