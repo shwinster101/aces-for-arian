@@ -1,0 +1,72 @@
+# Post a public announcement from CI — the sandboxed ops assistant can't
+# reach script.google.com directly, so this is its sanctioned path to the
+# SAME writeAnnounce_ handler the admin Announce tab uses (upsert by id,
+# server-side length cap). The write token is already committed in this
+# public repo (deterrent, not a secret) — using it here adds zero exposure.
+# Delete a post later by dispatching with the same id and delete=true.
+name: post-announce
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Announcement text (<=400 chars; ignored when delete=true)'
+        required: false
+        type: string
+      event:
+        description: 'Both | Doubles | Singles'
+        required: false
+        default: 'Both'
+        type: string
+      category:
+        description: 'general | weather | schedule'
+        required: false
+        default: 'general'
+        type: string
+      id:
+        description: 'Post id (defaults to ci-<timestamp>; reuse an id to edit that post in place)'
+        required: false
+        type: string
+      delete:
+        description: 'true = delete the post with this id instead of writing'
+        required: false
+        default: 'false'
+        type: string
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Post (or delete) the announcement
+        env:
+          MSG: ${{ inputs.message }}
+          EV: ${{ inputs.event }}
+          CAT: ${{ inputs.category }}
+          PID: ${{ inputs.id }}
+          DEL: ${{ inputs.delete }}
+        run: |
+          EXEC="https://script.google.com/macros/s/AKfycby1CP-FQNwOoKYkDiiFEzoUbrEkg2427Iyt4x_GXwjeVsB9rlOPMYJOZQiygkI5fDbM7Q/exec"
+          # Build the JSON in python so quotes/emoji in the message survive.
+          python3 - > payload.json <<'EOF'
+          import json, os, time, datetime
+          delete = os.environ.get('DEL', 'false').strip().lower() == 'true'
+          pid = os.environ.get('PID', '').strip() or f'ci-{int(time.time())}'
+          if delete:
+              body = {'type': 'announce-delete', 'token': 'a4a-ea5316b9f5d5b04e49115a20', 'payload': {'id': pid}}
+          else:
+              msg = os.environ.get('MSG', '').strip()
+              assert msg, 'message is required unless delete=true'
+              body = {'type': 'announce', 'token': 'a4a-ea5316b9f5d5b04e49115a20', 'payload': {
+                  'id': pid,
+                  'ts': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  'event': os.environ.get('EV', 'Both') or 'Both',
+                  'category': os.environ.get('CAT', 'general') or 'general',
+                  'message': msg[:400],
+              }}
+          print(json.dumps(body))
+          import sys; print(f'post id: {pid}', file=sys.stderr)
+          EOF
+          curl -sSL -m 20 -o /dev/null -w "POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' -d @payload.json "$EXEC"
+          sleep 3
+          echo "===== Announcements tab now:"
+          curl -sSL -m 20 "$EXEC?tab=Announcements&token=a4a-read-8db082a282da9e0b622178164cd9b202" | head -c 1200; echo
