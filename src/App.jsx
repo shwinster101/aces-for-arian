@@ -2301,8 +2301,8 @@ export default function App() {
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Compass Draw — every team is guaranteed at least 3 matches (up to 5).</li>
                   <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets — first to 4 games, 7-point tiebreak at 3–3, and a 10-point match tiebreak in place of a 3rd set.</li>
-                  <li><strong className="text-zinc-200">Ad vs no-ad:</strong> <strong className="text-zinc-200">no-ad</strong> through the Round of 16, then <strong className="text-[#fbbf24]">ad</strong> from the Quarterfinals on (the matches that decide the title). Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
-                  <li><strong className="text-zinc-200">Prizes:</strong> awarded to the top 3.</li>
+                  <li><strong className="text-zinc-200">Ad vs no-ad:</strong> <strong className="text-zinc-200">no-ad</strong> through the Round of 16, then <strong className="text-[#fbbf24]">ad</strong> from the Quarterfinals on. Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
+                  <li><strong className="text-zinc-200">Prizes:</strong> awarded to the winning team.</li>
                 </ul>
                 {DRAWS_PUBLIC.Doubles && (
                   <button onClick={() => { setBracketEvent('doubles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
@@ -2321,7 +2321,7 @@ export default function App() {
                   <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
                   <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets — first to 4 games, 7-point tiebreak at 3–3, and a 10-point match tiebreak in place of a 3rd set.</li>
                   <li><strong className="text-zinc-200">Ad vs no-ad:</strong> <strong className="text-zinc-200">no-ad</strong> through the Round of 16, then <strong className="text-[#fbbf24]">ad</strong> from the Quarterfinals on. Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
-                  <li><strong className="text-zinc-200">Awards:</strong> given to the top finishers.</li>
+                  <li><strong className="text-zinc-200">Awards:</strong> given to the champion.</li>
                 </ul>
                 {DRAWS_PUBLIC.Singles && (
                   <button onClick={() => { setBracketEvent('singles'); setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
