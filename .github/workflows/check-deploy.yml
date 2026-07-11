@@ -116,8 +116,8 @@ jobs:
             # clean local build of main is the authoritative freshness check
             # (Vite content-hashes filenames). Update the string when the
             # fallback weather copy changes.
-            if grep -q "update Fri 7/10 PM" main.js; then
-              echo "WEATHER MARKER: current (Fri 7/10 PM copy) — deploy carries the latest main"
+            if grep -q "update Sat 7/11 AM" main.js; then
+              echo "WEATHER MARKER: current (Sat 7/11 AM copy) — deploy carries the latest main"
             else
               echo "WEATHER MARKER: NOT FOUND — deploy may be stale, or the fallback copy changed (trust the asset-hash check)"
             fi
