@@ -742,7 +742,7 @@ function RoundTimesBanner({ matches, sched, now }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Every match is best-of-3 Fast-4; quarters, semis & finals switch to ad scoring and run a bit longer (~{sched.qfMin} min). Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
+      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Every match is best-of-3 Fast-4 and runs about an hour, so rounds start on the hour (9:00, 10:00, 11:00 …); quarters, semis & finals switch to ad scoring. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
     </div>
   );
 }

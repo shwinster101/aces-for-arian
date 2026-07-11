@@ -35,6 +35,29 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd20. Session Summary — 2026-07-10 PM: uniform ONE-HOUR blocks (rounds start on the hour)
+
+Owner: "work in one-hour estimates the entire way through so each East/West has a
+very predictable interval — OK if we end at ~5." Set the schedule to uniform
+one-hour blocks: `doublesMin`/`singlesMin`/`qfMin` all **50** (a 50-min match +
+the 10-min rest = a clean 1-hour cadence), so every round starts on the hour.
+
+- `src/lib/schedule.js`: `qfMin` 65→**50** (no more longer QF+); `doublesMin`/
+  `singlesMin` stay 50. Uniform → `matchMinFor` returns 50 for every round.
+- **Doubles** now projects a perfect hourly grid: 9:00 East R1 + play-ins →
+  10:00 East QF + West R1 → 11:00 East QF/West → 12:00 all SFs → 1:00 all Finals;
+  East↔West interleave every hour; whole draw done ~2:00 PM. (audit-order 6/6.)
+- **Singles** (27-player double-elim) inherits the hour blocks → Grand Final
+  ~7:40 PM, done ~8:30 PM. That's the deep comeback tail, not a bug (even 40-min
+  blocks → ~6:30). Flagged to owner; singles length is a separate call (shorten
+  singles blocks to pull Sunday in, or accept the long day). `finalsMin` remains
+  a knob but is now vestigial (uniform format).
+- Footer copy (`src/App.jsx`) updated: "every match ~an hour, rounds start on the
+  hour; QF onward switch to ad scoring."
+- Verified: lint/build clean, contract 91/0 (pins its own durations), audit 6/6.
+
+---
+
 ## 1-cd19. Session Summary — 2026-07-10 PM: realistic match-time estimates + Sat/Sun weather refresh
 
 - **Match-time realism** (`src/lib/schedule.js`): owner felt a 1 PM doubles finish
