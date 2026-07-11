@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Trophy, Zap, Check } from 'lucide-react';
-import { playPos } from '../../lib/schedule';
+import { playPos, defaultEventForToday } from '../../lib/schedule';
 import { isEngineRow } from '../store';
 import { Card, PageHeader, Pills, TextInput, Select, EmptyState } from '../ui';
 
@@ -19,7 +19,7 @@ const STATUS_FILTERS = [
 ];
 
 export default function Scores({ ops }) {
-  const [event, setEvent] = useState('Singles');
+  const [event, setEvent] = useState(defaultEventForToday);
   const [statusFilter, setStatusFilter] = useState('live');
 
   const matches = useMemo(() => {

@@ -8,7 +8,7 @@ import { nextId, isEngineRow } from '../store';
 import { CONFIG_CSV_URL, mapConfig, parseCSV } from '../../lib/sheet';
 import { deriveEntrants, seedListIssues, seedKeySet, doublesPartnerFlags, normName, firstName, ambiguousLooseKeys, shortLabel, shortName, SEED_CUT, DRAW_CAP } from '../../lib/entrants';
 import { resolve, isDraggableSlot, PLAYIN_MAX } from '../../lib/draw';
-import { estimateLabel, waitsOnLabel, playPos, stakesFor, SCHEDULE_DEFAULTS } from '../../lib/schedule';
+import { estimateLabel, waitsOnLabel, playPos, stakesFor, SCHEDULE_DEFAULTS, defaultEventForToday } from '../../lib/schedule';
 
 const EVENTS = [
   { value: 'Singles', label: 'Sunday Singles' },
@@ -19,7 +19,7 @@ const ROUND_PRESETS = ['R1', 'R2', 'R3', 'QF', 'SF', 'F', 'L1', 'L2', 'L3'];
 const COURTS = Array.from({ length: 9 }, (_, i) => String(i + 1));
 
 export default function Seeding({ participants, ops }) {
-  const [event, setEvent] = useState('Singles');
+  const [event, setEvent] = useState(defaultEventForToday);
 
   const namesInEvent = useMemo(() => {
     const list = participants.filter(p => p.events.includes(event)).map(p => p.name);

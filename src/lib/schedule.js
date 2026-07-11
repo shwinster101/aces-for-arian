@@ -46,6 +46,26 @@ export function dayStartMs(event) {
   return new Date(/doub/i.test(event || '') ? EVENT_START.Doubles : EVENT_START.Singles).getTime();
 }
 
+// Which event is actually being run TODAY — so the courtside Scores tab and the
+// Seeding & Draws tab open on the day's own draw instead of always defaulting to
+// Singles (a doubles-morning volunteer would otherwise land on an empty "Sunday
+// Singles · Live now" screen and think scoring is broken). Deliberately targeted:
+// ONLY the two event days auto-select by matching today's LOCAL date to a
+// first-serve anchor; every other day (draw-week setup, post-event) keeps the
+// prior 'Singles' default unchanged.
+export function defaultEventForToday(nowMs = Date.now()) {
+  const today = new Date(nowMs);
+  const sameLocalDay = (iso) => {
+    const d = new Date(iso);
+    return d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate();
+  };
+  if (sameLocalDay(EVENT_START.Doubles)) return 'Doubles';
+  if (sameLocalDay(EVENT_START.Singles)) return 'Singles';
+  return 'Singles';
+}
+
 // Longer rounds (QF onward) — ad Fast-4 best-of-3 runs a bit past the early
 // no-ad rounds. Doubles championship = East QF/SF/F. Singles is a TRUE double
 // elimination: the Winners QF/SF/F (R3/SF/F), the Grand Final + reset, AND the
