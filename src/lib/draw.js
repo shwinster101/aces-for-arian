@@ -243,7 +243,10 @@ function evalGraph(graph, r1slots, results) {
   for (const m of graph.matches) {
     const side = (from) => {
       if (from.slot != null) {
-        const s = r1slots[from.slot];
+        // Defensive: a persisted bracket whose field was edited after generating
+        // can leave a hole here. Treat a missing slot as an empty (TBD) line
+        // rather than crashing resolve() — which would black-screen the ops draw.
+        const s = r1slots[from.slot] || {};
         // Play-in host line: derived from the play-in's outcome (play-ins sit
         // first in the graph, so their state is already evaluated). Never
         // dead-before-play — both play-in sides are real teams.
@@ -303,8 +306,10 @@ export function resolve(bracket) {
       // except play-in host lines, whose value is DERIVED from the play-in
       // (st.a/st.b carry the resolved name or a "W of M29" pointer).
       const isR1 = g.aFrom.slot != null;
-      const rawA = isR1 ? r1slots[g.aFrom.slot] : null;
-      const rawB = isR1 ? r1slots[g.bFrom.slot] : null;
+      // `|| {}`: a hole in a persisted bracket's r1slots resolves to an empty
+      // (TBD) slot instead of crashing the whole ops draw render.
+      const rawA = isR1 ? (r1slots[g.aFrom.slot] || {}) : null;
+      const rawB = isR1 ? (r1slots[g.bFrom.slot] || {}) : null;
       const slotA = isR1 ? (rawA.fromPlayIn != null ? { ...st.a, key: null, bye: false } : rawA) : st.a;
       const slotB = isR1 ? (rawB.fromPlayIn != null ? { ...st.b, key: null, bye: false } : rawB) : st.b;
       return {
