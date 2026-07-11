@@ -2358,17 +2358,18 @@ export default function App() {
               </div>
             </div>
 
-            {/* Day-of schedule (tentative, from the 2025 timeline) */}
+            {/* Day-of schedule (tentative) — doubles on the uniform one-hour
+                cadence (see projectSchedule); singles double-elim runs to evening. */}
             <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
               <div className="flex items-center gap-3 mb-1">
                 <Clock className="w-5 h-5 text-[#fbbf24]" />
                 <h3 className="text-lg font-black text-white uppercase tracking-wider">Day-of Schedule</h3>
               </div>
-              <p className="text-xs text-zinc-500 mb-6">Tentative — based on the 2025 timeline. Exact times are posted with the draw.</p>
+              <p className="text-xs text-zinc-500 mb-6">Tentative — doubles rounds run about an hour and start on the hour; singles (double-elimination) runs longer. Exact times post live with the draw on the <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24]/90 hover:text-[#fbbf24] font-semibold underline">Brackets tab</button>.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
                   <div className="text-xs font-black uppercase tracking-widest text-[#fbbf24] mb-3">Saturday · Doubles</div>
-                  {[["9:00 AM", "Round 1"], ["~10:00 AM", "Round 2"], ["~11:00 AM", "Round 3"], ["—", "Lunch break"], ["~1:15 PM", "Round 4"], ["~3:00 PM", "Final round"]].map(([t, l]) => (
+                  {[["9:00 AM", "First round + play-ins"], ["~10:00 AM", "Round of 16"], ["~11:00 AM", "Quarterfinals"], ["~12:00 PM", "Semifinals"], ["~1:00 PM", "Finals"], ["~2:00 PM", "Awards"]].map(([t, l]) => (
                     <div key={l} className="flex items-baseline gap-3 py-1.5 border-b border-zinc-800/50 last:border-0">
                       <span className="text-xs font-mono font-bold text-[#fbbf24] w-20 shrink-0">{t}</span>
                       <span className="text-sm text-zinc-300">{l}</span>
@@ -2377,7 +2378,7 @@ export default function App() {
                 </div>
                 <div>
                   <div className="text-xs font-black uppercase tracking-widest text-[#fbbf24] mb-3">Sunday · Singles</div>
-                  {[["9:00 AM", "First matches"], ["Morning", "Main & back-draw rounds"], ["Afternoon", "Quarterfinals → Final"]].map(([t, l]) => (
+                  {[["9:00 AM", "First matches"], ["Morning", "Winners & Comeback rounds"], ["Afternoon", "Quarterfinals & semifinals"], ["Evening", "Grand Final"]].map(([t, l]) => (
                     <div key={l} className="flex items-baseline gap-3 py-1.5 border-b border-zinc-800/50 last:border-0">
                       <span className="text-xs font-mono font-bold text-[#fbbf24] w-20 shrink-0">{t}</span>
                       <span className="text-sm text-zinc-300">{l}</span>
