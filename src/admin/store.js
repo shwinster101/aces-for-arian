@@ -152,7 +152,7 @@ function load() {
       ...parsed,
       participants: parsed.participants || {},
       added: Array.isArray(parsed.added) ? parsed.added : [],
-      seeds: { Singles: parsed.seeds?.Singles || [], Doubles: parsed.seeds?.Doubles || [] },
+      seeds: { Singles: Array.isArray(parsed.seeds?.Singles) ? parsed.seeds.Singles : [], Doubles: Array.isArray(parsed.seeds?.Doubles) ? parsed.seeds.Doubles : [] },
       matches: Array.isArray(parsed.matches) ? parsed.matches : [],
       courtBoard: parsed.courtBoard?.courts ? parsed.courtBoard : emptyCourtBoard(),
       merch: parsed.merch && typeof parsed.merch === 'object' ? parsed.merch : {},

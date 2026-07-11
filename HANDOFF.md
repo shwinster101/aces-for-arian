@@ -35,6 +35,40 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd21. Session Summary — 2026-07-10 PM: ops black-screen fix (error boundary + resolve guards)
+
+Owner: the ops doubles Seeding page was black-screening. Root cause = a render
+exception with **no error boundary anywhere**, so ANY crash took down the whole
+console to a blank screen. Couldn't repro from clean/messy synthetic data
+(the store is well-coerced), so fixed defensively on three fronts + audited
+advancement:
+
+- **ErrorBoundary** (`src/ErrorBoundary.jsx`, new; wraps both `src/main.jsx` and
+  `src/admin/main.jsx`): a render crash now shows a recoverable card (inline
+  styles, so it renders even if CSS died) with the **error text + stack**, a
+  **Reload** button, and a **Reset this device** escape hatch (clears `a4a-*`
+  localStorage — roster reloads from the sheet; only an unsynced local bracket is
+  lost). Verified: forced-crash shows the card, never a blank screen (3/3).
+- **resolve() null-slot guards** (`src/lib/draw.js`): a persisted bracket whose
+  field was edited after generating can leave a hole in `r1slots`; `evalGraph`
+  (`r1slots[from.slot]`) and `resolve` (`rawA/rawB.fromPlayIn`, `slotA.bye`) now
+  fall back to an empty `{}` slot instead of throwing — the concrete null-deref
+  that would black-screen the draw. (5/5 across several hole patterns.)
+- **store.js hardening**: `seeds.Singles/Doubles` now array-coerced in `load()`
+  (was `|| []`, which let a non-array truthy value through and crash the field
+  picker).
+- **Advancement audit** — the engine is sound: `setResult` writes the result +
+  clears downstream, and `resolve()` re-derives every slot from a **static feeder
+  graph** each render (idempotent, can't drift). Winner→next, loser→backdraw, and
+  re-mark-recompute are all covered by the contract (91/0).
+- Verified: lint/build clean; guard 5/5, boundary 3/3, contract 91/0, plus the
+  full doubles ops flow (generate → Refresh names → scores) crash-free on messy
+  roster data; compass 58 / singles 13 / format 11 / scores 12 unaffected.
+- **Note:** if the user still sees a crash, the boundary now shows the exact
+  error — grab that text to pinpoint any remaining trigger.
+
+---
+
 ## 1-cd20. Session Summary — 2026-07-10 PM: uniform ONE-HOUR blocks (rounds start on the hour)
 
 Owner: "work in one-hour estimates the entire way through so each East/West has a
