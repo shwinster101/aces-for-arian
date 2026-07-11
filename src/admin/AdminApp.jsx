@@ -29,16 +29,20 @@ import Announce from './sections/Announce';
 import Merch from './sections/Merch';
 import Logistics from './sections/Logistics';
 
+// Day-of order: the tabs staff actually work during play come first
+// (check-in desk → money → courtside scoring → gear locker → announcements);
+// Seeding & Draws drops behind Announce now that both draws are locked, and
+// Logistics (pre-event prep) closes the row.
 const TABS = [
   { id: 'command', label: 'Command Center', icon: LayoutDashboard },
   { id: 'registrations', label: 'Registrations', icon: ClipboardList },
   { id: 'checkins', label: 'Check-ins', icon: UserCheck },
   { id: 'payments', label: 'Payments', icon: CircleDollarSign },
-  { id: 'seeding', label: 'Seeding & Draws', icon: Swords },
   { id: 'scores', label: 'Scores & Courts', icon: Grid3x3 },
-  { id: 'announce', label: 'Announce', icon: Megaphone },
-  { id: 'logistics', label: 'Logistics', icon: ShoppingCart },
   { id: 'merch', label: 'Merch', icon: Package },
+  { id: 'announce', label: 'Announce', icon: Megaphone },
+  { id: 'seeding', label: 'Seeding & Draws', icon: Swords },
+  { id: 'logistics', label: 'Logistics', icon: ShoppingCart },
 ];
 
 // The volunteer PIN unlocks just the day-of desk + courtside jobs. Command

@@ -1,37 +1,67 @@
 import { useMemo, useState, useEffect } from 'react';
-import { CircleDollarSign, Shirt } from 'lucide-react';
+import { CircleDollarSign } from 'lucide-react';
+import { normName } from '../../lib/entrants';
 import { Card, PageHeader, Stat, Pills, SearchBox, Toggle, Select, EmptyState } from '../ui';
 import CashDrawer from '../CashDrawer';
 import { CONFIG_CSV_URL, parseCSV, mapConfig } from '../../lib/sheet';
 
+// ==========================================
+// PAYMENTS — the money/accounting hub
+// ==========================================
+// Day-of COLLECTION happens on Check-ins (one row per arrival: collect $40 →
+// shirt → finish). This tab is where the money is AUDITED: entry revenue and
+// method breakdown, the public scholarship meter control, the cash-drawer
+// close-out, and the unpaid list. Shirt tracking lives on Check-ins (hand-out)
+// and Merch (inventory) — deliberately not duplicated here.
+
+const ENTRY_FEE = 40;
+
 const FILTERS = [
-  { value: 'all', label: 'All' },
   { value: 'unpaid', label: 'Unpaid' },
-  { value: 'no-shirt', label: 'No shirt yet' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'all', label: 'All' },
 ];
 
 // 'Comped' is what the Check-ins collect flow writes for a fee exception —
 // keep it selectable here so the reconciliation view round-trips it.
 const PAYMENT_METHODS = ['Venmo', 'Zelle', 'Cash', 'Comped', 'Other'];
-const SHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+
+const isSupporter = (p) => /supporter/i.test(p.events || '');
 
 export default function Payments({ participants, ops }) {
-  const [filter, setFilter] = useState('all');
+  // Default to the list that needs action: who still owes.
+  const [filter, setFilter] = useState('unpaid');
   const [query, setQuery] = useState('');
 
-  const stats = useMemo(() => {
-    const paid = participants.filter(p => p.overlay.paid).length;
-    const shirts = participants.filter(p => p.overlay.shirt).length;
-    const bySize = {};
-    participants.forEach(p => { if (p.overlay.shirt && p.overlay.shirtSize) bySize[p.overlay.shirtSize] = (bySize[p.overlay.shirtSize] || 0) + 1; });
-    return { paid, shirts, bySize };
+  // Money picture: paid counts by method; comps collect $0 but stay visible.
+  const money = useMemo(() => {
+    const players = participants.filter(p => !isSupporter(p));
+    const byMethod = {};
+    let paid = 0;
+    players.forEach(p => {
+      if (!p.overlay.paid) return;
+      paid += 1;
+      const m = p.overlay.paymentMethod || 'Other';
+      byMethod[m] = (byMethod[m] || 0) + 1;
+    });
+    const comped = byMethod.Comped || 0;
+    return {
+      players: players.length,
+      paid,
+      byMethod,
+      collected: (paid - comped) * ENTRY_FEE,
+      outstanding: (players.length - paid) * ENTRY_FEE,
+    };
   }, [participants]);
+
+  const payIntent = (p) => (ops.store.regPay || {})[normName(p.name)] || '';
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return participants.filter(p => {
+      if (isSupporter(p)) return false; // no fee — nothing to reconcile
       if (filter === 'unpaid' && p.overlay.paid) return false;
-      if (filter === 'no-shirt' && p.overlay.shirt) return false;
+      if (filter === 'paid' && !p.overlay.paid) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     }).sort((a, b) => a.name.localeCompare(b.name));
@@ -39,7 +69,7 @@ export default function Payments({ participants, ops }) {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Payments" subtitle="Reconciliation view — day-of collection happens on the Check-ins tab (one row per arrival). Use this to audit who's paid, how, and to close out the cash box." />
+      <PageHeader title="Payments" subtitle="The money hub. Collection happens on Check-ins — audit it here: entry revenue by method, the public scholarship meter, and the cash-drawer close-out." />
       <p className="text-[10px] text-emerald-400/70 -mt-1">Synced across devices (~30s) via the private ops sheet — safe to run from multiple phones/the laptop at once.</p>
 
       <p className="text-[10px] text-zinc-600 -mt-1">
@@ -49,73 +79,70 @@ export default function Payments({ participants, ops }) {
 
       <ScholarshipMeter ops={ops} />
 
+      {/* Entry-fee picture */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <Stat label="Paid" value={`${stats.paid} / ${participants.length}`} tone="emerald" />
-        <Stat label="Shirts given" value={`${stats.shirts} / ${participants.length}`} />
-        {SHIRT_SIZES.filter(s => stats.bySize[s]).slice(0, 2).map(s => (
-          <Stat key={s} label={`Size ${s}`} value={stats.bySize[s]} tone="amber" />
-        ))}
+        <Stat label="Entry collected" value={`$${money.collected}`} tone="emerald" />
+        <Stat label="Outstanding" value={`$${money.outstanding}`} tone={money.outstanding > 0 ? 'amber' : 'emerald'} />
+        <Stat label="Paid" value={`${money.paid} / ${money.players}`} />
+        <Stat label="Comped" value={money.byMethod.Comped || 0} />
       </div>
-      {Object.keys(stats.bySize).length > 0 && (
-        <div className="flex flex-wrap gap-2 text-[10px]">
-          <span className="text-zinc-600 uppercase tracking-widest font-bold pt-1.5">Shirt sizes:</span>
-          {SHIRT_SIZES.filter(s => stats.bySize[s]).map(s => (
-            <span key={s} className="font-mono font-bold bg-[#111] border border-zinc-800 rounded-md px-2 py-1 text-zinc-300">{s} × {stats.bySize[s]}</span>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2 text-[10px]">
+        <span className="text-zinc-600 uppercase tracking-widest font-bold pt-1.5">By method:</span>
+        {PAYMENT_METHODS.filter(m => money.byMethod[m]).map(m => (
+          <span key={m} className="font-mono font-bold bg-[#111] border border-zinc-800 rounded-md px-2 py-1 text-zinc-300">{m} × {money.byMethod[m]}</span>
+        ))}
+        {money.paid === 0 && <span className="text-zinc-600 pt-1.5">nothing collected yet</span>}
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-2.5">
-        <div className="sm:flex-1"><SearchBox value={query} onChange={setQuery} /></div>
+        <div className="sm:flex-1"><SearchBox value={query} onChange={setQuery} placeholder="Find a player to audit…" /></div>
         <Pills value={filter} onChange={setFilter} options={FILTERS} />
       </div>
 
+      {/* Reconciliation list — corrections only; collection lives on Check-ins */}
       <Card className="overflow-hidden">
         {filtered.length === 0 ? (
-          <EmptyState icon={CircleDollarSign} title="No one matches" hint="Try a different search or filter." />
+          <EmptyState icon={CircleDollarSign} title={filter === 'unpaid' ? 'Everyone has paid' : 'No one matches'} hint={filter === 'unpaid' ? 'Nothing outstanding — nice.' : 'Try a different search or filter.'} />
         ) : (
           <div className="divide-y divide-zinc-800/60">
-            {filtered.map(p => (
-              <div key={`${p.source}-${p.name}`} className="px-4 py-3.5 hover:bg-zinc-900/40 transition-colors">
-                <div className="font-bold text-zinc-100 text-sm mb-2.5 truncate">{p.name}</div>
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <Toggle
-                    checked={p.overlay.paid}
-                    onChange={(v) => ops.setOverlay(p.name, { paid: v })}
-                    label="Mark paid"
-                    activeLabel="Paid"
-                  />
-                  {p.overlay.paid && (
-                    <Select
-                      value={p.overlay.paymentMethod}
-                      onChange={(v) => ops.setOverlay(p.name, { paymentMethod: v })}
-                      options={PAYMENT_METHODS}
-                      placeholder="Method?"
+            {filtered.map(p => {
+              const plan = payIntent(p);
+              return (
+                <div key={`${p.source}-${p.name}`} className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3 hover:bg-zinc-900/40 transition-colors">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="font-bold text-zinc-100 text-sm truncate">{p.name}</span>
+                    {!p.overlay.paid && plan && (
+                      <span title={`Registration form: ${plan}`}
+                        className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border bg-[#111] border-zinc-700 text-zinc-400 truncate max-w-32">
+                        plans {plan}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Toggle
+                      checked={p.overlay.paid}
+                      onChange={(v) => ops.setOverlay(p.name, { paid: v, ...(v ? {} : { paymentMethod: '' }) })}
+                      label="Mark paid"
+                      activeLabel="Paid"
                     />
-                  )}
-                  <span className="w-px h-5 bg-zinc-800 mx-0.5 hidden sm:block" />
-                  <Toggle
-                    checked={p.overlay.shirt}
-                    onChange={(v) => ops.setOverlay(p.name, { shirt: v })}
-                    label="Mark shirt given"
-                    activeLabel="Shirt given"
-                  />
-                  {p.overlay.shirt && (
-                    <Select
-                      value={p.overlay.shirtSize}
-                      onChange={(v) => ops.setOverlay(p.name, { shirtSize: v })}
-                      options={SHIRT_SIZES}
-                      placeholder="Size?"
-                    />
-                  )}
+                    {p.overlay.paid && (
+                      <Select
+                        value={p.overlay.paymentMethod}
+                        onChange={(v) => ops.setOverlay(p.name, { paymentMethod: v })}
+                        options={PAYMENT_METHODS}
+                        placeholder="Method?"
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
+      <p className="text-[10px] text-zinc-600">Use this list for corrections (wrong method, mistaken paid mark) — collect at the Check-ins row so the drawer ledger stays in step. Supporters owe nothing and aren't listed. Shirt hand-outs: Check-ins · shirt inventory: Merch.</p>
+
       <CashDrawer ops={ops} defaultOpen title="Cash drawer — reconciliation" />
-      <p className="text-[10px] text-zinc-600 flex items-center gap-1.5"><Shirt className="w-3 h-3" /> Entry includes one tournament tee ($25 value) — sizes feed the order count for the gear locker.</p>
     </div>
   );
 }
