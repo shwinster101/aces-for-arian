@@ -51,13 +51,20 @@ jobs:
           head -c 200 resp.txt; echo
           echo "===== opsdesk response SHAPE (keys + counts only — check-in/payment contents stay out of public CI logs)"
           curl -sSL -m 20 -o desk.json "$EXEC?mode=opsdesk&token=$DESK"
+          # Never die here — a broken doGet must not hide the doPost results below.
           python3 -c "
           import json
-          d = json.load(open('desk.json'))
-          print('top-level keys:', sorted(d.keys()))
-          for k, v in sorted(d.items()):
-              print(f'  {k}: {len(v) if isinstance(v, list) else type(v).__name__}')
-          print('reg feed deployed:', 'YES' if 'reg' in d else 'NO — Apps Script predates rosterPayIntent_')
+          raw = open('desk.json', 'rb').read()
+          try:
+              d = json.loads(raw)
+              print('top-level keys:', sorted(d.keys()))
+              for k, v in sorted(d.items()):
+                  print(f'  {k}: {len(v) if isinstance(v, list) else type(v).__name__}')
+              print('reg feed deployed:', 'YES' if 'reg' in d else 'NO — Apps Script predates rosterPayIntent_')
+          except Exception as e:
+              print(f'OPSDESK BROKEN: non-JSON response ({len(raw)} bytes) — {e}')
+              print('first 200 bytes:', raw[:200])
+              print('=> multi-device ops sync (pullDesk) is DOWN; devices are running local-only')
           "
           echo "===== write probe: matches-replace round-trip on fake event 'Probe'"
           curl -sSL -m 20 -o /dev/null -w "insert POST HTTP %{http_code}\n" -H 'Content-Type: text/plain' \
@@ -87,14 +94,16 @@ jobs:
           print('HEADERS:', rows[0])
           iname = next((i for i, h in enumerate(hdr) if 'name' in h), None)
           iclass = next((i for i, h in enumerate(hdr) if 'class' in h or 'grad' in h or ('year' in h and 'yearbook' not in h)), None)
-          print(f'name col: {iname}  class col: {iclass}')
+          ihide = next((i for i, h in enumerate(hdr) if 'hide' in h), None)
+          print(f'name col: {iname}  class col: {iclass}  hide col: {ihide}')
           if iname is None or iclass is None:
               raise SystemExit
           for r in rows[1:]:
               name = r[iname].strip() if iname < len(r) else ''
               cy = r[iclass].strip() if iclass < len(r) else ''
+              hid = (r[ihide].strip() if ihide is not None and ihide < len(r) else '')
               if name:
-                  print(f'{name!r} -> {cy!r}')
+                  print(f'{name!r} -> {cy!r}' + ('  [HIDDEN from public render]' if hid else ''))
           EOF
       - name: Freshness marker in the main bundle
         run: |
