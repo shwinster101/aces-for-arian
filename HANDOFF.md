@@ -35,6 +35,22 @@ checklist for the next auditor).
 
 ---
 
+## 1-cd22. Session Summary — 2026-07-10 PM: auto-drop a stale/corrupt persisted bracket
+
+Follow-up to cd21: owner still hit the crash — but now the ErrorBoundary caught
+it and showed the stack (`.map` in the admin bundle), confirming the trigger is
+a **bracket persisted by an OLDER build** whose shape the current render can't
+map over (couldn't repro from freshly-generated data — every generate+advance
+flow is clean). Fix: `store.js` `safeBracket()` validates each persisted bracket
+on load by actually running `bracketMatchRows()` (the same `resolve()` the render
+uses); if it throws or the shape is junk (`r1slots` not a non-empty array), the
+bracket is dropped to `null` so it **regenerates cleanly instead of crashing**. A
+healthy bracket passes through untouched. Immediate user recovery is still the
+boundary's "Reset this device" button. Verified: corrupt bracket auto-dropped →
+page renders (2/2), generate+advance regression clean, guard 5/5, contract 91/0.
+
+---
+
 ## 1-cd21. Session Summary — 2026-07-10 PM: ops black-screen fix (error boundary + resolve guards)
 
 Owner: the ops doubles Seeding page was black-screening. Root cause = a render
