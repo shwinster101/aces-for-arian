@@ -87,14 +87,16 @@ jobs:
           print('HEADERS:', rows[0])
           iname = next((i for i, h in enumerate(hdr) if 'name' in h), None)
           iclass = next((i for i, h in enumerate(hdr) if 'class' in h or 'grad' in h or ('year' in h and 'yearbook' not in h)), None)
-          print(f'name col: {iname}  class col: {iclass}')
+          ihide = next((i for i, h in enumerate(hdr) if 'hide' in h), None)
+          print(f'name col: {iname}  class col: {iclass}  hide col: {ihide}')
           if iname is None or iclass is None:
               raise SystemExit
           for r in rows[1:]:
               name = r[iname].strip() if iname < len(r) else ''
               cy = r[iclass].strip() if iclass < len(r) else ''
+              hid = (r[ihide].strip() if ihide is not None and ihide < len(r) else '')
               if name:
-                  print(f'{name!r} -> {cy!r}')
+                  print(f'{name!r} -> {cy!r}' + ('  [HIDDEN from public render]' if hid else ''))
           EOF
       - name: Freshness marker in the main bundle
         run: |
