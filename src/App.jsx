@@ -25,7 +25,7 @@ import {
   mapAnnouncements,
 } from './lib/sheet';
 import { deriveEntrants, shortLabel, normName, boardTeam, dupFirstNames } from './lib/entrants';
-import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, SCHEDULE_DEFAULTS } from './lib/schedule';
+import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, dayStartMs, SCHEDULE_DEFAULTS } from './lib/schedule';
 import CompassDraw from './CompassDraw';
 import SinglesDraw from './SinglesDraw';
 import TeamTracker from './TeamTracker';
@@ -996,7 +996,14 @@ function NotifyMeBox({ source = 'site' }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => tabForSlug((typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')) || 'home');
-  const [bracketEvent, setBracketEvent] = useState(DRAWS_PUBLIC.Doubles ? 'doubles' : 'singles');
+  // Land on TODAY'S draw: from midnight before singles day (first serve
+  // minus 9h) the Brackets tab defaults to singles; before that, doubles
+  // (its day, and it posts first). The toggle still switches freely.
+  const [bracketEvent, setBracketEvent] = useState(() => {
+    const sd = dayStartMs('Singles');
+    const singlesToday = DRAWS_PUBLIC.Singles && Number.isFinite(sd) && Date.now() >= sd - 9 * 3600000;
+    return singlesToday || !DRAWS_PUBLIC.Doubles ? 'singles' : 'doubles';
+  });
   const [drawQuery, setDrawQuery] = useState(''); // "find yourself in the draw" highlight
   const drawHighlight = drawQuery.trim().length >= 2 ? drawQuery.trim().toLowerCase() : '';
   const [nextMatch, setNextMatch] = useState(null); // { event, num } — the ▸ Next ring target from Follow-my-team

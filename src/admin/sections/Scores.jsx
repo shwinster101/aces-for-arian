@@ -35,6 +35,33 @@ const shortSide = (s) => {
   return v || '—';
 };
 
+// SINGLES QFs GO ON TOGETHER (owner call): hold R3 rows out of the ready
+// queue until the bracket says all four quarterfinal pairings are set
+// (decided or both players known) — backdraw matches fill open courts in the
+// meantime — then jump the QFs to the FRONT of the queue so the next four
+// court openings take them. Doubles keeps its normal flow.
+const qfGate = (evMatches, event, bracket) => {
+  if (event !== 'Singles' || !bracket) return { hold: false, front: false, posted: false };
+  const view = resolve(bracket);
+  if (!view) return { hold: false, front: false, posted: false };
+  const r3 = [];
+  for (const sec of view.sections) for (const mm of sec.matches) if (mm.roundTag === 'R3') r3.push(mm);
+  if (r3.length !== 4) return { hold: false, front: false, posted: false };
+  const allSet = r3.every(mm => mm.winner || mm.contested);
+  const posted = evMatches.some(m => m.round === 'R3');
+  const pendingRows = evMatches.some(m => m.round === 'R3' && m.status === 'scheduled');
+  return { hold: !allSet, front: allSet && pendingRows, posted };
+};
+// The playable queue under the gate — shared by the court board, the fill
+// buttons, and the auto-fill engine so they can never disagree on "next".
+const orderedReady = (evMatches, event, gate) => evMatches
+  .filter(m => m.status === 'scheduled' && isReadyRow(m) && !(gate.hold && m.round === 'R3'))
+  .sort((a, b) => {
+    const pa = gate.front && a.round === 'R3' ? 0 : 1;
+    const pb = gate.front && b.round === 'R3' ? 0 : 1;
+    return pa - pb || playPos(a) - playPos(b);
+  });
+
 export default function Scores({ ops }) {
   const [event, setEvent] = useState('Singles');
   const [statusFilter, setStatusFilter] = useState('live');
@@ -71,15 +98,14 @@ export default function Scores({ ops }) {
     }
     const courtList = Array.from({ length: courtsCount }, (_, i) => String(i + 1));
     const openCourts = courtList.filter(c => !liveByCourt.has(c));
-    const readyQueue = evMatches
-      .filter(m => m.status === 'scheduled' && isReadyRow(m))
-      .sort((a, b) => playPos(a) - playPos(b));
+    const qf = qfGate(evMatches, event, ops.store.brackets[event]);
+    const readyQueue = orderedReady(evMatches, event, qf);
     // Suggest a distinct next-up per open court (by position), so two open
     // courts never both point at the same match.
     const suggestByCourt = {};
     openCourts.forEach((c, i) => { if (readyQueue[i]) suggestByCourt[c] = readyQueue[i]; });
-    return { courtList, liveByCourt, openCourts, liveUnassigned, readyQueue, suggestByCourt };
-  }, [allMatches, event, courtsCount]);
+    return { courtList, liveByCourt, openCourts, liveUnassigned, readyQueue, suggestByCourt, qf };
+  }, [allMatches, event, courtsCount, ops.store.brackets]);
 
   const goLive = (id, court) => ops.updateMatch(id, { status: 'live', ...(court ? { court } : {}) });
   const lowestOpenCourt = () => board.openCourts[0] || '';
@@ -132,9 +158,9 @@ export default function Scores({ ops }) {
 
     if (autoFill && freedCourts.length) {
       const occupied = new Set(evMatches.filter(m => m.status === 'live' && m.court).map(m => String(m.court)));
-      const ready = evMatches
-        .filter(m => m.status === 'scheduled' && isReadyRow(m))
-        .sort((a, b) => playPos(a) - playPos(b));
+      // Same gated ordering as the court board — held QFs never auto-fill,
+      // unlocked QFs take the next openings ahead of the backdraw.
+      const ready = orderedReady(evMatches, event, qfGate(evMatches, event, ops.store.brackets[event]));
       let ri = 0;
       for (const court of freedCourts) {
         if (occupied.has(court)) continue; // a manual "Go live" already took it
@@ -402,6 +428,16 @@ function CourtBoard({ board, event, liveCount, autoFill, onToggleAutoFill, onSen
         <p className="text-[10px] text-amber-400/80 mt-3 flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           {liveUnassigned.length} live match{liveUnassigned.length === 1 ? '' : 'es'} without a court — assign one on its row so it shows here.
+        </p>
+      )}
+      {board.qf && board.qf.hold && board.qf.posted && (
+        <p className="text-[10px] text-[#fbbf24]/90 mt-3">
+          Championship QFs are <strong>held so all four go on together</strong> — backdraw matches fill open courts until the last quarterfinal pairing is set.
+        </p>
+      )}
+      {board.qf && board.qf.front && (
+        <p className="text-[10px] text-[#fbbf24] mt-3">
+          <strong>All four championship QFs are ready</strong> — they're at the front of the queue, so the next four court openings take them. For a truly simultaneous start: flip auto-fill off, let four courts clear, then tap Fill open.
         </p>
       )}
     </Card>
