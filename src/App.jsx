@@ -703,7 +703,8 @@ function RoundTimesBanner({ matches, sched, now }) {
     { ev: 'Singles', label: 'Sun · Singles', first: '9:00 AM' },
   ]
     .map(r => ({ ...r, m: roundMilestones(matches, r.ev, sched, now) }))
-    .filter(r => r.m);
+    // A finished day (final done) drops off — Saturday's row is noise on Sunday.
+    .filter(r => r.m && !(r.m.F && r.m.F.done));
   if (!rows.length) return null;
   // Each milestone is { at } | { live } | { done } — the banner shifts live.
   const cell = (lbl, v) => {
@@ -1996,6 +1997,30 @@ export default function App() {
                   </div>
                 </>
               )}
+              {/* SUNDAY SINGLES — 32 double elimination as ONE sheet-style
+                  canvas, inside the same card as the toggle (mirrors doubles).
+                  Lines fill from the engineRowsFor num-join (NUMBERING
+                  CONTRACT: winners rounds start [1,25,41,53,59], comeback
+                  [17,33,45,49,55,57,60,61], GF 62, reset 63). */}
+              {DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
+                <>
+                  <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
+                    <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
+                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish.</span>
+                  </div>
+                  <SinglesDraw
+                    names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
+                    rowsByNum={engineRowsFor('Singles')}
+                    clockFor={clockByEvent.Singles}
+                    highlight={drawHighlight}
+                    nextNum={nextMatch && nextMatch.event === 'Singles' ? nextMatch.num : null}
+                    showByes={showByes}
+                  />
+                  <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
+                    Double elimination — every player has a two-match cushion. Lose in the Winners bracket and you drop into the Comeback bracket with a live path back to the Grand Final; the Winners champ must be beaten twice (the M63 reset) to lose the title.
+                  </p>
+                </>
+              )}
             </div>
           );
 
@@ -2017,34 +2042,6 @@ export default function App() {
               query={drawQuery}
               onQuery={setDrawQuery}
             />
-          );
-
-          // Singles draw cards — unchanged view, still gated hidden until the
-          // Sunday reveal (flip DRAWS_PUBLIC.Singles).
-          // SUNDAY SINGLES — 32 double elimination as ONE sheet-style canvas
-          // (same grammar as the doubles compass: rules, tokens, projected
-          // times on every match, highlight + zoom). Lines fill from the
-          // engineRowsFor num-join (NUMBERING CONTRACT: winners rounds start
-          // [1,25,41,53,59], comeback [17,33,45,49,55,57,60,61], GF 62,
-          // reset 63).
-          const singlesDraws = DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-4 md:p-6">
-              <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
-                <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
-                <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish.</span>
-              </div>
-              <SinglesDraw
-                names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
-                rowsByNum={engineRowsFor('Singles')}
-                clockFor={clockByEvent.Singles}
-                highlight={drawHighlight}
-                nextNum={nextMatch && nextMatch.event === 'Singles' ? nextMatch.num : null}
-                showByes={showByes}
-              />
-              <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
-                Double elimination — every player has a two-match cushion. Lose in the Winners bracket and you drop into the Comeback bracket with a live path back to the Grand Final; the Winners champ must be beaten twice (the M63 reset) to lose the title.
-              </p>
-            </div>
           );
 
           // Crowdsourced seeding input — hidden once the field locks; only in
@@ -2174,7 +2171,7 @@ export default function App() {
                     return (
                       <div key={m.id || i} className="bg-[#111] border border-zinc-800 rounded-xl p-4">
                         <div className="flex items-center justify-between gap-2 mb-2.5">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 truncate">{meta}</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 min-w-0 break-words">{meta}</span>
                           <span className={`shrink-0 text-[9px] font-black uppercase tracking-wider border rounded-full px-2 py-0.5 ${badge.cls}`}>{badge.label}</span>
                         </div>
                         <div className="space-y-1.5">
@@ -2235,7 +2232,6 @@ export default function App() {
             <div className="space-y-6 animate-fade-in">
               {tracker}
               {drawsTop}
-              {singlesDraws}
               {liveBoards}
               <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
               {suggestBox}
