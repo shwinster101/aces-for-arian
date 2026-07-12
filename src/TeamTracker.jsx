@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
-import { teamOptions, teamTimeline, firstMatchFor } from './lib/compass';
+import { teamOptions, teamTimeline, firstMatchFor, feederPairRanks } from './lib/compass';
 import { estimateLabel, stakesFor } from './lib/schedule';
 
 const LS_KEY = 'a4a-follow';
@@ -158,7 +158,26 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
             const fm = seedRow ? firstMatchFor(active.event, pInsFor(active.event), seedRow.rank, fieldCount) : null;
             const time = fm && clocks && clocks[active.event] ? clocks[active.event](fm.num) : null;
             const oppRow = fm && fm.oppRank ? (seeds || []).find(s => s.type === active.event && s.rank === fm.oppRank) : null;
-            const opp = oppRow ? show(labelFor(oppRow.name)) : (fm && fm.oppFrom) || null;
+            // A "winner of M29" pointer reads as the two ACTUAL names — from
+            // the posted row when it exists, else derived from the seed
+            // placement (feederPairRanks mirrors the draw exactly). Falls
+            // back to the bare M-pointer only if neither source has names.
+            const oppFromNames = (() => {
+              if (!fm || !fm.oppFrom || oppRow) return null;
+              const n = Number((fm.oppFrom.match(/M(\d+)/) || [])[1]);
+              if (!n) return null;
+              const row = (matches || []).find(x => (x.event || '') === active.event && Number(x.num) === n && x.a && x.b);
+              if (row) return [show(row.a), show(row.b)];
+              const ranks = feederPairRanks(active.event, n);
+              if (!ranks) return null;
+              const names = ranks
+                .map(r => { const sr = (seeds || []).find(s => s.type === active.event && s.rank === r); return sr ? show(labelFor(sr.name)) : null; })
+                .filter(Boolean);
+              return names.length ? names : null;
+            })();
+            const opp = oppRow ? show(labelFor(oppRow.name))
+              : oppFromNames ? (oppFromNames.length === 2 ? `winner of ${oppFromNames[0]} v ${oppFromNames[1]}` : oppFromNames[0])
+              : (fm && fm.oppFrom) || null;
             if (!fm) return (
               <p className="text-xs text-zinc-500 leading-relaxed">
                 No match posted for <span className="text-zinc-300 font-semibold">{active.label}</span> yet — your first match and the projected path appear here the moment the desk posts the draw.
