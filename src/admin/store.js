@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { SHEET_WRITE_URL } from '../lib/sheet';
+import { SHEET_WRITE_URL, MATCHES_CSV_URL, parseCSV, mapMatches } from '../lib/sheet';
 import { buildDraw, setResult, clearResult, swapUnseeded, renameSlot, bracketMatchRows } from '../lib/draw';
 import { SCHEDULE_DEFAULTS } from '../lib/schedule';
 
@@ -24,6 +24,11 @@ const DESK_POLL_MS = 25000;
 // poll result for that SAME field — protects a just-tapped toggle from
 // flickering back if the poll response was already in flight when we wrote.
 const LOCAL_EDIT_GUARD_MS = 45000;
+// Match rows get a LONGER guard: the score sync reads the public Matches CSV
+// through the edge cache (~30s edge + 20s browser), so a 45s guard could let
+// a device re-adopt its OWN pre-edit row from a stale cache. 90s clears the
+// worst-case staleness with room to spare.
+const MATCH_SYNC_GUARD_MS = 90000;
 
 // ==========================================
 // OPS DATA STORE — localStorage-backed overlay
@@ -260,6 +265,9 @@ export function useOpsStore() {
   // so an in-flight poll can't flicker a just-made change back. Same guard the
   // desk overlay uses.
   const localDrawEditAt = useRef({});
+  // Per-match-id timestamp of this device's own score/court/status edits —
+  // guards the cross-device score merge in pullDesk (MATCH_SYNC_GUARD_MS).
+  const localMatchEditAt = useRef({});
 
   // The generated draw (seed order + bracket) is shared across ops devices via
   // the private OpsDraw tab so a phone/laptop opening /admin sees HQ's draw
@@ -404,6 +412,7 @@ export function useOpsStore() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const updateMatch = (id, patch) => {
+    localMatchEditAt.current[id] = Date.now();
     setStore(s => ({ ...s, matches: s.matches.map(m => (m.id === id ? { ...m, ...patch } : m)) }));
     // Build the sheet payload OUTSIDE the updater: React only invokes updater
     // functions synchronously on its eager first-update path, so a side-effect
@@ -698,8 +707,56 @@ export function useOpsStore() {
   // edit once it's landed. A failed/blocked fetch is a silent no-op — every
   // device already works fully offline against localStorage.
   const [deskSync, setDeskSync] = useState({ at: 0, ok: false });
+
+  // Cross-device SCORE sync — reads the public Matches tab (the same rows
+  // every device already pushes) back into local rows, so a score typed on
+  // one volunteer phone shows on every ops device within a poll + cache
+  // window (~25-60s). Merge rules are deliberately MONOTONE so a stale edge
+  // cache can only lag, never regress state:
+  //   • score/court: adopt a non-empty sheet value that differs — a cleared
+  //     field never blanks out another device (corrections propagate by
+  //     overwriting, which is how the desk actually fixes scores).
+  //   • status: bracket-managed rows only upgrade scheduled→live here —
+  //     final/winner stays the bracket sync's call (opsdraw is authoritative,
+  //     and un-marking a winner must not fight a stale CSV). Hand-added rows
+  //     upgrade scheduled→live→final and adopt a non-empty winner.
+  //   • rows this device edited within MATCH_SYNC_GUARD_MS are left alone.
+  // Pure local adoption — never pushes — so devices can't ping-pong.
+  const pullScores = async (now) => {
+    try {
+      const res = await fetch(MATCHES_CSV_URL);
+      if (!res.ok) return;
+      const sheetRows = mapMatches(parseCSV(await res.text()));
+      if (!sheetRows.length) return;
+      const byId = new Map(sheetRows.filter(r => r.id).map(r => [r.id, r]));
+      const RANK = { scheduled: 0, live: 1, final: 2 };
+      setStore(s => {
+        let changed = false;
+        const matches = s.matches.map(m => {
+          const r = byId.get(m.id);
+          if (!r) return m;
+          if (now - (localMatchEditAt.current[m.id] || 0) < MATCH_SYNC_GUARD_MS) return m;
+          const next = { ...m };
+          if (r.score && r.score !== m.score) next.score = r.score;
+          if (r.court && String(r.court) !== String(m.court)) next.court = String(r.court);
+          if (isEngineRow(m)) {
+            if (r.status === 'live' && m.status === 'scheduled') next.status = 'live';
+          } else {
+            if ((RANK[r.status] || 0) > (RANK[m.status] || 0)) next.status = r.status;
+            if ((r.winner === 'a' || r.winner === 'b') && r.winner !== m.winner) next.winner = r.winner;
+          }
+          if (next.score === m.score && next.court === m.court && next.status === m.status && next.winner === m.winner) return m;
+          changed = true;
+          return next;
+        });
+        return changed ? { ...s, matches } : s;
+      });
+    } catch { /* cache/network hiccup — the next poll converges */ }
+  };
+
   const pullDesk = async () => {
     if (!SHEET_WRITE_URL) return;
+    pullScores(Date.now()); // independent read — runs even if the opsdesk GET fails
     try {
       const res = await fetch(`${SHEET_WRITE_URL}?mode=opsdesk&token=${OPSDESK_TOKEN}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -787,6 +844,8 @@ export function useOpsStore() {
     if (document.visibilityState === 'visible') tick();
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
+    // Mount-only poll loop; pullDesk reads live refs/state at call time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const exportJSON = () => JSON.stringify(store, null, 2);
