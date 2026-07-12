@@ -53,15 +53,8 @@ export default function SinglesDraw({
     wrapRef.current.scrollTo({ left: Math.max(0, x * scale - 16), top: Math.max(0, y * scale - 16), behavior: 'smooth' });
   };
 
-  // Phones land READING the Winners R32 matchups at 100%; Fit is one tap away.
-  useEffect(() => {
-    const wrapW = wrapRef.current ? wrapRef.current.clientWidth : CANVAS_W;
-    if (wrapW < 700) {
-      setFit(false);
-      const t = setTimeout(() => jumpTo('winners'), 200);
-      return () => clearTimeout(t);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Everyone lands in FIT — whole sheet visible, phones included (owner call
+  // 2026-07-12); 100% and the jump chips are one tap away for close reading.
 
   // Bring your NEXT match (▸ Next cell) into view first, else the first name hit.
   useEffect(() => {
