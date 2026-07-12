@@ -10,7 +10,7 @@
 // truth for routing, so the public projection can never drift from the ops
 // bracket.
 
-import { graphFor, seedOrder, buildDraw, resolve } from './draw';
+import { graphFor, seedOrder, buildDraw, resolve, PLAYIN_MAX } from './draw';
 import { playPos, stakesFor, waitsOnLabel, matchMinFor, dayStartMs, SCHEDULE_DEFAULTS } from './schedule';
 
 const T = 16; // doubles East draw size (DRAW_CAP.Doubles)
@@ -581,6 +581,25 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
     lastSide = best.side;
   }
   return out;
+}
+
+// The two SEED RANKS meeting in an opening-round match (R1 or a doubles
+// play-in) — lets the tracker turn a "winner of M29" pointer into the two
+// actual names via the seed list. Mirrors buildDraw placement exactly:
+// singles R1 = M1-16 over seedOrder(32), doubles R1 = M1-8 over
+// seedOrder(16), doubles play-in k (M29+k) = seed 16-k hosting seed 17+k.
+// Later-round nums return null (their participants aren't structural).
+export function feederPairRanks(event, num) {
+  const size = event === 'Doubles' ? T : 32;
+  if (event === 'Doubles' && num >= 29) {
+    const k = num - 29;
+    return k >= 0 && k < PLAYIN_MAX.Doubles ? [T - k, T + 1 + k] : null;
+  }
+  if (num >= 1 && num <= size / 2) {
+    const order = seedOrder(size);
+    return [order[2 * (num - 1)], order[2 * num - 1]];
+  }
+  return null;
 }
 
 // A team's FIRST match from its seed rank alone — for the tracker's
