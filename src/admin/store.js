@@ -730,16 +730,21 @@ export function useOpsStore() {
   // Cross-device SCORE sync — reads the public Matches tab (the same rows
   // every device already pushes) back into local rows, so a score typed on
   // one volunteer phone shows on every ops device within a poll + cache
-  // window (~25-60s). Merge rules are deliberately MONOTONE so a stale edge
-  // cache can only lag, never regress state:
-  //   • score/court: adopt a non-empty sheet value that differs — a cleared
-  //     field never blanks out another device (corrections propagate by
+  // window (~25-60s). Merge rules:
+  //   • score: adopt a non-empty sheet value that differs — a cleared field
+  //     never blanks out another device (corrections propagate by
   //     overwriting, which is how the desk actually fixes scores).
-  //   • status: bracket-managed rows only upgrade scheduled→live here —
-  //     final/winner stays the bracket sync's call (opsdraw is authoritative,
-  //     and un-marking a winner must not fight a stale CSV). Hand-added rows
-  //     upgrade scheduled→live→final and adopt a non-empty winner.
-  //   • rows this device edited within MATCH_SYNC_GUARD_MS are left alone.
+  //   • status + court: follow the sheet BOTH DIRECTIONS — a match pulled
+  //     off a court on one device (live→scheduled, court cleared) must
+  //     un-live on every device, so the shared court board agrees. The one
+  //     exception: a bracket-managed row never LEAVES 'final' here — exiting
+  //     final is the authoritative bracket (opsdraw) sync's call, so a stale
+  //     CSV can't flicker a decided match back open.
+  //   • winner: bracket rows take it from the bracket sync only; hand-added
+  //     rows adopt a non-empty sheet winner.
+  //   • rows this device edited within MATCH_SYNC_GUARD_MS (90s — beyond the
+  //     ~50s worst-case edge-cache staleness) are left alone, so a device
+  //     can never re-adopt its own pre-edit row.
   // Pure local adoption — never pushes — so devices can't ping-pong.
   const pullScores = async (now) => {
     try {
@@ -748,7 +753,6 @@ export function useOpsStore() {
       const sheetRows = mapMatches(parseCSV(await res.text()));
       if (!sheetRows.length) return;
       const byId = new Map(sheetRows.filter(r => r.id).map(r => [r.id, r]));
-      const RANK = { scheduled: 0, live: 1, final: 2 };
       setStore(s => {
         let changed = false;
         const matches = s.matches.map(m => {
@@ -757,11 +761,11 @@ export function useOpsStore() {
           if (now - (localMatchEditAt.current[m.id] || 0) < MATCH_SYNC_GUARD_MS) return m;
           const next = { ...m };
           if (r.score && r.score !== m.score) next.score = r.score;
-          if (r.court && String(r.court) !== String(m.court)) next.court = String(r.court);
+          if (String(r.court || '') !== String(m.court || '')) next.court = String(r.court || '');
           if (isEngineRow(m)) {
-            if (r.status === 'live' && m.status === 'scheduled') next.status = 'live';
+            if (m.status !== 'final' && r.status !== m.status) next.status = r.status;
           } else {
-            if ((RANK[r.status] || 0) > (RANK[m.status] || 0)) next.status = r.status;
+            if (r.status !== m.status) next.status = r.status;
             if ((r.winner === 'a' || r.winner === 'b') && r.winner !== m.winner) next.winner = r.winner;
           }
           if (next.score === m.score && next.court === m.court && next.status === m.status && next.winner === m.winner) return m;
