@@ -943,6 +943,7 @@ function ScheduleCard({ ops }) {
         {field('Doubles min', 'doublesMin', 'R1 per match')}
         {field('Singles min', 'singlesMin', 'std per match')}
         {field('R1 min', 'r1Min', 'singles R1 only · 0 = std')}
+        {field('Backdraw min', 'backdrawMin', 'comeback/West · 0 = std')}
         {field('QF+ min', 'qfMin', 'QF onward, ad')}
         {field('Finals min', 'finalsMin', '0 = same as QF+')}
         {field('Warm-up min', 'warmupMin', 'first match')}
