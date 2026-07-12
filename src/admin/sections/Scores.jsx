@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Trophy, Zap, Check, Grid3x3, Play, Clock, Sparkles, Search } from 'lucide-react';
+import { Trophy, Zap, Check, Grid3x3, Play, Clock, Sparkles, Search, Undo2 } from 'lucide-react';
 import { playPos, isReadyRow, startClockLabel, estimateLabel, waitsOnLabel, stakesFor } from '../../lib/schedule';
 import { resolve } from '../../lib/draw';
 import { isEngineRow } from '../store';
@@ -108,6 +108,12 @@ export default function Scores({ ops }) {
   }, [allMatches, event, courtsCount, ops.store.brackets]);
 
   const goLive = (id, court) => ops.updateMatch(id, { status: 'live', ...(court ? { court } : {}) });
+  // Take a match OFF its court: back to scheduled, court cleared — it rejoins
+  // the ready queue at its play-order spot (usually the front), so the next
+  // opening feeds it back in, or the desk Sends it wherever. The freed court
+  // does NOT auto-fill (that only fires on a live→final) — pulling a match is
+  // a deliberate act, the desk decides what goes on next.
+  const pullBack = (id) => { seen(id); ops.updateMatch(id, { status: 'scheduled', court: '' }); };
   const lowestOpenCourt = () => board.openCourts[0] || '';
   const fillOpenCourts = () => {
     board.openCourts.forEach((court) => {
@@ -195,7 +201,7 @@ export default function Scores({ ops }) {
 
       <CourtBoard board={board} event={event} liveCount={liveCount}
         autoFill={autoFill} onToggleAutoFill={setAutoFillPersisted}
-        onSend={goLive} onFill={fillOpenCourts} onGoLiveFilter={() => setStatusFilter('live')} />
+        onSend={goLive} onPull={pullBack} onFill={fillOpenCourts} onGoLiveFilter={() => setStatusFilter('live')} />
 
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -213,7 +219,8 @@ export default function Scores({ ops }) {
             {matches.map(m => (
               <ScoreRow key={m.id} m={m} ops={ops} allMatches={allMatches} sched={sched}
                 isNew={!!newLive[m.id]} onSeen={() => seen(m.id)}
-                canGoLive={m.status === 'scheduled'} onGoLive={() => goLive(m.id, lowestOpenCourt())} />
+                canGoLive={m.status === 'scheduled'} onGoLive={() => goLive(m.id, lowestOpenCourt())}
+                onPull={() => pullBack(m.id)} />
             ))}
           </div>
         )}
@@ -355,7 +362,7 @@ function LookupLast({ e, p, event, query }) {
 // The physical constraint, made glanceable: one cell per court showing exactly
 // who's on it, and open courts offering the next ready match with a one-tap
 // send. This is what kills "wait, which matches are actually live?"
-function CourtBoard({ board, event, liveCount, autoFill, onToggleAutoFill, onSend, onFill, onGoLiveFilter }) {
+function CourtBoard({ board, event, liveCount, autoFill, onToggleAutoFill, onSend, onPull, onFill, onGoLiveFilter }) {
   const { courtList, liveByCourt, openCourts, liveUnassigned, suggestByCourt } = board;
   const fillable = openCourts.some(c => suggestByCourt[c]);
 
@@ -389,16 +396,21 @@ function CourtBoard({ board, event, liveCount, autoFill, onToggleAutoFill, onSen
           const next = suggestByCourt[court];
           if (live) {
             return (
-              <div key={court} className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-2.5">
+              <div key={court} className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-2.5 flex flex-col">
                 <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-emerald-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Court {court}
                   {live.round && <span className="ml-auto text-emerald-400/70">{live.round}{live.num !== '' ? ` · M${live.num}` : ''}</span>}
                 </div>
-                <div className="mt-1.5 text-[11px] text-zinc-200 leading-snug">
+                <div className="mt-1.5 text-[11px] text-zinc-200 leading-snug flex-1">
                   <div className="truncate font-semibold">{shortSide(live.a)}</div>
                   <div className="text-zinc-600 text-[9px] my-0.5">vs</div>
                   <div className="truncate font-semibold">{shortSide(live.b)}</div>
                 </div>
+                <button onClick={() => onPull(live.id)}
+                  title="Wrong send / plans changed — un-live this match and put it back in the queue; the court opens for whatever's next"
+                  className="mt-2 flex items-center justify-center gap-1.5 min-h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-black/30 border border-zinc-700 text-zinc-400 hover:text-rose-400 hover:border-rose-500/40 transition active:scale-95">
+                  <Undo2 className="w-3 h-3" /> Back to queue
+                </button>
               </div>
             );
           }
@@ -444,7 +456,7 @@ function CourtBoard({ board, event, liveCount, autoFill, onToggleAutoFill, onSen
   );
 }
 
-function ScoreRow({ m, ops, allMatches, sched, isNew, onSeen, canGoLive, onGoLive }) {
+function ScoreRow({ m, ops, allMatches, sched, isNew, onSeen, canGoLive, onGoLive, onPull }) {
   const engine = isEngineRow(m);
   const savedAt = ops.matchSavedAt[m.id] || 0;
   // Dirty/saved without reading a clock in render: on each edit we remember the
@@ -500,6 +512,14 @@ function ScoreRow({ m, ops, allMatches, sched, isNew, onSeen, canGoLive, onGoLiv
           className="w-full flex items-center justify-center gap-1.5 min-h-11 rounded-lg text-[11px] font-black uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition active:scale-[0.98]">
           <Play className="w-3.5 h-3.5" /> Go live{' '}
           <span className="normal-case tracking-normal font-medium text-emerald-400/70">— take the next open court</span>
+        </button>
+      )}
+      {live && (
+        <button onClick={onPull}
+          title="Un-live this match and put it back in the queue — the court opens for whatever's next"
+          className="w-full flex items-center justify-center gap-1.5 min-h-11 rounded-lg text-[11px] font-black uppercase tracking-wider bg-[#0d0d0d] border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-rose-500/40 transition active:scale-[0.98]">
+          <Undo2 className="w-3.5 h-3.5" /> Pull off court{' '}
+          <span className="normal-case tracking-normal font-medium text-zinc-500">— back to scheduled</span>
         </button>
       )}
 
