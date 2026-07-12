@@ -104,9 +104,9 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
       {tl && (
         <div className="mt-4 space-y-1.5">
           {tl.played.map(({ m, side, won }) => (
-            <div key={`p${m.id || m.num}`} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+            <div key={`p${m.id || m.num}`} className="flex items-start gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
               <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black ${won ? 'bg-[#fbbf24] text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>{won ? 'W' : 'L'}</span>
-              <span className="text-xs text-zinc-300 min-w-0 truncate">
+              <span className="text-xs text-zinc-300 min-w-0 break-words leading-snug">
                 <span className="text-zinc-500">{stakesFor(active.event, m.round)} · </span>
                 vs <span className="font-semibold text-zinc-200">{oppOf(m, side)}</span>
               </span>
@@ -115,18 +115,18 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
           ))}
 
           {tl.live && (
-            <div className="flex items-center gap-3 bg-[#111] border border-emerald-500/30 rounded-lg px-3 py-2">
-              <span className="shrink-0 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex items-start gap-3 bg-[#111] border border-emerald-500/30 rounded-lg px-3 py-2">
+              <span className="shrink-0 w-2 h-2 rounded-full bg-emerald-400 animate-pulse mt-1.5" />
               <span className="text-xs text-emerald-400 font-black uppercase tracking-wider shrink-0">{tl.live.court ? `On court ${tl.live.court}` : 'On court'}</span>
-              <span className="text-xs text-zinc-300 min-w-0 truncate">vs <span className="font-semibold text-zinc-200">{oppOf(tl.live, tl.live.a && tl.live.a.toLowerCase().includes(active.label.toLowerCase()) ? 'a' : 'b')}</span></span>
+              <span className="text-xs text-zinc-300 min-w-0 break-words leading-snug">vs <span className="font-semibold text-zinc-200">{oppOf(tl.live, tl.live.a && tl.live.a.toLowerCase().includes(active.label.toLowerCase()) ? 'a' : 'b')}</span></span>
               {tl.live.score && <span className="ml-auto shrink-0 text-xs font-mono text-emerald-300">{tl.live.score}</span>}
             </div>
           )}
 
           {tl.upcoming.map((m) => (
-            <div key={`u${m.id || m.num}`} className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
-              <span className="shrink-0 text-[9px] font-mono font-bold text-zinc-500">M{m.num}</span>
-              <span className="text-xs text-zinc-300 min-w-0 truncate">
+            <div key={`u${m.id || m.num}`} className="flex items-start gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+              <span className="shrink-0 text-[9px] font-mono font-bold text-zinc-500 mt-0.5">M{m.num}</span>
+              <span className="text-xs text-zinc-300 min-w-0 break-words leading-snug">
                 <span className="text-zinc-500">{stakesFor(active.event, m.round)} · </span>
                 vs <span className="font-semibold text-zinc-200">{oppOf(m, m.a && m.a.toLowerCase().includes(active.label.toLowerCase()) ? 'a' : 'b')}</span>
               </span>
@@ -143,7 +143,7 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
                 <span className="text-xs text-zinc-300">{b.kind === 'win' ? 'Champions of this path 🏆' : "That wraps the day — every match counted."}</span>
               ) : (
                 <>
-                  <span className="text-xs text-zinc-300 min-w-0 truncate"><span className="font-mono text-zinc-500">M{b.num}</span> · {b.stakes}</span>
+                  <span className="text-xs text-zinc-300 min-w-0 break-words leading-snug"><span className="font-mono text-zinc-500">M{b.num}</span> · {b.stakes}</span>
                   {b.waits && <span className="ml-auto shrink-0 text-[10px] font-bold text-[#fbbf24]/80">{b.waits}</span>}
                 </>
               )}
@@ -165,9 +165,9 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
               </p>
             );
             return (
-              <div className="flex items-center gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
-                <span className="shrink-0 text-[9px] font-mono font-bold text-zinc-500">M{fm.num}</span>
-                <span className="text-xs text-zinc-300 min-w-0 truncate">
+              <div className="flex items-start gap-3 bg-[#111] border border-zinc-800 rounded-lg px-3 py-2">
+                <span className="shrink-0 text-[9px] font-mono font-bold text-zinc-500 mt-0.5">M{fm.num}</span>
+                <span className="text-xs text-zinc-300 min-w-0 break-words leading-snug">
                   <span className="text-zinc-500">Your first match · {stakesFor(active.event, fm.round)}</span>
                   {opp && <> · vs <span className="font-semibold text-zinc-200">{opp}</span></>}
                 </span>
