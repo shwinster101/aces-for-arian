@@ -157,6 +157,20 @@ function safeBracket(b) {
   try { bracketMatchRows(b); return b; } catch { return null; }
 }
 
+// One-shot 50->40 block migration (owner call 2026-07-12): devices whose
+// persisted schedule still carries the OLD 50-min seeded defaults move to the
+// new 40-min defaults exactly once (marker `m40`). Anything the desk sets
+// AFTER this build — including a deliberate 50 — sticks.
+function migrateSchedule(sched) {
+  const s = sched && typeof sched === 'object' ? { ...sched } : {};
+  if (!s.m40) {
+    if (s.singlesMin === 50) s.singlesMin = 40;
+    if (s.qfMin === 50) s.qfMin = 40;
+    s.m40 = true;
+  }
+  return { ...SCHEDULE_DEFAULTS, ...s };
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -176,7 +190,7 @@ function load() {
       brackets: parsed.brackets && typeof parsed.brackets === 'object'
         ? { Singles: safeBracket(parsed.brackets.Singles), Doubles: safeBracket(parsed.brackets.Doubles) }
         : { Singles: null, Doubles: null },
-      schedule: { ...SCHEDULE_DEFAULTS, ...(parsed.schedule && typeof parsed.schedule === 'object' ? parsed.schedule : {}) },
+      schedule: migrateSchedule(parsed.schedule),
       emails: Array.isArray(parsed.emails) ? parsed.emails.filter(e => typeof e === 'string') : [],
       cash: parsed.cash && typeof parsed.cash === 'object'
         ? { ...emptyCash(), ...parsed.cash, log: Array.isArray(parsed.cash.log) ? parsed.cash.log : [] }
