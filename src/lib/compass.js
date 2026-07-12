@@ -510,6 +510,19 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
   //      then SHORTER match first (front-load the placement splits), then
   //      bracket play order.
   const AGING_MS = 30 * 60000;
+  // SINGLES QFs GO ON TOGETHER (owner call): the four championship
+  // quarterfinals (R3) are gated on EVERY QF's feeders — none is placeable
+  // until all four pairings are known — and then placed as one group at a
+  // common start on the four earliest courts. Backdraw matches (which come
+  // later in play order but gate on nothing) naturally fill the courts in
+  // the meantime. Doubles keeps its normal flow.
+  const syncQF = (m) => event === 'Singles' && m.roundTag === 'R3';
+  const syncDeps = (m) => {
+    if (!syncQF(m)) return depsOf(m);
+    const d = [];
+    for (const g2 of g.matches) if (g2.roundTag === 'R3' && !finish.has(g2.id)) d.push(...depsOf(g2));
+    return d;
+  };
   let lastSide = null; // side of the most recently placed match
   while (pending.length) {
     let ci = 0; for (let j = 1; j < pool.length; j++) if (pool[j] < pool[ci]) ci = j;
@@ -517,7 +530,7 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
     let best = null;
     for (let i = 0; i < pending.length; i++) {
       const m = pending[i];
-      const deps = depsOf(m);
+      const deps = syncDeps(m);
       if (deps.some((d) => !finish.has(d))) continue; // upstream still pending
       let ready = anchor;
       for (const d of deps) ready = Math.max(ready, finish.get(d) + restMs);
@@ -544,6 +557,23 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
       if (cand.durMs !== best.durMs ? cand.durMs < best.durMs : cand.pos < best.pos) best = cand;
     }
     if (!best) break; // safety: cyclic/unsatisfiable (can't happen in a DAG)
+    if (syncQF(best.m)) {
+      // Place EVERY remaining QF now, at one shared start time: the group is
+      // jointly ready (shared gate), so book the group-size earliest courts
+      // and anchor all of them to the latest of those courts' free times.
+      const group = pending.filter((p) => p.roundTag === 'R3');
+      const order = pool.map((v, i) => [v, i]).sort((x, y) => x[0] - y[0]).slice(0, group.length);
+      const commonStart = Math.max(best.ready, order[order.length - 1][0]);
+      group.forEach((gm, gi) => {
+        const durMs = matchMinFor(event, s, gm.roundTag) * 60000;
+        pool[order[gi][1]] = commonStart + durMs;
+        finish.set(gm.id, commonStart + durMs);
+        out.set(gm.num, new Date(commonStart));
+      });
+      for (let i = pending.length - 1; i >= 0; i--) if (pending[i].roundTag === 'R3') pending.splice(i, 1);
+      lastSide = 'front';
+      continue;
+    }
     pending.splice(best.i, 1);
     pool[ci] = best.start + best.durMs;
     finish.set(best.m.id, best.start + best.durMs);
