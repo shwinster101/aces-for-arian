@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Trophy, Zap, Check, Grid3x3, Play, Clock, Sparkles } from 'lucide-react';
-import { playPos, isReadyRow, startClockLabel } from '../../lib/schedule';
+import { Trophy, Zap, Check, Grid3x3, Play, Clock, Sparkles, Search } from 'lucide-react';
+import { playPos, isReadyRow, startClockLabel, estimateLabel, waitsOnLabel, stakesFor } from '../../lib/schedule';
+import { resolve } from '../../lib/draw';
 import { isEngineRow } from '../store';
-import { Card, PageHeader, Pills, TextInput, Select, EmptyState, Toggle } from '../ui';
+import { Card, PageHeader, Pills, TextInput, Select, EmptyState, Toggle, SearchBox } from '../ui';
 
 const clockTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
@@ -162,6 +163,8 @@ export default function Scores({ ops }) {
     <div className="space-y-4 animate-fade-in">
       <PageHeader title="Scores & Courts" subtitle="The court board up top is the source of truth for what's live and where. Mark a winner and the court frees itself; the next ready match slides on automatically (toggle it off to place them by hand). New arrivals flash so nobody has to guess what changed." />
 
+      <PlayerLookup ops={ops} event={event} sched={sched} />
+
       <AceTracker ops={ops} />
 
       <CourtBoard board={board} event={event} liveCount={liveCount}
@@ -190,6 +193,134 @@ export default function Scores({ ops }) {
         )}
       </Card>
     </div>
+  );
+}
+
+// -------------------------------------------------- Player lookup
+// "When's my next match and who do I play?" is the question the desk gets
+// most — this answers it in one search. Built on the resolved bracket (like
+// the Seeding call sheet) so it can answer even when the opponent is still
+// "W of M12", with hand-added (non-engine) rows folded in; a lookup misses
+// nothing that's posted.
+const nameHas = (s, q) => (s || '').toLowerCase().includes(q);
+const lookupBlockers = (e) => [e.a, e.b]
+  .map(s => (s && !s.name && s.from ? Number((String(s.from).match(/M(\d+)/) || [])[1]) : null))
+  .filter(Boolean);
+const LOOKUP_MAX = 8;
+
+function PlayerLookup({ ops, event, sched }) {
+  const [q, setQ] = useState('');
+  const query = q.trim().toLowerCase();
+  const allMatches = ops.store.matches;
+  const bracket = ops.store.brackets[event];
+  const view = useMemo(() => resolve(bracket), [bracket]);
+  const posted = useMemo(
+    () => new Map(allMatches.filter(m => m.event === event).map(m => [m.id, m])),
+    [allMatches, event],
+  );
+
+  // One unified list: every real bracket match (byes never play) + every
+  // hand-added row, in play order. Engine rows exist only when a bracket
+  // does, so the two sources never double-count a match.
+  const entries = useMemo(() => {
+    const out = [];
+    if (view) {
+      for (const sec of view.sections) {
+        for (const mm of sec.matches) {
+          if (mm.bye) continue;
+          out.push({ id: mm.id, num: mm.num, round: mm.roundTag, a: mm.slotA, b: mm.slotB });
+        }
+      }
+    }
+    for (const m of allMatches) {
+      if (m.event !== event || isEngineRow(m)) continue;
+      out.push({ id: m.id, num: Number(m.num) || 0, round: m.round, a: { name: m.a }, b: { name: m.b } });
+    }
+    return out.sort((x, y) => playPos({ num: x.num, event }) - playPos({ num: y.num, event }));
+  }, [view, allMatches, event]);
+
+  const hits = query.length >= 2
+    ? entries.filter(e => nameHas(e.a.name, query) || nameHas(e.b.name, query))
+    : [];
+  const statusOf = (e) => { const p = posted.get(e.id); return p ? p.status : 'scheduled'; };
+  const pending = hits.filter(e => statusOf(e) !== 'final');
+  const played = hits.filter(e => statusOf(e) === 'final');
+  const lastPlayed = played[played.length - 1] || null;
+  const shownPending = pending.slice(0, LOOKUP_MAX);
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-1">
+        <Search className="w-4 h-4 text-[#fbbf24]" /> Player lookup
+        <span className="normal-case tracking-normal font-medium text-zinc-500">· {event}</span>
+      </h3>
+      <p className="text-[11px] text-zinc-500 mb-3">“When’s my next match, who do I play?” — type a name for the answer to read back: opponent, court or projected time, and what the match is for.</p>
+      <SearchBox value={q} onChange={setQ} placeholder="Player name — first name is enough…" />
+
+      {query.length >= 2 && (
+        <div className="mt-3 space-y-2">
+          {hits.length === 0 ? (
+            <p className="text-xs text-zinc-500 px-1">No posted matches for “{q.trim()}” in {event.toLowerCase()} — check the spelling, or the draw may not be posted yet (Seeding &amp; Draws).</p>
+          ) : (
+            <>
+              {shownPending.map(e => <LookupRow key={e.id} e={e} p={posted.get(e.id)} allMatches={allMatches} event={event} sched={sched} query={query} />)}
+              {pending.length > LOOKUP_MAX && (
+                <p className="text-[10px] text-zinc-600 px-1">+{pending.length - LOOKUP_MAX} more — keep typing to narrow it down.</p>
+              )}
+              {pending.length === 0 && (
+                <p className="text-xs text-zinc-400 px-1">Nothing scheduled for them right now — either their run is done, or the next round posts once the opponent is decided (check the Draw board on Seeding &amp; Draws).</p>
+              )}
+              {lastPlayed && <LookupLast e={lastPlayed} p={posted.get(lastPlayed.id)} event={event} query={query} />}
+            </>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// A pending match, phrased for reading back to the player at the desk.
+function LookupRow({ e, p, allMatches, event, sched, query }) {
+  const status = p ? p.status : 'scheduled';
+  const live = status === 'live';
+  // Posted rows get the queue estimate ("~2 ahead · around 10:30" / "On court
+  // 5 now"); an unposted future bracket match gets "Waits on M12 · ~10:40".
+  const est = p
+    ? estimateLabel(p, allMatches, sched)
+    : (waitsOnLabel(lookupBlockers(e), allMatches, event, sched) || 'Posts once the feeders resolve');
+  const stakes = stakesFor(event, e.round);
+  const side = (s) => {
+    const isThem = nameHas(s.name, query);
+    if (s.name) return <span className={isThem ? 'text-[#fbbf24] font-black' : 'text-zinc-100 font-bold'}>{s.name}</span>;
+    return <span className="text-zinc-500 italic">{s.from ? `Winner comes from ${s.from.replace(/^W of /i, '')}` : 'TBD'}</span>;
+  };
+  return (
+    <div className="bg-[#111] border border-zinc-800 rounded-xl px-3.5 py-3">
+      <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-wider">
+        <span className={`flex items-center gap-1.5 ${live ? 'text-emerald-400' : 'text-zinc-500'}`}>
+          {live && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+          {live ? `Live${p && p.court ? ` · Court ${p.court}` : ''}` : 'Upcoming'}
+        </span>
+        <span className="text-zinc-600">M{e.num}</span>
+        <span className="px-1.5 py-0.5 rounded border text-zinc-400 bg-zinc-800/60 border-zinc-700">{stakes}</span>
+      </div>
+      <div className="text-sm mt-1.5">{side(e.a)} <span className="text-zinc-600">vs</span> {side(e.b)}</div>
+      {est && <div className={`text-[11px] mt-1 ${live ? 'text-emerald-400' : 'text-zinc-400'}`}>{est}</div>}
+    </div>
+  );
+}
+
+// Their most recent finished match — quick context for the desk ("you beat
+// Sam 4-2, so next up is…") and a sanity check it's the right person.
+function LookupLast({ e, p, event, query }) {
+  const winnerName = p && p.winner ? (p.winner === 'a' ? p.a : p.b) : '';
+  const won = winnerName && nameHas(winnerName, query);
+  const oppo = nameHas(e.a.name, query) ? e.b.name : e.a.name;
+  return (
+    <p className="text-[11px] text-zinc-500 px-1">
+      Last match: <span className={won ? 'text-emerald-400 font-bold' : 'text-zinc-300 font-bold'}>{winnerName ? (won ? 'won' : 'lost') : 'played'}</span>
+      {oppo ? <> vs {oppo}</> : null}{p && p.score ? <> · {p.score}</> : null} <span className="text-zinc-600">({stakesFor(event, e.round)})</span>
+    </p>
   );
 }
 
