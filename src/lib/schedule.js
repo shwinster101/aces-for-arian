@@ -9,18 +9,18 @@
 
 export const SCHEDULE_DEFAULTS = {
   courts: 9,        // courts available for play
-  // Unified format both events: best-of-3 Fast-4 (first to 4), 10-pt match
-  // tiebreak for the 3rd — no-ad through the R16, ad from the QF on. ONE-HOUR
-  // BLOCKS the whole way through (owner call): a 50-min match + 10-min changeover
-  // = a clean 1-hour cadence, so every round — East and West alike — starts on
-  // the hour (9:00, 10:00, 11:00 …). Predictability over shaving minutes.
-  doublesMin: 50,   // every round is a 50-min match…
-  singlesMin: 50,   // …same for singles…
+  // Singles day (owner call 2026-07-12): 40-MIN default blocks. Estimates run
+  // slightly AHEAD of a 50-min reality on purpose — when a court opens early,
+  // the next match is already called up rather than the projection lagging
+  // behind the desk. (Doubles kept Saturday's 50-min blocks for the archive.)
+  doublesMin: 50,   // doubles (Saturday) — 50-min blocks, hour cadence
+  singlesMin: 40,   // singles default block — early rounds are one ad set to 6
   r1Min: 0,         // singles FIRST ROUND only (R1 + Comeback R1) — set when
                     // round 1 runs a shorter format (e.g. one Fast-4 set ≈ 25)
                     // so every estimate prices it honestly. 0/unset = same as
                     // singlesMin. Config key: "R1 min".
-  qfMin: 50,        // …and QF onward too — uniform, no longer deep rounds
+  qfMin: 40,        // QF onward (best-of-3 Fast-4) — same 40-min default so
+                    // the whole day's projection leans early, never late
   backdrawMin: 0,   // West/North/South/consolation match length (shorter pro
                     // sets); 0/unset = fall back to the event length. Config
                     // key: "Backdraw min".
