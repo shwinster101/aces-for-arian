@@ -16,6 +16,10 @@ export const SCHEDULE_DEFAULTS = {
   // the hour (9:00, 10:00, 11:00 …). Predictability over shaving minutes.
   doublesMin: 50,   // every round is a 50-min match…
   singlesMin: 50,   // …same for singles…
+  r1Min: 0,         // singles FIRST ROUND only (R1 + Comeback R1) — set when
+                    // round 1 runs a shorter format (e.g. one Fast-4 set ≈ 25)
+                    // so every estimate prices it honestly. 0/unset = same as
+                    // singlesMin. Config key: "R1 min".
   qfMin: 50,        // …and QF onward too — uniform, no longer deep rounds
   backdrawMin: 0,   // West/North/South/consolation match length (shorter pro
                     // sets); 0/unset = fall back to the event length. Config
@@ -91,6 +95,9 @@ export function matchMinFor(event, sched, round) {
   // Grand Final and its reset; QF (R3) stays a pro set. Checked before the
   // qfMin/backdraw fallbacks so "Comeback F"/"GF Reset" resolve here too.
   if (!isD && s.finalsMin > 0 && SINGLES_FINALS.has(tag)) return s.finalsMin;
+  // Singles round 1 (winners R1 + the Comeback R1 it feeds — same population,
+  // same format) can run a shorter format than the rest of the day.
+  if (!isD && s.r1Min > 0 && (tag === 'R1' || tag === 'Comeback R1')) return s.r1Min;
   if (tag && longSet.has(tag)) return s.qfMin;
   // Backdraw rounds (West/North/South, comeback, play-in consolation) play
   // shorter pro sets when the desk sets "Backdraw min" — front-loading them
@@ -156,7 +163,7 @@ export function roundMilestones(matches, event, sched, nowMs = Date.now()) {
     { key: 'SF', ms: roundMs(['SF']), len: s.qfMin },
     { key: 'F', ms: roundMs(['F']), len: s.qfMin },
   ] : [
-    { ms: roundMs(['R1']), len: s.singlesMin },
+    { ms: roundMs(['R1']), len: s.r1Min > 0 ? s.r1Min : s.singlesMin },
     { ms: roundMs(['R2']), len: s.singlesMin },
     { key: 'QF', ms: roundMs(['R3']), len: s.qfMin },
     { key: 'SF', ms: roundMs(['SF']), len: s.qfMin },

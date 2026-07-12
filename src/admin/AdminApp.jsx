@@ -9,6 +9,7 @@ import {
   Package,
   ShoppingCart,
   Megaphone,
+  MessageSquarePlus,
   RefreshCw,
   LogOut,
   ExternalLink,
@@ -28,6 +29,7 @@ import Scores from './sections/Scores';
 import Announce from './sections/Announce';
 import Merch from './sections/Merch';
 import Logistics from './sections/Logistics';
+import Feedback from './sections/Feedback';
 
 // Day-of order: the tabs staff actually work during play come first
 // (check-in desk → money → courtside scoring → gear locker → announcements);
@@ -43,12 +45,15 @@ const TABS = [
   { id: 'announce', label: 'Announce', icon: Megaphone },
   { id: 'seeding', label: 'Seeding & Draws', icon: Swords },
   { id: 'logistics', label: 'Logistics', icon: ShoppingCart },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquarePlus },
 ];
 
 // The volunteer PIN unlocks just the day-of desk + courtside jobs. Command
 // Center, draws, announcements (incl. the email list), registrations admin,
 // logistics, and merch stay HQ-only. UI-level gate — same deterrent model.
-const DESK_TAB_IDS = new Set(['checkins', 'payments', 'scores']);
+// Feedback is open to volunteers too — desk staff hit the roughest edges, so
+// their bug reports are the most useful ones to capture.
+const DESK_TAB_IDS = new Set(['checkins', 'payments', 'scores', 'feedback']);
 
 // Where each admin section shows up on the public site — drives the contextual
 // "View live ↗" link (deep-links into the public app's hash router) so staff
@@ -133,12 +138,14 @@ function OpsConsole({ onLock }) {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <a href={`/#${PUBLIC_VIEW[tab].hash}`} target="_blank" rel="noopener noreferrer"
-              title={`Open the ${PUBLIC_VIEW[tab].label} on the public site`}
-              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 text-[10px] font-bold uppercase tracking-wider text-zinc-300 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 rounded-lg px-3 py-2 transition-colors">
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">View live</span>
-            </a>
+            {PUBLIC_VIEW[tab] && (
+              <a href={`/#${PUBLIC_VIEW[tab].hash}`} target="_blank" rel="noopener noreferrer"
+                title={`Open the ${PUBLIC_VIEW[tab].label} on the public site`}
+                className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 text-[10px] font-bold uppercase tracking-wider text-zinc-300 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 rounded-lg px-3 py-2 transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">View live</span>
+              </a>
+            )}
             <button onClick={sync} disabled={spinning}
               className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 text-[10px] font-bold uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25 hover:bg-[#fbbf24]/20 rounded-lg px-3 py-2 transition-colors disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${spinning ? 'animate-spin' : ''}`} />
@@ -209,6 +216,7 @@ function OpsConsole({ onLock }) {
         {tab === 'announce' && <Announce {...sectionProps} />}
         {tab === 'logistics' && <Logistics {...sectionProps} />}
         {tab === 'merch' && <Merch {...sectionProps} />}
+        {tab === 'feedback' && <Feedback />}
       </main>
 
       <footer className="py-6 text-center text-[10px] text-zinc-700 border-t border-zinc-900 space-y-2">

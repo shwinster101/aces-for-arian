@@ -240,7 +240,9 @@ export function mapConfig(rows) {
     } else if (/goal|target/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n)) out.goal = n;
-    } else if (/final|lock/.test(key)) {
+    } else if (/final|lock/.test(key) && !/min/.test(key)) {
+      // !min guard: without it this branch swallows "Finals min" (a schedule
+      // number handled further down) and that knob silently never applies.
       if (truthy(val)) out.seedsFinal = true;
       else if (falsy(val)) out.seedsFinal = false;
     } else if (/bar|meter|progress|scholarship/.test(key)) {
@@ -255,6 +257,10 @@ export function mapConfig(rows) {
     } else if (/sing/.test(key) && /min/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n > 0) out.singlesMin = n;
+    } else if (/(r1|first.?round|round.?1)/.test(key) && /min/.test(key)) {
+      // "R1 min" — singles round 1 (+ Comeback R1) shorter format; 0 = off
+      const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n >= 0) out.r1Min = n;
     } else if (/(qf|quarter|pro.?set)/.test(key) && /min/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n > 0) out.qfMin = n;

@@ -652,6 +652,8 @@ function writeConfig_(payload) {
   upsert(/doub.*min/, 'doubles match min', payload.doublesMin);
   upsert(/sing.*min/, 'singles match min', payload.singlesMin);
   upsert(/(qf|quarter).*min/, 'qf match min', payload.qfMin);
+  upsert(/(r1|first.?round|round.?1).*min/, 'r1 min', payload.r1Min);
+  upsert(/final.*min/, 'finals min', payload.finalsMin);
   upsert(/warm/, 'warmup min', payload.warmupMin);
   // Yes/no flags get their own upsert (the numeric one above would mangle
   // them). "seeds final" flips the public board to Final Seeds and turns
@@ -664,7 +666,9 @@ function writeConfig_(payload) {
     }
     rows.push([canonical, v]);
   };
-  upsertFlag(/final|lock/, 'seeds final', payload.seedsFinal);
+  // !min in the lookahead: without it a seeds-final push can land on the
+  // "finals min" schedule row and overwrite the number with yes/no.
+  upsertFlag(/^(?!.*min)(?=.*(final|lock))/, 'seeds final', payload.seedsFinal);
   writeRows_(sheet, rows);
 }
 
