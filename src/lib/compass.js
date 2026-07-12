@@ -444,10 +444,13 @@ export function projectSchedule(event, pIns, rows, sched, nowMs = Date.now(), sk
   const restMs = Math.max(0, Number(s.restMin) || 0) * 60000;
   const g = graphFor(event, pIns);
 
-  let anyStarted = false;
-  for (const r of rows.values()) if (r.status === 'live' || r.status === 'final') { anyStarted = true; break; }
+  // Never project earlier than FIRST SERVE (9:00 AM): a row marked live or
+  // final before the day starts (desk testing, an early entry) must not drag
+  // every chip back to the current pre-dawn clock — "~7:15 AM" on the public
+  // draw. Once the day is genuinely running, now > first serve and the clamp
+  // is a no-op, so behind-schedule days still re-project from now.
   const ds = dayStartMs(event);
-  const anchor = anyStarted ? nowMs : Math.max(nowMs, Number.isFinite(ds) ? ds : nowMs);
+  const anchor = Number.isFinite(ds) ? Math.max(nowMs, ds) : nowMs;
 
   // Play-in winner -> East host line isn't a graph ref (it's an r1slots
   // marker in the engine) — same seedOrder patch nextMatchMap uses.
