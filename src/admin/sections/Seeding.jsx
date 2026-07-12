@@ -698,10 +698,54 @@ function DrawBoard({ event, ops, participants }) {
               );
             })}
           </DndContext>
+
+          <Withdrawals event={event} ops={ops} bracket={bracket} />
         </>
       )}
       <p className="text-[10px] text-zinc-600 mt-3">The draw saves to this device automatically and every change re-posts its matches to the Match Order below (and the public board once draws are revealed). <strong className="text-zinc-400">Mark winners here or on the Scores tab</strong> — either advances the bracket, the queue, and the public draw together. The GF reset match appears only if the Comeback champ takes the Grand Final.</p>
     </Card>
+  );
+}
+
+// ------------------------------------------------- Withdrawals (no-shows)
+// Tap a name to withdraw them from the draw — every match they'd reach walks
+// over to the opponent automatically, INCLUDING the comeback/backdraw slot
+// they'd have dropped into, so a no-show can never strand a line. Matches
+// they already played keep their results. Tap again to fully restore them
+// (walkovers are derived, so nothing is lost either way).
+function Withdrawals({ event, ops, bracket }) {
+  const withdrawn = bracket.withdrawn || {};
+  // Real entrants only: named slots with a canonical key (byes and play-in
+  // host lines have none; play-in participant slots are included).
+  const entrants = bracket.r1slots.filter(s => s && s.name && s.key);
+  const outCount = entrants.filter(s => withdrawn[s.key]).length;
+  const toggle = (s) => {
+    if (!withdrawn[s.key] && !window.confirm(`Withdraw ${s.name} from the ${event.toLowerCase()} draw? Every remaining match walks over to their opponent (matches already played keep their results). You can tap them again to restore.`)) return;
+    ops.toggleBracketWithdrawal(event, s.key);
+  };
+  return (
+    <div className="mt-4 pt-3 border-t border-zinc-800/70">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-black uppercase tracking-widest text-rose-400/90">Withdrawals / no-shows</span>
+        {outCount > 0 && <span className="text-[10px] font-mono text-zinc-500">{outCount} out</span>}
+      </div>
+      <p className="text-[11px] text-zinc-500 mb-2">Tap a player who dropped out — their opponents advance by walkover in every round they&rsquo;d have reached (comeback draw included), and the queue &amp; public board re-post automatically. Tap again to restore them.</p>
+      <div className="flex flex-wrap gap-1.5">
+        {entrants.map(s => {
+          const out = !!withdrawn[s.key];
+          return (
+            <button key={s.key} onClick={() => toggle(s)}
+              title={out ? 'Withdrawn — tap to restore' : 'Tap to withdraw'}
+              className={`min-h-9 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 ${
+                out ? 'text-rose-400 bg-rose-500/10 border-rose-500/30 line-through'
+                    : 'text-zinc-400 bg-[#111] border-zinc-800 hover:text-white hover:border-zinc-700'
+              }`}>
+              {s.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -748,10 +792,12 @@ function DrawSlot({ event, ops, idx, slot, isWinner, canWin, onWin }) {
       ) : (
         <>
           {/* Winner reads GOLD — same convention as the public Live Scores
-              (gold = winner/final, emerald = live). */}
-          <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
+              (gold = winner/final, emerald = live). Withdrawn reads rose +
+              struck through — the walkover already advanced the opponent. */}
+          <span className={`flex-1 min-w-0 truncate text-sm ${slot.wd ? 'text-rose-400/70 line-through font-bold' : slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
             {slot.name || (slot.bye ? 'BYE' : slot.from || '—')}
           </span>
+          {slot.wd && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/25 rounded px-1 py-0.5">wd</span>}
           {canRename && (
             <button onClick={startEdit} aria-label="Edit name" className="shrink-0 min-h-8 px-1 text-zinc-600 hover:text-[#fbbf24] transition-colors">
               <Pencil className="w-3.5 h-3.5" />
@@ -786,9 +832,10 @@ function RoundMatch({ m, est, onWin }) {
     const isWinner = m.winner === side;
     return (
       <div className={`flex items-center gap-2 px-2.5 py-2 ${isWinner ? 'bg-[#fbbf24]/10' : ''}`}>
-        <span className={`flex-1 min-w-0 truncate text-sm ${slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
+        <span className={`flex-1 min-w-0 truncate text-sm ${slot.wd ? 'text-rose-400/70 line-through font-bold' : slot.name ? (isWinner ? 'text-[#fbbf24] font-black' : 'text-zinc-200 font-bold') : 'text-zinc-600 italic'}`}>
           {slot.name || (slot.dead ? '—' : slot.from || '—')}
         </span>
+        {slot.wd && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/25 rounded px-1 py-0.5">wd</span>}
         {m.contested && (
           <button onClick={() => onWin(side)}
             title={isWinner ? 'Tap again to un-mark' : 'Mark winner'}
@@ -828,7 +875,12 @@ function CallSheet({ event, ops }) {
   // in play order (play-ins first). Future rounds show TBD until their feeders
   // resolve. Status/court come from the posted Match Order row (by id).
   const all = [];
-  if (resolved) for (const sec of resolved.sections) for (const mm of sec.matches) if (!mm.bye) all.push(mm);
+  // Byes AND pure walkovers (a withdrawal auto-advance with no manual result)
+  // are never played, so neither belongs on the call sheet.
+  if (resolved) for (const sec of resolved.sections) for (const mm of sec.matches) {
+    if (mm.bye || (mm.winner && !mm.manual)) continue;
+    all.push(mm);
+  }
   all.sort((a, b) => (playPos({ num: a.num, event }) - playPos({ num: b.num, event })) || (a.num - b.num));
   const posted = new Map(ops.store.matches.filter(m => m.event === event).map(m => [m.id, m]));
   const dot = { scheduled: 'bg-zinc-600', live: 'bg-emerald-400 animate-pulse', final: 'bg-[#fbbf24]' };

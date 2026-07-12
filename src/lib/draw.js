@@ -237,7 +237,16 @@ export function graphFor(event, pIns = 0) {
 // Evaluate the graph: fill every slot that is knowable from R1 + results,
 // auto-advancing walkovers (a live side vs a DEAD side — one whose source
 // can never produce a player, i.e. a bye or a chain of byes).
-function evalGraph(graph, r1slots, results) {
+//
+// WITHDRAWALS ride the same machinery: a withdrawn entrant's side is marked
+// dead (flagged `wd` for display) at EVERY match their name reaches, so the
+// existing walkover rule advances each opponent — including the comeback-draw
+// slot the withdrawn player would have dropped into. Entrant canonical keys
+// are propagated alongside names (winnerKey/loserKey) so the withdrawal
+// follows the PLAYER through rounds, not a slot. Results the player recorded
+// BEFORE withdrawing are manual and stand untouched; un-withdrawing restores
+// everything because nothing here is written back into `results`.
+function evalGraph(graph, r1slots, results, withdrawn = {}) {
   const state = new Map();
   const numOf = new Map(graph.matches.map(m => [m.id, m.num]));
   for (const m of graph.matches) {
@@ -253,23 +262,24 @@ function evalGraph(graph, r1slots, results) {
         if (s.fromPlayIn != null) {
           const src = state.get(`D-P1-${s.fromPlayIn}`);
           const label = `W of M${29 + s.fromPlayIn}`;
-          if (!src || !src.decided) return { name: null, seed: s.seed, dead: false, from: label };
-          return { name: src.winnerName, seed: s.seed, dead: src.winnerName == null, from: label };
+          if (!src || !src.decided) return { name: null, key: null, seed: s.seed, dead: false, from: label };
+          return { name: src.winnerName, key: src.winnerKey, seed: s.seed, dead: src.winnerName == null, from: label };
         }
-        return { name: s.name, seed: s.seed, dead: !!s.bye, from: null };
+        return { name: s.name, key: s.key || null, seed: s.seed, dead: !!s.bye, from: null };
       }
       const label = `${from.kind === 'winner' ? 'W' : 'L'} of M${numOf.get(from.ref)}`;
       const src = state.get(from.ref);
-      if (!src || !src.decided) return { name: null, dead: false, from: label };
-      if (from.kind === 'winner') return { name: src.winnerName, dead: src.winnerName == null, from: label };
-      return { name: src.loserName, dead: src.loserName == null, from: label };
+      if (!src || !src.decided) return { name: null, key: null, dead: false, from: label };
+      if (from.kind === 'winner') return { name: src.winnerName, key: src.winnerKey, dead: src.winnerName == null, from: label };
+      return { name: src.loserName, key: src.loserKey, dead: src.loserName == null, from: label };
     };
-    const a = side(m.aFrom), b = side(m.bFrom);
+    const markWd = (s) => (s.name && s.key && withdrawn[s.key] ? { ...s, dead: true, wd: true } : s);
+    const a = markWd(side(m.aFrom)), b = markWd(side(m.bFrom));
     const manual = results[m.id] || null;
     let auto = null;
     if (!manual) {
-      if (a.name && b.dead) auto = 'a';
-      else if (b.name && a.dead) auto = 'b';
+      if (a.name && !a.dead && b.dead) auto = 'a';
+      else if (b.name && !b.dead && a.dead) auto = 'b';
     }
     const winner = manual || auto;
     const bothDead = a.dead && b.dead;
@@ -279,7 +289,11 @@ function evalGraph(graph, r1slots, results) {
     state.set(m.id, {
       a, b, manual, winner, decided,
       winnerName, loserName,
-      contested: !!(a.name && b.name),
+      winnerKey: winner === 'a' ? a.key : winner === 'b' ? b.key : null,
+      loserKey: winner === 'a' ? b.key : winner === 'b' ? a.key : null,
+      // A withdrawn side means there's nothing to play — but a match the
+      // desk already recorded (manual) stays a real, played match.
+      contested: !!(a.name && b.name && (manual || (!a.dead && !b.dead))),
       bothDead,
     });
   }
@@ -292,8 +306,9 @@ function evalGraph(graph, r1slots, results) {
 export function resolve(bracket) {
   if (!bracket) return null;
   const { event, size, r1slots, results } = bracket;
+  const withdrawn = bracket.withdrawn || {};
   const graph = graphFor(event, bracket.pIns || 0);
-  const state = evalGraph(graph, r1slots, results);
+  const state = evalGraph(graph, r1slots, results, withdrawn);
   const byId = new Map(graph.matches.map(m => [m.id, m]));
   const sections = graph.sections.map(sec => ({
     key: sec.key,
@@ -310,8 +325,11 @@ export function resolve(bracket) {
       // (TBD) slot instead of crashing the whole ops draw render.
       const rawA = isR1 ? (r1slots[g.aFrom.slot] || {}) : null;
       const rawB = isR1 ? (r1slots[g.bFrom.slot] || {}) : null;
-      const slotA = isR1 ? (rawA.fromPlayIn != null ? { ...st.a, key: null, bye: false } : rawA) : st.a;
-      const slotB = isR1 ? (rawB.fromPlayIn != null ? { ...st.b, key: null, bye: false } : rawB) : st.b;
+      // Raw R1 slots carry the withdrawal flag too, so the interactive rows
+      // (which render the raw slot, not the evaluated side) can show it.
+      const wd = (raw) => (raw.key && withdrawn[raw.key] ? { ...raw, wd: true } : raw);
+      const slotA = isR1 ? (rawA.fromPlayIn != null ? { ...st.a, key: null, bye: false } : wd(rawA)) : st.a;
+      const slotB = isR1 ? (rawB.fromPlayIn != null ? { ...st.b, key: null, bye: false } : wd(rawB)) : st.b;
       return {
         id, num: g.num, roundTag: g.roundTag, k: isR1 ? g.aFrom.slot / 2 : null,
         slotA, slotB,
@@ -404,6 +422,18 @@ export function renameSlot(bracket, idx, value) {
   return { ...bracket, overrides, r1slots };
 }
 
+// Toggle an entrant's withdrawal, keyed by their canonical entrant key (the
+// R1 slot's `key`). Purely additive state: every walkover it causes is
+// derived at resolve time, results are never touched, so toggling back
+// restores the draw exactly. Matches the player already played (manual
+// results) stand either way.
+export function toggleWithdrawn(bracket, key) {
+  if (!bracket || !key) return bracket;
+  const withdrawn = { ...(bracket.withdrawn || {}) };
+  if (withdrawn[key]) delete withdrawn[key]; else withdrawn[key] = true;
+  return { ...bracket, withdrawn };
+}
+
 // Every PLAYABLE match (both sides known), shaped for the flat Match Order —
 // bracket-node id == flat match id, nums mirror the public bracket. Byes and
 // walkovers aren't posted (nothing to play); the reset match posts only once
@@ -412,7 +442,7 @@ export function bracketMatchRows(bracket) {
   if (!bracket) return [];
   const { event, r1slots, results } = bracket;
   const graph = graphFor(event, bracket.pIns || 0);
-  const state = evalGraph(graph, r1slots, results);
+  const state = evalGraph(graph, r1slots, results, bracket.withdrawn || {});
   const rows = [];
   for (const m of graph.matches) {
     const st = state.get(m.id);
