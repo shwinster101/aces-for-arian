@@ -177,7 +177,9 @@ export function roundMilestones(matches, event, sched, nowMs = Date.now()) {
     if (!(path[i].ms.length > 0 && path[i].ms.every(isFinal))) { frontier = i; break; }
   }
   const ds = dayStartMs(event);
-  let t = started ? nowMs : (Number.isFinite(ds) ? ds : nowMs);
+  // Clamped to first serve either way: a match marked live/final before the
+  // day starts must not pull the milestone clocks earlier than 9:00 AM.
+  let t = Number.isFinite(ds) ? Math.max(nowMs, ds) : nowMs;
   const out = {};
   for (let i = 0; i < path.length; i++) {
     const r = path[i];

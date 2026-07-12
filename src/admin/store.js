@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL, MATCHES_CSV_URL, parseCSV, mapMatches } from '../lib/sheet';
-import { buildDraw, setResult, clearResult, swapUnseeded, renameSlot, bracketMatchRows } from '../lib/draw';
+import { buildDraw, setResult, clearResult, swapUnseeded, renameSlot, bracketMatchRows, toggleWithdrawn } from '../lib/draw';
 import { SCHEDULE_DEFAULTS } from '../lib/schedule';
 
 // Shared-secret gate for the write-back endpoint. Must match the token checked
@@ -577,6 +577,11 @@ export function useOpsStore() {
       if (!b) return null;
       return b.results[matchId] === side ? clearResult(b, matchId) : setResult(b, matchId, side);
     });
+  // No-show / dropout: toggle an entrant's withdrawal. Every match they'd
+  // reach walks over to the opponent (including their comeback-draw drop
+  // slot); already-played results stand; toggling again fully restores them.
+  const toggleBracketWithdrawal = (event, key) =>
+    applyBracket(event, s => toggleWithdrawn(s.brackets[event], key));
   // Drag-balance: swap two unseeded R1 entrants (no-op unless both draggable).
   const swapBracketSlots = (event, i, j) =>
     applyBracket(event, s => (s.brackets[event] ? swapUnseeded(s.brackets[event], i, j) : null));
@@ -629,7 +634,7 @@ export function useOpsStore() {
   // persists after the Apps Script redeploy; defaults apply until then).
   const setSchedule = (patch) => {
     const clean = {};
-    for (const k of ['courts', 'doublesMin', 'singlesMin', 'r1Min', 'qfMin', 'warmupMin', 'finalsMin']) {
+    for (const k of ['courts', 'doublesMin', 'singlesMin', 'r1Min', 'qfMin', 'backdrawMin', 'warmupMin', 'finalsMin']) {
       if (patch[k] === '' || patch[k] === undefined) continue;
       const n = parseInt(patch[k], 10);
       if (!isNaN(n) && n >= 0) clean[k] = n;
@@ -875,7 +880,7 @@ export function useOpsStore() {
     setMerch,
     incrementAces, decrementAces,
     postAnnouncement, deleteAnnouncement,
-    generateBracket, markBracketWinner, swapBracketSlots, renameBracketSlot, clearBracket, relabelBracket,
+    generateBracket, markBracketWinner, toggleBracketWithdrawal, swapBracketSlots, renameBracketSlot, clearBracket, relabelBracket,
     pushPublicStatus, pushConfig, setSchedule,
     addEmails, removeEmail, clearEmails,
     setCash, recordCash, removeCashEntry, setDeskScript,

@@ -653,6 +653,7 @@ function writeConfig_(payload) {
   upsert(/sing.*min/, 'singles match min', payload.singlesMin);
   upsert(/(qf|quarter).*min/, 'qf match min', payload.qfMin);
   upsert(/(r1|first.?round|round.?1).*min/, 'r1 min', payload.r1Min);
+  upsert(/(back.?draw|consol).*min/, 'backdraw min', payload.backdrawMin);
   upsert(/final.*min/, 'finals min', payload.finalsMin);
   upsert(/warm/, 'warmup min', payload.warmupMin);
   // Yes/no flags get their own upsert (the numeric one above would mangle

@@ -227,7 +227,9 @@ function PlayerLookup({ ops, event, sched }) {
     if (view) {
       for (const sec of view.sections) {
         for (const mm of sec.matches) {
-          if (mm.bye) continue;
+          // Skip byes and pure walkovers (withdrawal auto-advances) — neither
+          // is a match anyone will play, so neither is a useful lookup answer.
+          if (mm.bye || (mm.winner && !mm.manual)) continue;
           out.push({ id: mm.id, num: mm.num, round: mm.roundTag, a: mm.slotA, b: mm.slotB });
         }
       }
