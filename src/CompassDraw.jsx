@@ -67,19 +67,26 @@ export function LineCell({ l, highlight, mirrored, hdr = HDR }) {
   );
 }
 
-// Per-match scoring-format chip (doubles only — set on the model's meta.fmt).
-// East path + East-entry play-ins play AD; West/North/South + placement play
-// NO-AD. Singles metas have no fmt, so nothing renders.
+// Per-match scoring-format chip, set on the model's meta.fmt (scoreFmt in
+// lib/compass.js). Doubles kept its ad/no-ad split; singles tags SET FORMAT —
+// one ad set to 6 in the early rounds, best-of-3 Fast-4 from the QFs on
+// (deep Comeback rounds included). Gold marks the long-format matches.
+const FMT_CHIP = {
+  ad:   { label: 'AD',     gold: true,  title: 'Ad scoring' },
+  noad: { label: 'NO-AD',  gold: false, title: 'No-ad scoring' },
+  set1: { label: '1 SET',  gold: false, title: 'One set to 6, ad scoring (7-pt TB at 6–6)' },
+  bo3:  { label: 'BO3 F4', gold: true,  title: 'Best 2 of 3 Fast-4 sets — first to 4, TB at 3–3, 10-pt match TB 3rd' },
+};
 export function FmtChip({ fmt }) {
-  if (!fmt) return null;
-  const ad = fmt === 'ad';
-  const c = ad ? 'var(--cd-gold)' : 'var(--cd-faint)';
+  const spec = FMT_CHIP[fmt];
+  if (!spec) return null;
+  const c = spec.gold ? 'var(--cd-gold)' : 'var(--cd-faint)';
   return (
     <span
       className="text-[7px] font-black uppercase tracking-wider whitespace-nowrap rounded px-1 leading-none py-px shrink-0"
       style={{ color: c, border: `1px solid ${c}` }}
-      title={ad ? 'Ad scoring' : 'No-ad scoring'}
-    >{ad ? 'AD' : 'NO-AD'}</span>
+      title={spec.title}
+    >{spec.label}</span>
   );
 }
 

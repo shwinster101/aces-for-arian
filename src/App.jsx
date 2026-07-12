@@ -735,7 +735,7 @@ function RoundTimesBanner({ matches, sched, now }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Every match is best-of-3 Fast-4 and runs about an hour, so rounds start on the hour (9:00, 10:00, 11:00 …); quarters, semis & finals switch to ad scoring. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
+      <p className="text-[10px] text-zinc-600 mt-2.5 leading-relaxed">Singles plays one ad set to 6 through the Round of 16 (and the early Comeback rounds), then best-of-3 Fast-4 from the quarterfinals on — the four championship QFs are called on together. Times count forward from first serve and shift with rain holds or delays — watch Announcements for changes.</p>
     </div>
   );
 }
@@ -2006,7 +2006,7 @@ export default function App() {
                 <>
                   <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
                     <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
-                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish.</span>
+                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish. A <span className="font-mono text-zinc-300">1 SET</span> / <span className="font-mono text-zinc-300">BO3 F4</span> chip marks the scoring: one ad set to 6 in the early rounds, best-of-3 Fast-4 from the QFs on.</span>
                   </div>
                   <SinglesDraw
                     names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
@@ -2314,8 +2314,9 @@ export default function App() {
                 <p className="text-xs text-zinc-500 mb-4">July 12 · first matches 9:00 AM</p>
                 <ul className="space-y-4 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                   <li><strong className="text-zinc-200">Format:</strong> Double elimination — every player has a two-match cushion.</li>
-                  <li><strong className="text-zinc-200">Scoring:</strong> Best 2 of 3 Fast-4 sets — first to 4 games, 7-point tiebreak at 3–3, and a 10-point match tiebreak in place of a 3rd set.</li>
-                  <li><strong className="text-zinc-200">Ad vs no-ad:</strong> <strong className="text-zinc-200">no-ad</strong> through the Round of 16, then <strong className="text-[#fbbf24]">ad</strong> from the Quarterfinals on. Each match on the draw is tagged <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span>.</li>
+                  <li><strong className="text-zinc-200">Early rounds:</strong> through the Round of 16 — and the early Comeback rounds — <strong className="text-zinc-200">one set to 6</strong>, ad scoring, 7-point tiebreak at 6–6.</li>
+                  <li><strong className="text-zinc-200">Quarterfinals on:</strong> <strong className="text-[#fbbf24]">best 2 of 3 Fast-4 sets</strong> — first to 4 games, 7-point tiebreak at 3–3, 10-point match tiebreak in place of a 3rd set. The late Comeback rounds (QF-grade and up) play this too.</li>
+                  <li><strong className="text-zinc-200">On the draw:</strong> every match is tagged <span className="font-mono text-zinc-300">1 SET</span> / <span className="font-mono text-zinc-300">BO3 F4</span> so you always know the format before you step on.</li>
                   <li><strong className="text-zinc-200">Awards:</strong> given to the champion.</li>
                 </ul>
                 {DRAWS_PUBLIC.Singles && (

@@ -99,13 +99,17 @@ function meta(col, row, num, rows, fmt) {
 // title). Derived from the fixed numbering contract — same rule both events.
 //   Doubles: East QF M9-12, SF M13-14, F M15.
 //   Singles: Winners QF M41-44, SF M53-54, F M59, Grand Final M62 (+ reset 63).
-const AD_NUMS = {
-  Doubles: new Set([9, 10, 11, 12, 13, 14, 15]),
-  Singles: new Set([41, 42, 43, 44, 53, 54, 59, 62, 63]),
-};
+// Doubles (Saturday) kept its ad/no-ad split: East QF onward plays AD.
+const AD_NUMS = { Doubles: new Set([9, 10, 11, 12, 13, 14, 15]) };
+// Singles (Sunday) format — owner call 2026-07-12: ONE ad set to 6 through
+// the Round of 16 and the early Comeback rounds; BEST-OF-3 FAST-4 for the
+// championship QFs (41-44), SFs (53-54), Winners F (59), the GF + reset
+// (62-63), AND the QF-grade deep Comeback rounds — R6 (57-58), R7 (60),
+// Comeback F (61). Mirrors LONG_ROUNDS.Singles in lib/schedule.js.
+const SINGLES_BO3 = new Set([41, 42, 43, 44, 53, 54, 57, 58, 59, 60, 61, 62, 63]);
 export function scoreFmt(event, num) {
-  const set = AD_NUMS[/doub/i.test(event || '') ? 'Doubles' : 'Singles'];
-  return set.has(Number(num)) ? 'ad' : 'noad';
+  if (/doub/i.test(event || '')) return AD_NUMS.Doubles.has(Number(num)) ? 'ad' : 'noad';
+  return SINGLES_BO3.has(Number(num)) ? 'bo3' : 'set1';
 }
 
 const conn = (col, rowStart, rowEnd, num, rows) => ({
