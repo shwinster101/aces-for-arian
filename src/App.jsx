@@ -1560,7 +1560,7 @@ export default function App() {
                 <Trophy className="w-3.5 h-3.5 shrink-0" />
                 5 Years of Aces for Arian
               </span>
-              {acesLive && (
+              {acesLive && aces > 0 && (
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
                   <TennisBallIcon className="w-3.5 h-3.5 shrink-0" />
                   {aces} {aces === 1 ? 'Ace' : 'Aces'} hit live
@@ -1677,7 +1677,7 @@ export default function App() {
       {/* Site-wide announcement banner — newest non-dismissed post, every tab.
           An "all clear" post (category 'clear', from ops "Clear the banner")
           suppresses the banner entirely; it still appears in the Home feed. */}
-      {announcements.length > 0 && announcements[0].category !== 'clear' && announcements[0].id !== dismissedAnnounce && (
+      {!wrapMode && announcements.length > 0 && announcements[0].category !== 'clear' && announcements[0].id !== dismissedAnnounce && (
         <AnnouncementBanner
           item={announcements[0]}
           now={now}
@@ -1691,38 +1691,6 @@ export default function App() {
             try { localStorage.setItem('a4a-announce-dismissed', id); } catch { /* private mode */ }
           }}
         />
-      )}
-
-      {/* --- 2026 CHAMPIONS BAR (wrap mode, every tab) — the weekend's
-          headline numbers one glance from anywhere: champions, who they beat,
-          and the scholarship total. Tapping it opens the full results. */}
-      {wrapMode && (champions.Singles || champions.Doubles) && (
-        <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
-          className="w-full block bg-gradient-to-r from-[#1c1408] to-[#151009] border-b border-[#fbbf24]/25 hover:border-[#fbbf24]/60 transition-colors text-left">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-[11px] leading-relaxed">
-            {champions.Singles && (
-              <span className="whitespace-nowrap">
-                <Trophy className="w-3 h-3 text-[#fbbf24] inline -mt-0.5 mr-1" />
-                <span className="text-zinc-500 uppercase tracking-wider font-bold text-[9px]">Singles </span>
-                <span className="text-[#fbbf24] font-black">{champions.Singles}</span>
-                {runnersUp.Singles && <span className="text-zinc-500"> def. {runnersUp.Singles}</span>}
-              </span>
-            )}
-            {champions.Doubles && (
-              <span className="whitespace-nowrap">
-                <Trophy className="w-3 h-3 text-[#fbbf24] inline -mt-0.5 mr-1" />
-                <span className="text-zinc-500 uppercase tracking-wider font-bold text-[9px]">Doubles </span>
-                <span className="text-[#fbbf24] font-black">{champions.Doubles}</span>
-                {runnersUp.Doubles && <span className="text-zinc-500"> def. {runnersUp.Doubles}</span>}
-              </span>
-            )}
-            <span className="whitespace-nowrap">
-              <Heart className="w-3 h-3 text-[#fbbf24] inline -mt-0.5 mr-1" />
-              <span className="text-zinc-200 font-bold">${calculatedFunding.toLocaleString()}</span>
-              <span className="text-zinc-500"> raised for the scholarship</span>
-            </span>
-          </div>
-        </button>
       )}
 
       {/* --- MAIN CONTENT AREA --- */}
@@ -1765,10 +1733,10 @@ export default function App() {
                   <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
                     <div className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</div>
-                    {acesLive && <div className="text-[10px] text-zinc-500 mt-1">{aces} aces hit across the weekend</div>}
+                    {acesLive && aces > 0 && <div className="text-[10px] text-zinc-500 mt-1">{aces} aces hit across the weekend</div>}
                   </div>
                 </div>
-                {acesLive && (
+                {acesLive && aces > 0 && (
                   <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4 mb-5">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1">
@@ -2427,7 +2395,7 @@ export default function App() {
           // Arian's scholarship (wrap mode: the public Ace Pledge multiplies
           // it — each joiner Venmos $1/ace). Hidden until the admin's first
           // +1 (see mapAces in lib/sheet.js).
-          const aceTracker = acesLive && (
+          const aceTracker = acesLive && aces > 0 && (
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-5 md:gap-8">
                   <div className="flex items-center gap-4 shrink-0">
