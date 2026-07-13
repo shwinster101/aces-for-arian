@@ -370,6 +370,11 @@ const HERO_SET_B = ["photo6.jpg", "photo7.jpg", "photo8.jpg", "photo9.jpg", "pho
 // list the filenames below. The `url` is always shown as a "full album" link.
 const ALBUMS = [
   {
+    year: "2026",
+    url: "https://photos.app.goo.gl/7U7kVRSL59QXpnC99",
+    images: ["wrap-2026.jpg", "noelle-2026.jpg"],
+  },
+  {
     year: "2025",
     url: "https://photos.app.goo.gl/uTSWwjTgaYcDoHij9",
     images: [
@@ -1719,25 +1724,10 @@ export default function App() {
                     alt="Players lined up at the net after the 2026 Aces for Arian, holding a scoreboard reading 2026"
                     className="w-full h-auto object-cover" loading="lazy" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Singles Champion</div>
-                    <div className="text-lg font-black text-white leading-tight">{champions.Singles || 'Final results below'}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{runnersUp.Singles ? <>def. {runnersUp.Singles} · </> : null}32-player double elimination</div>
-                  </div>
-                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Doubles Champions</div>
-                    <div className="text-lg font-black text-white leading-tight">{champions.Doubles || 'Final results below'}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{runnersUp.Doubles ? <>def. {runnersUp.Doubles} · </> : null}16-team compass draw</div>
-                  </div>
-                  <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
-                    <div className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</div>
-                    {acesLive && aces > 0 && <div className="text-[10px] text-zinc-500 mt-1">{aces} aces hit across the weekend</div>}
-                  </div>
-                </div>
+
+                {/* 1 — Ace Pledge leads (owner call): the one ask of the week. */}
                 {acesLive && aces > 0 && (
-                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4 mb-5">
+                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4 mb-3">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Join the Ace Pledge</div>
@@ -1753,14 +1743,46 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+                {/* 2 — This year's full album on Google Photos */}
+                <a href="https://photos.app.goo.gl/7U7kVRSL59QXpnC99" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-4 mb-3 transition-colors group">
+                  <span className="flex items-center gap-3 min-w-0">
+                    <ImageIcon className="w-5 h-5 text-[#fbbf24] shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-white">2026 photo album</span>
+                      <span className="block text-xs text-zinc-500">Every shot from the weekend — full album on Google Photos</span>
+                    </span>
+                  </span>
+                  <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-[#fbbf24] shrink-0 transition-colors" />
+                </a>
+
+                {/* 3 — The money, with the people it goes to */}
+                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4 mb-3">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
+                  <div className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</div>
+                  <div className="text-xs text-zinc-400 mt-1">2026 recipients: <strong className="text-zinc-200">Noelle Daccache</strong> &amp; <strong className="text-zinc-200">Anton Dahlin</strong>{acesLive && aces > 0 ? <span className="text-zinc-600"> · {aces} aces hit across the weekend</span> : null}</div>
+                </div>
+
+                {/* 4 — Champions, slimmed to two rows */}
+                <div className="bg-[#111] border border-[#fbbf24]/20 rounded-2xl px-4 py-3 mb-5 space-y-1.5">
+                  <div className="text-xs leading-relaxed">
+                    <Trophy className="w-3.5 h-3.5 text-[#fbbf24] inline -mt-0.5 mr-1.5" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mr-1.5">Singles</span>
+                    <span className="font-black text-white">{champions.Singles || 'See results'}</span>
+                    {runnersUp.Singles && <span className="text-zinc-500"> def. {runnersUp.Singles}</span>}
+                  </div>
+                  <div className="text-xs leading-relaxed">
+                    <Trophy className="w-3.5 h-3.5 text-[#fbbf24] inline -mt-0.5 mr-1.5" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mr-1.5">Doubles</span>
+                    <span className="font-black text-white">{champions.Doubles || 'See results'}</span>
+                    {runnersUp.Doubles && <span className="text-zinc-500"> def. {runnersUp.Doubles}</span>}
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
                     className="min-h-11 px-5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
                     Final draws &amp; results
-                  </button>
-                  <button onClick={() => { setActiveTab('photos'); window.scrollTo({ top: 0 }); }}
-                    className="min-h-11 px-5 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 text-zinc-300 hover:text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
-                    Photo gallery
                   </button>
                   <a href={DONATE_URL} target="_blank" rel="noopener noreferrer"
                     className="min-h-11 px-5 inline-flex items-center bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 text-zinc-300 hover:text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
