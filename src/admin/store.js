@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { SHEET_WRITE_URL, MATCHES_CSV_URL, parseCSV, mapMatches } from '../lib/sheet';
+import { SHEET_WRITE_URL, MATCHES_CSV_URL, ACES_CSV_URL, parseCSV, mapMatches, mapAces } from '../lib/sheet';
 import { buildDraw, setResult, clearResult, swapUnseeded, renameSlot, bracketMatchRows, toggleWithdrawn } from '../lib/draw';
 import { SCHEDULE_DEFAULTS } from '../lib/schedule';
 
@@ -282,6 +282,9 @@ export function useOpsStore() {
   // Per-match-id timestamp of this device's own score/court/status edits —
   // guards the cross-device score merge in pullDesk (MATCH_SYNC_GUARD_MS).
   const localMatchEditAt = useRef({});
+  // When this device last tapped +1/-1 on the ace counter — guards the
+  // cross-device ace-count adoption the same way.
+  const localAcesEditAt = useRef(0);
 
   // The generated draw (seed order + bracket) is shared across ops devices via
   // the private OpsDraw tab so a phone/laptop opening /admin sees HQ's draw
@@ -494,11 +497,13 @@ export function useOpsStore() {
   // The public Brackets tab polls ACES_CSV_URL for "$5/ace, capped at $500".
   const incrementAces = () => {
     let next;
+    localAcesEditAt.current = Date.now();
     setStore(s => { next = (s.aces || 0) + 1; return { ...s, aces: next }; });
     pushToSheet('aces', { count: next });
   };
   const decrementAces = () => {
     let next;
+    localAcesEditAt.current = Date.now();
     setStore(s => { next = Math.max(0, (s.aces || 0) - 1); return { ...s, aces: next }; });
     pushToSheet('aces', { count: next });
   };
@@ -777,9 +782,26 @@ export function useOpsStore() {
     } catch { /* cache/network hiccup — the next poll converges */ }
   };
 
+  // Cross-device ACE sync — the counter pushes an ABSOLUTE total, so a
+  // second device tapping +1 from its own stale local count silently
+  // rewinds the shared number (this is why today's taps 'didn't update' the
+  // public page). Adopt the sheet's count each poll (unless this device
+  // tapped within the guard window) so every +1 builds on the shared total.
+  const pullAces = async (now) => {
+    try {
+      if (now - localAcesEditAt.current < MATCH_SYNC_GUARD_MS) return;
+      const res = await fetch(ACES_CSV_URL);
+      if (!res.ok) return;
+      const a = mapAces(parseCSV(await res.text()));
+      if (!a) return;
+      setStore(s => (s.aces === a.count ? s : { ...s, aces: a.count }));
+    } catch { /* next poll converges */ }
+  };
+
   const pullDesk = async () => {
     if (!SHEET_WRITE_URL) return;
     pullScores(Date.now()); // independent read — runs even if the opsdesk GET fails
+    pullAces(Date.now());
     try {
       const res = await fetch(`${SHEET_WRITE_URL}?mode=opsdesk&token=${OPSDESK_TOKEN}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);

@@ -390,6 +390,20 @@ export function mapAnnouncements(rows) {
     .slice(0, 20);
 }
 
+// Google Sheets auto-coerces set scores that LOOK like dates — "6-2" becomes
+// June 2, and the Apps Script read path stringifies the Date back out as
+// "Tue Jun 02 2026 00:00:00 GMT-0700 (…)". Reverse the mangling on read:
+// month → first number, day → second ("Jun 02" → "6-2", "Oct 07" → "10-7").
+// Scores Sheets can't parse as dates ("6-0", "4-2, 4-1") pass through
+// untouched, so this only ever fires on the mangled form.
+const MONTH_NUM = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+const cleanScore = (raw) => {
+  const v = (raw || "").toString().trim();
+  const m = v.match(/^(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat) ([A-Z][a-z]{2}) (\d{1,2}) \d{4} /);
+  if (m && MONTH_NUM[m[1]]) return `${MONTH_NUM[m[1]]}-${parseInt(m[2], 10)}`;
+  return v;
+};
+
 export function mapMatches(rows) {
   if (!rows || rows.length < 2) return [];
   const headers = rows[0].map(h => h.trim().toLowerCase());
@@ -418,7 +432,7 @@ export function mapMatches(rows) {
         b: (r[iB] || "").toString().trim(),
         court: iCourt >= 0 ? (r[iCourt] || "").toString().trim() : "",
         status: (iStatus >= 0 ? (r[iStatus] || "").toString().trim().toLowerCase() : "") || "scheduled",
-        score: iScore >= 0 ? (r[iScore] || "").toString().trim() : "",
+        score: iScore >= 0 ? cleanScore(r[iScore]) : "",
         winner: iWinner >= 0 ? (r[iWinner] || "").toString().trim().toLowerCase() : "",
       };
     });
