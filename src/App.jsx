@@ -1760,8 +1760,15 @@ export default function App() {
                 {/* 3 — The money, with the people it goes to */}
                 <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4 mb-3">
                   <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
-                  <div className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</div>
-                  <div className="text-xs text-zinc-400 mt-1">2026 recipients: <strong className="text-zinc-200">Noelle Daccache</strong> &amp; <strong className="text-zinc-200">Anton Dahlin</strong>{acesLive && aces > 0 ? <span className="text-zinc-600"> · {aces} aces hit across the weekend</span> : null}</div>
+                  <div className="text-lg font-black text-white leading-tight">
+                    ${calculatedFunding.toLocaleString()} raised
+                    {aces > 0 && pledgers > 0 && <span className="text-sm font-bold text-[#fbbf24]"> + ${(pledgers * aces).toLocaleString()} pledged</span>}
+                  </div>
+                  <div className="text-xs text-zinc-400 mt-1">
+                    2026 recipients: <strong className="text-zinc-200">Noelle Daccache</strong> &amp; <strong className="text-zinc-200">Anton Dahlin</strong>
+                    {acesLive && aces > 0 && <span className="text-zinc-600"> · {aces} aces hit across the weekend</span>}
+                    {aces > 0 && pledgers > 0 && <span className="text-zinc-600"> · {pledgers} Ace Pledger{pledgers === 1 ? '' : 's'} in</span>}
+                  </div>
                 </div>
 
                 {/* 4 — Champions, slimmed to two rows */}
@@ -2889,6 +2896,30 @@ export default function App() {
                 <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>An official <strong className="text-zinc-200">DHS transcript</strong> (order through Parchment).</span></li>
               </ul>
             </div>
+
+            {/* Ace Pledge — the donate-adjacent ask, on the tab where
+                cause-minded visitors already are. Wrap-gated; hidden until
+                the Aces tab carries the real weekend count. */}
+            {wrapMode && acesLive && aces > 0 && (
+              <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6 md:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <TennisBallIcon className="w-5 h-5 shrink-0" />
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">Join the Ace Pledge</h3>
+                    </div>
+                    <p className="text-sm text-zinc-300 leading-relaxed">
+                      <strong className="text-white">{aces} aces</strong> were served across the weekend. Pledge <strong className="text-white">$1 per ace</strong> — a <strong className="text-[#fbbf24]">${aces}</strong> Venmo to <strong className="text-zinc-200">@acesforarian</strong> (note: &ldquo;Ace Pledge&rdquo;) that goes straight into this fund.
+                      {pledgers > 0 && <> <span className="text-zinc-400">{pledgers} {pledgers === 1 ? 'person has' : 'people have'} joined — <strong className="text-zinc-200">${(pledgers * aces).toLocaleString()}</strong> pledged from aces so far.</span></>}
+                    </p>
+                  </div>
+                  <button onClick={joinAcePledge}
+                    className={`shrink-0 min-h-12 px-6 font-black text-xs uppercase tracking-wider rounded-xl transition-colors ${pledged ? 'bg-[#111] border border-[#fbbf24]/40 text-[#fbbf24]' : 'bg-[#fbbf24] hover:bg-amber-400 text-black shadow-lg shadow-amber-500/10'}`}>
+                    {pledged ? `You're in 🎾 · Venmo $${aces}` : `Pledge $${aces} on Venmo`}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* 2026 presentation — Noelle receiving the award courtside at
                 the 5th Annual. The human moment the whole fund exists for. */}
