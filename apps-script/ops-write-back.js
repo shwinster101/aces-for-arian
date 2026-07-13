@@ -400,8 +400,19 @@ function writeCourtBoard_(payload) {
 // is set up and then scored). Upsert on that id — stashed in a trailing "ID"
 // column so editors can ignore it — rather than on Event/Round/Num, which
 // can themselves be edited mid-setup.
+// Sheets auto-coerces set scores that parse as dates ("6-2" -> June 2), and
+// the read path then serves back "Tue Jun 02 2026 00:00:00 GMT-0700 (...)".
+// Force the Score column to plain text before every Matches write. (The site
+// also un-mangles already-corrupted cells on read — cleanScore in
+// src/lib/sheet.js — so this is the belt to that suspender.)
+function forceScoreTextFmt_(sheet) {
+  var scoreCol = 8; // MATCH_HEADERS: ... Court | Status | SCORE | Winner | ID
+  sheet.getRange(1, scoreCol, Math.max(sheet.getMaxRows(), 2), 1).setNumberFormat('@');
+}
+
 function writeMatch_(patch) {
   var sheet = sheetByName_('Matches', MATCH_HEADERS);
+  forceScoreTextFmt_(sheet);
   var rows = readRows_(sheet);
   var idCol = MATCH_HEADERS.length - 1;
   var idx = -1;
@@ -431,6 +442,7 @@ function writeMatch_(patch) {
 function replaceEngineMatches_(payload) {
   if (!payload || !payload.event || !payload.prefix) return;
   var sheet = sheetByName_('Matches', MATCH_HEADERS);
+  forceScoreTextFmt_(sheet);
   var rows = readRows_(sheet);
   var ev = String(payload.event).trim().toLowerCase();
   var prefix = String(payload.prefix);
