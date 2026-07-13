@@ -24,7 +24,7 @@ function loadSel() {
   } catch { return null; }
 }
 
-export default function TeamTracker({ seeds, matches, events, labelFor, nameFor, sched, now, pInsFor, clocks, onHighlight, onNextMatch, query = '', onQuery }) {
+export default function TeamTracker({ wrap = false, seeds, matches, events, labelFor, nameFor, sched, now, pInsFor, clocks, onHighlight, onNextMatch, query = '', onQuery }) {
   const groups = teamOptions(seeds, matches, events, labelFor);
   const [sel, setSel] = useState(loadSel);
 
@@ -84,7 +84,9 @@ export default function TeamTracker({ seeds, matches, events, labelFor, nameFor,
         <h3 className="text-base font-black text-white uppercase tracking-wider">Follow my team</h3>
       </div>
       <p className="text-xs text-zinc-500 mb-4 max-w-2xl leading-relaxed">
-        Pick yourself once — this device remembers. Results, your live court, and where you go next (win <em>or</em> lose) with estimated times, straight from the draw.
+        {wrap
+          ? <>Pick your name to relive your run — every match, every score, and where your path ended, straight from the final draw.</>
+          : <>Pick yourself once — this device remembers. Results, your live court, and where you go next (win <em>or</em> lose) with estimated times, straight from the draw.</>}
       </p>
       <select
         value={selValue}

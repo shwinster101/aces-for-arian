@@ -187,7 +187,7 @@ function RegisterCTA({ closed, label = 'Register Here!', className = '' }) {
 }
 
 // Past champions + downloadable result archives, per event (singles | doubles).
-function HallOfFame({ champs2026 = null }) {
+function HallOfFame({ champs2026 = null, onSeeDraws = null }) {
   // 2026 cards, derived from the live final results the night the tournament
   // ends (no PDF yet — swap in hardcoded names + the results PDF when the
   // archive files land, like the 2025 entries below).
@@ -248,7 +248,13 @@ function HallOfFame({ champs2026 = null }) {
                   ))}
                 </div>
               )}
-{champ.pdf && (
+{!champ.pdf && onSeeDraws && (
+                <button onClick={onSeeDraws}
+                  className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
+                  See the full 2026 draws →
+                </button>
+              )}
+              {champ.pdf && (
                             <a href={champ.pdf} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
                 <span>Full bracket (PDF)</span><ExternalLink className="h-3 w-3" />
@@ -1344,6 +1350,12 @@ export default function App() {
   // Join the Ace Pledge: bump the public joiner count (fire-and-forget, once
   // per device), then hand off to Venmo with the amount in the copy. The
   // count is display-only celebration — the dollars move on Venmo.
+  // Wrap-mode nav naming: results-seekers this week should spot the draws in
+  // one glance — "Brackets" reads live-tool, "2026 Results" reads archive.
+  const tabLabel = (tab) => (wrapMode && tab.id === 'draws' ? '2026 Results' : wrapMode && tab.id === 'home' ? 'Home' : tab.label);
+  const tabBlurb = (tab) => (wrapMode && tab.id === 'draws' ? 'Final draws, results & champions'
+    : wrapMode && tab.id === 'home' ? 'Champions, the Ace Pledge & thank-yous' : tab.blurb);
+
   const joinAcePledge = () => {
     if (!pledged) {
       try { localStorage.setItem('a4a-acepledge', '1'); } catch { /* private mode */ }
@@ -1602,7 +1614,7 @@ export default function App() {
                   }`}
                 >
                   <tab.icon className="h-3.5 w-3.5" />
-                  <span>{tab.label}</span>
+                  <span>{tabLabel(tab)}</span>
                 </button>
               );
             })}
@@ -1636,8 +1648,8 @@ export default function App() {
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${active ? 'bg-[#fbbf24] text-black' : 'text-zinc-100 hover:bg-white/5'}`}>
                     <tab.icon className="w-5 h-5 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold">{tab.label}</div>
-                      <div className={`text-xs ${active ? 'text-black/70' : 'text-zinc-400'}`}>{tab.blurb}</div>
+                      <div className="text-sm font-bold">{tabLabel(tab)}</div>
+                      <div className={`text-xs ${active ? 'text-black/70' : 'text-zinc-400'}`}>{tabBlurb(tab)}</div>
                     </div>
                     <ChevronRight className={`w-4 h-4 shrink-0 ${active ? 'text-black/60' : 'text-zinc-500'}`} />
                   </button>
@@ -1816,7 +1828,7 @@ export default function App() {
                 <div className="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg w-fit mx-auto md:mx-0 flex items-center gap-2 border border-zinc-800">
                     <Calendar className='w-3.5 h-3.5 text-[#fbbf24]' /> July 11–12, 2026 • Dunlap High Courts
                 </div>
-                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-[1.05]">Play in the 5th Annual <span className="whitespace-nowrap">Aces for Arian</span></h3>
+                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-[1.05]">{wrapMode ? <>The 5th Annual <span className="whitespace-nowrap">Aces for Arian</span> is in the books</> : <>Play in the 5th Annual <span className="whitespace-nowrap">Aces for Arian</span></>}</h3>
                 <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }}
                   className="group inline-flex items-center gap-1 text-[10px] md:text-xs font-semibold tracking-tight text-[#fbbf24]/90 hover:text-[#fbbf24] transition-colors">
                   <Heart className="w-3 h-3 shrink-0" />
@@ -1824,14 +1836,29 @@ export default function App() {
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
                 <p className="text-[13px] text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of tournament tennis, counting the Eagle Classic years (2020–21)!
+                  {wrapMode
+                    ? <>Two days of tennis, a full doubles field, a 32-draw singles bracket, and every dollar toward Arian's scholarship — our 7th straight summer of tournament tennis. The draws stay up as the permanent record: find your run, your scores, and the champions.</>
+                    : <>Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of tournament tennis, counting the Eagle Classic years (2020–21)!</>}
                 </p>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
-                  <RegisterCTA closed={regClosed} label="Register Here!"
-                    className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
-                  <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
+                  {wrapMode ? (
+                    <>
+                      <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                        className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
+                        See the 2026 results
+                      </button>
+                      <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Thanks for an unforgettable weekend — see you in 2027</span>
+                    </>
+                  ) : (
+                    <>
+                      <RegisterCTA closed={regClosed} label="Register Here!"
+                        className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
+                      <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Open to DHS students, alumni &amp; friends — all levels</span>
+                    </>
+                  )}
                 </div>
                 {/* Field-filling momentum — social proof + scarcity off the live roster */}
+                {!wrapMode && (
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-[11px] text-zinc-400">
                   <span><strong className="text-[#fbbf24] font-bold">{doublesTeams}</strong><span className="text-zinc-600">/16</span> doubles teams</span>
                   <span className="text-zinc-700">·</span>
@@ -1839,13 +1866,14 @@ export default function App() {
                   <span className="text-zinc-700">·</span>
                   <span className="text-zinc-500">sign-ups <strong className="text-zinc-300 font-semibold">{closeLine}</strong> (July 8)</span>
                 </div>
+                )}
 
                 {/* Flyer poster — sits beneath the blurb in the center column */}
                 <a
-                  href={REGISTER_FORM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Aces for Arian 2026 tournament flyer — register for $40"
+                  href={wrapMode ? `#${slugForTab('draws')}` : REGISTER_FORM_URL}
+                  target={wrapMode ? undefined : '_blank'}
+                  rel={wrapMode ? undefined : 'noopener noreferrer'}
+                  aria-label={wrapMode ? 'Aces for Arian 2026 flyer — see the final results' : 'Aces for Arian 2026 tournament flyer — register for $40'}
                   className="group block w-full max-w-sm md:max-w-[260px] mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-xl shadow-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] transition-transform hover:-translate-y-0.5"
                 >
                   <img
@@ -2150,6 +2178,7 @@ export default function App() {
           // (tracker ABOVE the search bar, owner call). PUBLIC events only.
           const tracker = anyDrawsPublic && (
             <TeamTracker
+              wrap={wrapMode}
               seeds={seeds}
               matches={publicMatches}
               events={publicEvents}
@@ -2381,11 +2410,15 @@ export default function App() {
           // ONE fixed flow, both phases: personalized data FIRST (owner +
           // player-perspective review call) — Follow-my-team leads, the draw
           // sheet right under it, then the live boards.
+          // Live day: personalized data first (tracker leads — owner call).
+          // Wrap: the RECORD leads — draw sheet, then results, tracker last as
+          // the "relive your run" browser for folks checking back this week.
           return (
             <div className="space-y-6 animate-fade-in">
-              {tracker}
+              {!wrapMode && tracker}
               {drawsTop}
               {liveBoards}
+              {wrapMode && tracker}
               {!wrapMode && <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />}
               {suggestBox}
               {aceTracker}
@@ -2712,7 +2745,8 @@ export default function App() {
               <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
               <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Champions from every year — the Eagle Classic era to today.</p>
               <div className="space-y-5">
-                <HallOfFame champs2026={wrapMode ? champions : null} />
+                <HallOfFame champs2026={wrapMode ? champions : null}
+                  onSeeDraws={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} />
               </div>
             </section>
 
