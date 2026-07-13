@@ -63,6 +63,7 @@ export const PHOTOS_CSV_URL  = sheetCsv("Photos");   // gallery / wheel images
 export const COURT_BOARD_CSV_URL = sheetCsv("Courts");  // live court board (Court | Now | Next)
 export const MATCHES_CSV_URL     = sheetCsv("Matches"); // live scores (Event | Round | Num | ...)
 export const ACES_CSV_URL        = sheetCsv("Aces");    // live ace counter (Count)
+export const ACE_PLEDGES_CSV_URL = sheetCsv("AcePledges"); // Ace Pledge joiner count (Count) — read with mapAces
 export const OPSSTATUS_CSV_URL   = sheetCsv("OpsStatus"); // admin reg-status overlay (Name | Status)
 export const ANNOUNCEMENTS_CSV_URL = sheetCsv("Announcements"); // staff posts (Id | Timestamp | Event | Category | Message)
 

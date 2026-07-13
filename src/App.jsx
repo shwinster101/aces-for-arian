@@ -6,6 +6,7 @@ import {
   PHOTOS_CSV_URL,
   MATCHES_CSV_URL,
   ACES_CSV_URL,
+  ACE_PLEDGES_CSV_URL,
   OPSSTATUS_CSV_URL,
   ANNOUNCEMENTS_CSV_URL,
   ANNOUNCE_CATEGORIES,
@@ -1033,6 +1034,10 @@ export default function App() {
   const [matchesLastOkAt, setMatchesLastOkAt] = useState(0);
   const [aces, setAces] = useState(0);              // live ace count, from the "Aces" tab
   const [acesLive, setAcesLive] = useState(false);
+  // Ace Pledge joiners (wrap mode) — count read from the public AcePledges
+  // tab; -1 = not loaded/absent (hide the count, keep the join button).
+  const [pledgers, setPledgers] = useState(-1);
+  const [pledged, setPledged] = useState(() => { try { return localStorage.getItem('a4a-acepledge') === '1'; } catch { return false; } });
   const [announcements, setAnnouncements] = useState(FALLBACK_ANNOUNCEMENTS); // staff posts, newest first
   // Per-post banner dismissal — survives reloads so the banner never nags.
   const [dismissedAnnounce, setDismissedAnnounce] = useState(() => {
@@ -1170,6 +1175,12 @@ export default function App() {
         delay = 60000;
         const a = mapAces(parseCSV(text));
         if (a) { setAces(a.count); setAcesLive(true); }
+        // Piggyback the Ace Pledge joiner count on the same cadence — the
+        // tab shares the Aces tab's single-Count shape, so mapAces reads it.
+        fetch(ACE_PLEDGES_CSV_URL)
+          .then(r => (r.ok ? r.text() : Promise.reject()))
+          .then(t => { if (!cancelled) { const pl = mapAces(parseCSV(t)); if (pl) setPledgers(pl.count); } })
+          .catch(() => {});
       })
       .catch(() => { if (!cancelled) delay = Math.min(delay * 2, 240000); })
       .finally(() => { if (!cancelled) timer = setTimeout(load, delay); });
@@ -1329,6 +1340,26 @@ export default function App() {
   const champions = {
     Singles: champName(finalByNum('Singles', 63)) || champName(finalByNum('Singles', 62)),
     Doubles: champName(finalByNum('Doubles', 15)),
+  };
+  // Join the Ace Pledge: bump the public joiner count (fire-and-forget, once
+  // per device), then hand off to Venmo with the amount in the copy. The
+  // count is display-only celebration — the dollars move on Venmo.
+  const joinAcePledge = () => {
+    if (!pledged) {
+      try { localStorage.setItem('a4a-acepledge', '1'); } catch { /* private mode */ }
+      setPledged(true);
+      setPledgers(n => (n < 0 ? 1 : n + 1));
+      if (SHEET_WRITE_URL) {
+        try {
+          fetch(SHEET_WRITE_URL, {
+            method: 'POST', mode: 'no-cors', keepalive: true,
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ type: 'ace-pledge' }),
+          }).catch(() => {});
+        } catch { /* display-only count — Venmo is the real transaction */ }
+      }
+    }
+    window.open(VENMO_URL, '_blank', 'noopener');
   };
 
   const livePlaying = publicMatches
@@ -1497,7 +1528,7 @@ export default function App() {
             </div>
 
             {/* Both badges share one row so the header reads as a single tidy strip.
-                Live ace count is hidden until the admin's first +1 (acesLive). $5/ace, cap $500. */}
+                Live ace count is hidden until the admin's first +1 (acesLive). */}
             <div className="flex flex-wrap items-center justify-start gap-2 self-start md:self-center">
               <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
                 <Trophy className="w-3.5 h-3.5 shrink-0" />
@@ -1671,9 +1702,26 @@ export default function App() {
                   <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
                     <div className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</div>
-                    {acesLive && <div className="text-[10px] text-zinc-500 mt-1">{aces} aces hit live · ${Math.min(aces * 5, 500)} pledged at $5/ace</div>}
+                    {acesLive && <div className="text-[10px] text-zinc-500 mt-1">{aces} aces hit across the weekend</div>}
                   </div>
                 </div>
+                {acesLive && (
+                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4 mb-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Join the Ace Pledge</div>
+                        <p className="text-sm text-zinc-300 leading-relaxed">
+                          <strong className="text-white">{aces} aces</strong> were hit this weekend. Pledge <strong className="text-white">$1 per ace</strong> — that&rsquo;s a <strong className="text-[#fbbf24]">${aces}</strong> Venmo to <strong className="text-zinc-200">@acesforarian</strong> (note: &ldquo;Ace Pledge&rdquo;), straight to Arian&rsquo;s scholarship.
+                          {pledgers > 0 && <> <span className="text-zinc-500">· {pledgers} {pledgers === 1 ? 'person has' : 'people have'} joined — ${(pledgers * aces).toLocaleString()} from aces so far.</span></>}
+                        </p>
+                      </div>
+                      <button onClick={joinAcePledge}
+                        className={`shrink-0 min-h-11 px-5 font-black text-xs uppercase tracking-wider rounded-xl transition-colors ${pledged ? 'bg-[#111] border border-[#fbbf24]/40 text-[#fbbf24]' : 'bg-[#fbbf24] hover:bg-amber-400 text-black'}`}>
+                        {pledged ? `You're in 🎾 · Venmo $${aces}` : `Pledge $${aces} on Venmo`}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
                     className="min-h-11 px-5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
@@ -2283,8 +2331,9 @@ export default function App() {
             </>
           );
 
-          // Live Ace Tracker — every ace hit on a live court adds $5 toward
-          // Arian's scholarship, up to $500. Hidden until the admin's first
+          // Live Ace Tracker — every ace hit on a live court adds $1 toward
+          // Arian's scholarship (wrap mode: the public Ace Pledge multiplies
+          // it — each joiner Venmos $1/ace). Hidden until the admin's first
           // +1 (see mapAces in lib/sheet.js).
           const aceTracker = acesLive && (
               <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
@@ -2302,9 +2351,15 @@ export default function App() {
                   <div className="flex-1 w-full">
                     <p className="text-sm text-zinc-400 leading-relaxed">
                       {wrapMode
-                        ? <>Final count — {aces} ace{aces === 1 ? '' : 's'} served across the weekend, <strong className="text-zinc-200">${Math.min(aces * 5, 500)}</strong> pledged toward Arian's scholarship at $5/ace.</>
+                        ? <>Final count — {aces} ace{aces === 1 ? '' : 's'} served across the weekend. Join the <strong className="text-zinc-200">Ace Pledge</strong>: $1 per ace = a ${aces} Venmo to the scholarship{pledgers > 0 && <> — <strong className="text-zinc-200">{pledgers} joined, ${(pledgers * aces).toLocaleString()} so far</strong></>}.</>
                         : <>Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</>}
                     </p>
+                    {wrapMode && (
+                      <button onClick={joinAcePledge}
+                        className={`mt-3 min-h-11 px-5 font-black text-xs uppercase tracking-wider rounded-xl transition-colors ${pledged ? 'bg-[#111] border border-[#fbbf24]/40 text-[#fbbf24]' : 'bg-[#fbbf24] hover:bg-amber-400 text-black'}`}>
+                        {pledged ? `You're in 🎾 · Venmo $${aces}` : `Pledge $${aces} on Venmo`}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

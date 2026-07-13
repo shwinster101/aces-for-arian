@@ -38,7 +38,7 @@ export default function CommandCenter({ participants, ops, onGoTab, rosterLive, 
 
   const cash = useMemo(() => cashMath(ops.store.cash), [ops.store.cash]);
   const aces = ops.store.aces || 0;
-  const aceDollars = Math.min(aces * 5, 500);
+  const aceDollars = aces; // $1/ace
   // A 'clear' post suppresses the public banner, so show it as clear here too.
   const top = ops.store.announcements[0];
   const banner = top && top.category !== 'clear' ? top : null;
@@ -110,7 +110,7 @@ export default function CommandCenter({ participants, ops, onGoTab, rosterLive, 
           )}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800/60 text-xs text-zinc-400">
             <Zap className="w-4 h-4 text-[#fbbf24]" />
-            <span><strong className="text-zinc-200">{aces}</strong> aces live · <strong className="text-zinc-200">${aceDollars}</strong> toward the scholarship{aceDollars >= 500 ? ' (cap)' : ''}</span>
+            <span><strong className="text-zinc-200">{aces}</strong> aces live · <strong className="text-zinc-200">${aceDollars}</strong> toward the scholarship at $1/ace</span>
           </div>
         </Section>
       </div>

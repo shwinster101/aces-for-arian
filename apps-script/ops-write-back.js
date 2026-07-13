@@ -107,6 +107,10 @@ function doPost(e) {
     // Locked like the ops writes below — it mutates a tab via the same
     // read-modify-write pattern.
     if (body.type === 'subscribe') { withLock_(function () { writeSubscribe_(body.payload); }); return ContentService.createTextOutput('ok'); }
+    // Public "Ace Pledge" join — no token (a wrap-mode donate mechanic: each
+    // joiner pledges $1/ace via Venmo; this only bumps a public joiner COUNT,
+    // no PII, so abuse is bounded to inflating a display number).
+    if (body.type === 'ace-pledge') { withLock_(function () { bumpAcePledges_(); }); return ContentService.createTextOutput('ok'); }
     // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
     // Obfuscation only (the token ships in the public bundle), but it stops
     // drive-by writes from anyone who merely opens /admin.html.
@@ -462,6 +466,16 @@ function replaceEngineMatches_(payload) {
 // The Live Ace Tracker sends its current absolute total on every +1/-1 tap
 // (not a delta), so a duplicate/late no-cors POST can't double-count — just
 // overwrite the single data row with whatever total the admin device has now.
+// One shared joiner count for the post-event Ace Pledge — same single-cell
+// shape as the Aces tab (read by the site with mapAces).
+function bumpAcePledges_() {
+  var sheet = sheetByName_('AcePledges', ACES_HEADERS);
+  var rows = readRows_(sheet);
+  var n = parseInt((rows[0] || [0])[0], 10);
+  if (isNaN(n) || n < 0) n = 0;
+  writeRows_(sheet, [[n + 1]]);
+}
+
 function writeAces_(payload) {
   var sheet = sheetByName_('Aces', ACES_HEADERS);
   var n = parseInt(payload && payload.count, 10);
