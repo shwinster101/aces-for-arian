@@ -187,13 +187,13 @@ function RegisterCTA({ closed, label = 'Register Here!', className = '' }) {
 }
 
 // Past champions + downloadable result archives, per event (singles | doubles).
-function HallOfFame({ champs2026 = null, onSeeDraws = null }) {
+function HallOfFame({ champs2026 = null, runners2026 = null, onSeeDraws = null }) {
   // 2026 cards, derived from the live final results the night the tournament
   // ends (no PDF yet — swap in hardcoded names + the results PDF when the
   // archive files land, like the 2025 entries below).
   const current = [];
-  if (champs2026 && champs2026.Singles) current.push({ year: '2026', label: '2026 Singles Champion', name: champs2026.Singles, single: true, format: '32-player double elimination', podium: [] });
-  if (champs2026 && champs2026.Doubles) current.push({ year: '2026', label: '2026 Doubles Champions', name: champs2026.Doubles, single: false, format: '16-team compass draw', podium: [] });
+  if (champs2026 && champs2026.Singles) current.push({ year: '2026', label: '2026 Singles Champion', name: champs2026.Singles, single: true, format: '32-player double elimination', podium: runners2026 && runners2026.Singles ? [{ place: '2nd', name: runners2026.Singles }] : [] });
+  if (champs2026 && champs2026.Doubles) current.push({ year: '2026', label: '2026 Doubles Champions', name: champs2026.Doubles, single: false, format: '16-team compass draw', podium: runners2026 && runners2026.Doubles ? [{ place: '2nd', name: runners2026.Doubles }] : [] });
   const champs2025 = [
     { label: '2025 Singles Champion', name: 'Alex', single: true, format: '32-player double elimination', podium: [{ place: '2nd', name: 'Andrew' }, { place: '3rd', name: 'Shaan' }], pdf: '/archive/aces-for-arian-2025-singles.pdf' },
     { label: '2025 Doubles Champions', name: 'Greyson & Andy', single: false, format: '16-team compass draw', podium: [], pdf: '/archive/aces-for-arian-2025-doubles.pdf' },
@@ -1343,9 +1343,17 @@ export default function App() {
   // when played, else the Grand Final (M62). Doubles: the East final (M15).
   const champName = (m) => (m && m.status === 'final' && (m.winner === 'a' || m.winner === 'b') ? (m.winner === 'a' ? m.a : m.b) : null);
   const finalByNum = (evt, n) => publicMatches.find(m => m.event === evt && Number(m.num) === n);
+  const loserName = (m) => (m && m.status === 'final' && (m.winner === 'a' || m.winner === 'b') ? (m.winner === 'a' ? m.b : m.a) : null);
+  const singlesDecider = champName(finalByNum('Singles', 63)) ? finalByNum('Singles', 63) : finalByNum('Singles', 62);
   const champions = {
-    Singles: champName(finalByNum('Singles', 63)) || champName(finalByNum('Singles', 62)),
+    Singles: champName(singlesDecider),
     Doubles: champName(finalByNum('Doubles', 15)),
+  };
+  // Runner-up = the loser of whichever match DECIDED the title (the GF reset
+  // when it was played, else the Grand Final; the East final for doubles).
+  const runnersUp = {
+    Singles: loserName(singlesDecider),
+    Doubles: loserName(finalByNum('Doubles', 15)),
   };
   // Join the Ace Pledge: bump the public joiner count (fire-and-forget, once
   // per device), then hand off to Venmo with the amount in the copy. The
@@ -1679,6 +1687,38 @@ export default function App() {
         />
       )}
 
+      {/* --- 2026 CHAMPIONS BAR (wrap mode, every tab) — the weekend's
+          headline numbers one glance from anywhere: champions, who they beat,
+          and the scholarship total. Tapping it opens the full results. */}
+      {wrapMode && (champions.Singles || champions.Doubles) && (
+        <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+          className="w-full block bg-gradient-to-r from-[#1c1408] to-[#151009] border-b border-[#fbbf24]/25 hover:border-[#fbbf24]/60 transition-colors text-left">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-[11px] leading-relaxed">
+            {champions.Singles && (
+              <span className="whitespace-nowrap">
+                <Trophy className="w-3 h-3 text-[#fbbf24] inline -mt-0.5 mr-1" />
+                <span className="text-zinc-500 uppercase tracking-wider font-bold text-[9px]">Singles </span>
+                <span className="text-[#fbbf24] font-black">{champions.Singles}</span>
+                {runnersUp.Singles && <span className="text-zinc-500"> def. {runnersUp.Singles}</span>}
+              </span>
+            )}
+            {champions.Doubles && (
+              <span className="whitespace-nowrap">
+                <Trophy className="w-3 h-3 text-[#fbbf24] inline -mt-0.5 mr-1" />
+                <span className="text-zinc-500 uppercase tracking-wider font-bold text-[9px]">Doubles </span>
+                <span className="text-[#fbbf24] font-black">{champions.Doubles}</span>
+                {runnersUp.Doubles && <span className="text-zinc-500"> def. {runnersUp.Doubles}</span>}
+              </span>
+            )}
+            <span className="whitespace-nowrap">
+              <Heart className="w-3 h-3 text-[#fbbf24] inline -mt-0.5 mr-1" />
+              <span className="text-zinc-200 font-bold">${calculatedFunding.toLocaleString()}</span>
+              <span className="text-zinc-500"> raised for the scholarship</span>
+            </span>
+          </div>
+        </button>
+      )}
+
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8">
 
@@ -1704,12 +1744,12 @@ export default function App() {
                   <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Singles Champion</div>
                     <div className="text-lg font-black text-white leading-tight">{champions.Singles || 'Final results below'}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1">32-player double elimination</div>
+                    <div className="text-[10px] text-zinc-500 mt-1">{runnersUp.Singles ? <>def. {runnersUp.Singles} · </> : null}32-player double elimination</div>
                   </div>
                   <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Doubles Champions</div>
                     <div className="text-lg font-black text-white leading-tight">{champions.Doubles || 'Final results below'}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1">16-team compass draw</div>
+                    <div className="text-[10px] text-zinc-500 mt-1">{runnersUp.Doubles ? <>def. {runnersUp.Doubles} · </> : null}16-team compass draw</div>
                   </div>
                   <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
@@ -2745,7 +2785,7 @@ export default function App() {
               <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
               <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Champions from every year — the Eagle Classic era to today.</p>
               <div className="space-y-5">
-                <HallOfFame champs2026={wrapMode ? champions : null}
+                <HallOfFame champs2026={wrapMode ? champions : null} runners2026={wrapMode ? runnersUp : null}
                   onSeeDraws={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} />
               </div>
             </section>
