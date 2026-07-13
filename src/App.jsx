@@ -1740,6 +1740,11 @@ export default function App() {
                 <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl mb-5">
                   Two days, two draws, and a community that showed up for Arian. Thank you to every player, volunteer, and supporter — see the final brackets, relive the weekend in photos, and keep the scholarship growing below.
                 </p>
+                <div className="rounded-2xl overflow-hidden border border-zinc-800 mb-5">
+                  <img src="/wrap-2026.jpg"
+                    alt="Players lined up at the net after the 2026 Aces for Arian, holding a scoreboard reading 2026"
+                    className="w-full h-auto object-cover" loading="lazy" />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                   <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Singles Champion</div>
@@ -2875,6 +2880,20 @@ export default function App() {
                 <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>A <strong className="text-zinc-200">500-word-or-less essay</strong> answering the prompt above.</span></li>
                 <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>An official <strong className="text-zinc-200">DHS transcript</strong> (order through Parchment).</span></li>
               </ul>
+            </div>
+
+            {/* 2026 presentation — Noelle receiving the award courtside at
+                the 5th Annual. The human moment the whole fund exists for. */}
+            <div className="bg-[#151515] border border-[#fbbf24]/25 rounded-3xl overflow-hidden">
+              <img src="/noelle-2026.jpg"
+                alt="Noelle Daccache, 2026 Arian Rahbar Memorial Scholarship recipient, receiving her award courtside at the tournament"
+                className="w-full h-auto object-cover" loading="lazy" />
+              <div className="p-5 md:p-6">
+                <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">2026 Recipient · presented courtside</div>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  Congratulations to <strong className="text-white">Noelle Daccache</strong>, a 2026 Arian Rahbar Memorial Scholarship recipient — presented at the 5th Annual, right where Arian loved to play. Together with co-recipient <strong className="text-white">Anton Dahlin</strong>, this year's class carries the legacy forward.
+                </p>
+              </div>
             </div>
 
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
