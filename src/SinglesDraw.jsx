@@ -21,9 +21,9 @@ const JUMPS = [['winners', 'Winners'], ['comeback', 'Comeback'], ['gf', 'Grand F
 
 export default function SinglesDraw({
   names, rowsByNum, clockFor, highlight = '', nextNum = null, showByes = false,
-  theme = 'paper', title = 'Aces for Arian 2026 Singles',
+  wrapDecided = false, theme = 'paper', title = 'Aces for Arian 2026 Singles',
 }) {
-  const model = buildDoubleElimModel({ names, rows: rowsByNum, showByes });
+  const model = buildDoubleElimModel({ names, rows: rowsByNum, showByes, wrapDecided });
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const [fit, setFit] = useState(true);
@@ -121,9 +121,11 @@ export default function SinglesDraw({
                     {gfExtra && <span className="shrink-0 text-[8px] font-mono font-bold" style={{ color: gfColor }}>· {gfExtra}</span>}
                   </div>
                   <p className="text-[8px] leading-snug mt-1" style={{ color: 'var(--cd-faint)' }}>
-                    {model.gf.reset
-                      ? 'Bracket reset — M63 is ON: the Comeback champ took the Grand Final.'
-                      : 'If the Comeback champ wins, a deciding reset (M63) is played — the Winners champ has not lost a match yet.'}
+                    {model.decidedByWF
+                      ? 'Not played — the Winners Final (M59) stood as the Grand Final: the semifinalists opted out of the comeback crossover, and M60 became the backdraw final (5th–6th).'
+                      : model.gf.reset
+                        ? 'Bracket reset — M63 is ON: the Comeback champ took the Grand Final.'
+                        : 'If the Comeback champ wins, a deciding reset (M63) is played — the Winners champ has not lost a match yet.'}
                   </p>
                 </div>
                 <div className="rounded-lg border-2 px-3 py-2 mt-3" style={{ borderColor: 'var(--cd-gold)', background: 'rgba(251,191,36,0.18)' }}>

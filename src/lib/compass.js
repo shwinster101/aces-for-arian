@@ -279,7 +279,7 @@ export function buildCompassModel({ eastNames = [], teams = [], pIns = 0, rows =
 // feeder/next wiring below mirrors graphFor('Singles') and is asserted
 // against it in the verification suite.
 // ---------------------------------------------------------------------------
-export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = false }) {
+export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = false, wrapDecided = false }) {
   const S = 32;
   const order = seedOrder(S);
 
@@ -395,8 +395,18 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   const r62 = rowOf(rows, 62);
   const r63 = rowOf(rows, 63);
   let champion = { name: null, score: '' };
+  let decidedByWF = false;
   if (isFinal(r63)) champion = { name: winnerName(r63), score: r63.score || '' };
   else if (isFinal(r62) && r62.winner === 'a') champion = { name: winnerName(r62), score: r62.score || '' };
+  else if (wrapDecided && !isFinal(r62)) {
+    // WRAP-GATED (2026 outcome): the event ended without the Grand Final
+    // crossover — the semifinalists opted out of the backdraw, so the
+    // Winners Final (M59) decided the title outright. Never applied on a
+    // live day (wrapDecided false), so a mid-tournament M59 win can't
+    // prematurely crown anyone in a future year.
+    const r59 = rowOf(rows, 59);
+    if (isFinal(r59)) { champion = { name: winnerName(r59), score: r59.score || '' }; decidedByWF = true; }
+  }
 
   // Scoring-format chip, round-based (same rule as doubles): no-ad through the
   // Winners R16 + all of the Comeback side; ad from the Winners QF (M41-44) on,
@@ -404,7 +414,7 @@ export function buildDoubleElimModel({ names = [], rows = new Map(), showByes = 
   for (const m of [...winners.metas, ...comeback.metas]) m.fmt = scoreFmt('Singles', m.num);
   gf.meta.fmt = scoreFmt('Singles', 62);
 
-  return { winners, comeback, gf, champion };
+  return { winners, comeback, gf, champion, decidedByWF };
 }
 
 // ---------------------------------------------------------------------------

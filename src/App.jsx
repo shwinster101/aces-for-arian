@@ -1344,7 +1344,13 @@ export default function App() {
   const champName = (m) => (m && m.status === 'final' && (m.winner === 'a' || m.winner === 'b') ? (m.winner === 'a' ? m.a : m.b) : null);
   const finalByNum = (evt, n) => publicMatches.find(m => m.event === evt && Number(m.num) === n);
   const loserName = (m) => (m && m.status === 'final' && (m.winner === 'a' || m.winner === 'b') ? (m.winner === 'a' ? m.b : m.a) : null);
-  const singlesDecider = champName(finalByNum('Singles', 63)) ? finalByNum('Singles', 63) : finalByNum('Singles', 62);
+  // Title decider chain: the GF reset when played, else the Grand Final —
+  // else the WINNERS FINAL (M59): in 2026 the semifinalists opted out of the
+  // comeback crossover, so M59 stood as the Grand Final (Andy d. Graham) and
+  // M60 became the backdraw final (5th–6th). Only wrap-mode surfaces render
+  // champions, so this can't prematurely crown anyone on a live day.
+  const singlesDecider = [63, 62, 59].map(n => finalByNum('Singles', n)).find(m => champName(m)) || null;
+  const singlesEndedAtWF = !champName(finalByNum('Singles', 62)) && !champName(finalByNum('Singles', 63)) && !!champName(finalByNum('Singles', 59));
   const champions = {
     Singles: champName(singlesDecider),
     Doubles: champName(finalByNum('Doubles', 15)),
@@ -2160,10 +2166,10 @@ export default function App() {
                   play-ins 29+). Legend rides BELOW the sheet. */}
               {DRAWS_PUBLIC.Doubles && bracketEvent === 'doubles' && (
                 <>
-                  <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
+                  {!wrapMode && <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
                     <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
                     <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it and jump there. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover. Each tag reads <span className="font-mono text-zinc-300">M# · ~time</span> — times are <strong className="text-zinc-200">estimates</strong> counted from the 9:00 AM first serve and they shift as rounds finish. A <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span> tag marks the scoring — no-ad through the Round of 16, ad from the Quarterfinals on. “W of M12” = the winner of match 12, not decided yet.</span>
-                  </div>
+                  </div>}
                   <CompassDraw
                     eastNames={dEastNames}
                     teams={dTeams}
@@ -2199,10 +2205,10 @@ export default function App() {
                   [17,33,45,49,55,57,60,61], GF 62, reset 63). */}
               {DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
                 <>
-                  <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
+                  {!wrapMode && <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
                     <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
                     <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish. A <span className="font-mono text-zinc-300">1 SET</span> / <span className="font-mono text-zinc-300">BO3 F4</span> chip marks the scoring: one ad set to 6 in the early rounds, best-of-3 Fast-4 from the QFs on.</span>
-                  </div>
+                  </div>}
                   <SinglesDraw
                     names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
                     rowsByNum={engineRowsFor('Singles')}
@@ -2210,9 +2216,12 @@ export default function App() {
                     highlight={drawHighlight}
                     nextNum={nextMatch && nextMatch.event === 'Singles' ? nextMatch.num : null}
                     showByes={showByes}
+                    wrapDecided={wrapMode && singlesEndedAtWF}
                   />
                   <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
-                    Double elimination — every player has a two-match cushion. Lose in the Winners bracket and you drop into the Comeback bracket with a live path back to the Grand Final; the Winners champ must be beaten twice (the M63 reset) to lose the title.
+                    {wrapMode && singlesEndedAtWF
+                      ? <><strong className="text-zinc-300">How the day ended:</strong> the title was decided at <strong className="text-zinc-300">M59 — the Grand Final</strong> ({champions.Singles} d. {runnersUp.Singles}). The semifinalists opted out of the comeback crossover and no 3rd-place match was played, so <strong className="text-zinc-300">M60 stood as the backdraw final</strong>, deciding 5th–6th; the M61–M63 bracket lines were not played.</>
+                      : <>Double elimination — every player has a two-match cushion. Lose in the Winners bracket and you drop into the Comeback bracket with a live path back to the Grand Final; the Winners champ must be beaten twice (the M63 reset) to lose the title.</>}
                   </p>
                 </>
               )}
@@ -2378,7 +2387,12 @@ export default function App() {
                       : (s) => (s === 'live' ? 0 : s === 'final' ? 2 : 1);
                     return rank(a.status) - rank(b.status) || (wrapMode ? playPos(b) - playPos(a) : playPos(a) - playPos(b));
                   }).map((m, i) => {
-                    const meta = [m.event, m.round && `Rd ${m.round}`, m.num && `M${m.num}`, m.court && `Court ${m.court}`].filter(Boolean).join(' · ');
+                    // 2026 wrap record: M59 stood as the Grand Final and M60 as
+                    // the backdraw final (5th–6th) — see singlesEndedAtWF.
+                    const roundLabel = wrapMode && singlesEndedAtWF && m.event === 'Singles' && Number(m.num) === 59 ? 'Grand Final'
+                      : wrapMode && singlesEndedAtWF && m.event === 'Singles' && Number(m.num) === 60 ? 'Backdraw Final · 5th/6th'
+                      : m.round && `Rd ${m.round}`;
+                    const meta = [m.event, roundLabel, m.num && `M${m.num}`, m.court && `Court ${m.court}`].filter(Boolean).join(' · ');
                     const badge = {
                       live: { label: 'Live', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                       final: { label: 'Final', cls: 'text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/20' },
