@@ -186,7 +186,13 @@ function RegisterCTA({ closed, label = 'Register Here!', className = '' }) {
 }
 
 // Past champions + downloadable result archives, per event (singles | doubles).
-function HallOfFame() {
+function HallOfFame({ champs2026 = null }) {
+  // 2026 cards, derived from the live final results the night the tournament
+  // ends (no PDF yet — swap in hardcoded names + the results PDF when the
+  // archive files land, like the 2025 entries below).
+  const current = [];
+  if (champs2026 && champs2026.Singles) current.push({ year: '2026', label: '2026 Singles Champion', name: champs2026.Singles, single: true, format: '32-player double elimination', podium: [] });
+  if (champs2026 && champs2026.Doubles) current.push({ year: '2026', label: '2026 Doubles Champions', name: champs2026.Doubles, single: false, format: '16-team compass draw', podium: [] });
   const champs2025 = [
     { label: '2025 Singles Champion', name: 'Alex', single: true, format: '32-player double elimination', podium: [{ place: '2nd', name: 'Andrew' }, { place: '3rd', name: 'Shaan' }], pdf: '/archive/aces-for-arian-2025-singles.pdf' },
     { label: '2025 Doubles Champions', name: 'Greyson & Andy', single: false, format: '16-team compass draw', podium: [], pdf: '/archive/aces-for-arian-2025-doubles.pdf' },
@@ -216,10 +222,10 @@ function HallOfFame() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {champs2025.map(champ => (
+        {[...current, ...champs2025].map(champ => (
           <div key={champ.label} className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6">
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">2025</span>
+              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded px-2 py-0.5">{champ.year || '2025'}</span>
               <h4 className="text-sm font-black text-white uppercase tracking-wider">{champ.label}</h4>
             </div>
             <div className="flex flex-col gap-4">
@@ -241,10 +247,12 @@ function HallOfFame() {
                   ))}
                 </div>
               )}
-              <a href={champ.pdf} target="_blank" rel="noopener noreferrer"
+{champ.pdf && (
+                            <a href={champ.pdf} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] transition-colors">
                 <span>Full bracket (PDF)</span><ExternalLink className="h-3 w-3" />
               </a>
+              )}
             </div>
           </div>
         ))}
@@ -1307,6 +1315,22 @@ export default function App() {
   // Polling keeps running, so a reveal lights everything up at once.
   const publicMatches = useMemo(() => matches.filter(m => DRAWS_PUBLIC[m.event]), [matches]);
 
+  // WRAP MODE — the weekend is over: the site flips from live tool to record
+  // + celebration (live widgets read as BROKEN once play stops, not finished).
+  // Auto-on from ~midnight after singles day; a Config row ("phase: done" /
+  // "wrap: no") overrides either way.
+  const sdMs = dayStartMs('Singles');
+  const wrapMode = config.wrap != null ? config.wrap : (Number.isFinite(sdMs) && now >= sdMs + 15 * 3600000);
+  // 2026 champions, derived live from the posted finals — nothing hardcoded
+  // the night the tournament ends. Singles: the GF reset (M63) decides it
+  // when played, else the Grand Final (M62). Doubles: the East final (M15).
+  const champName = (m) => (m && m.status === 'final' && (m.winner === 'a' || m.winner === 'b') ? (m.winner === 'a' ? m.a : m.b) : null);
+  const finalByNum = (evt, n) => publicMatches.find(m => m.event === evt && Number(m.num) === n);
+  const champions = {
+    Singles: champName(finalByNum('Singles', 63)) || champName(finalByNum('Singles', 62)),
+    Doubles: champName(finalByNum('Doubles', 15)),
+  };
+
   const livePlaying = publicMatches
     .filter(m => m.status === 'live')
     .sort((a, b) => playPos(a) - playPos(b));
@@ -1621,6 +1645,56 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
 
+            {/* THAT'S A WRAP — post-tournament story card: champions, the
+                money, the aces, and where to go next. Leads the page once
+                wrap mode flips; the live-day surfaces below all retire. */}
+            {wrapMode && (
+              <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black">
+                <div className="flex items-center gap-2.5 mb-1">
+                  <Trophy className="w-5 h-5 text-[#fbbf24]" />
+                  <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">That&rsquo;s a wrap on Aces for Arian 2026 🎾</h2>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl mb-5">
+                  Two days, two draws, and a community that showed up for Arian. Thank you to every player, volunteer, and supporter — see the final brackets, relive the weekend in photos, and keep the scholarship growing below.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Singles Champion</div>
+                    <div className="text-lg font-black text-white leading-tight">{champions.Singles || 'Final results below'}</div>
+                    <div className="text-[10px] text-zinc-500 mt-1">32-player double elimination</div>
+                  </div>
+                  <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Doubles Champions</div>
+                    <div className="text-lg font-black text-white leading-tight">{champions.Doubles || 'Final results below'}</div>
+                    <div className="text-[10px] text-zinc-500 mt-1">16-team compass draw</div>
+                  </div>
+                  <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
+                    <div className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</div>
+                    {acesLive && <div className="text-[10px] text-zinc-500 mt-1">{aces} aces hit live · ${Math.min(aces * 5, 500)} pledged at $5/ace</div>}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
+                    className="min-h-11 px-5 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
+                    Final draws &amp; results
+                  </button>
+                  <button onClick={() => { setActiveTab('photos'); window.scrollTo({ top: 0 }); }}
+                    className="min-h-11 px-5 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 text-zinc-300 hover:text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
+                    Photo gallery
+                  </button>
+                  <a href={DONATE_URL} target="_blank" rel="noopener noreferrer"
+                    className="min-h-11 px-5 inline-flex items-center bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 text-zinc-300 hover:text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors">
+                    Donate
+                  </a>
+                </div>
+                <div className="mt-5 pt-5 border-t border-zinc-800/60">
+                  <p className="text-xs text-zinc-500 mb-2">First to know about the 6th Annual — 2027 dates, registration, everything:</p>
+                  <NotifyMeBox source="wrap-hero" />
+                </div>
+              </div>
+            )}
+
             {/* GAME DAY card — the day-of essentials, surfaced only during the
                 event window (Fri before → end of Sun) when registration is done
                 and the register-centric hero is no longer the point. Answers the
@@ -1662,7 +1736,7 @@ export default function App() {
 
             {/* Live-day strip — routes everyone to the court board the moment
                 ops posts the first match. Hidden all draw week. */}
-            {liveDay && (
+            {liveDay && !wrapMode && (
               <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
                 className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 hover:border-[#fbbf24] rounded-2xl px-5 py-4 transition-colors group text-left">
                 <span className="flex items-center gap-3 min-w-0">
@@ -1940,7 +2014,7 @@ export default function App() {
           const drawsTop = (
             <div className="bg-[#151515] border border-zinc-800 p-5 md:p-7 rounded-3xl">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-                <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Draws</h2>
+                <h2 className="text-xl font-black text-white uppercase tracking-wider">{wrapMode ? '2026 Final Draws' : 'Tournament Draws'}</h2>
                 {anyDrawsPublic && (
                   <div className="flex gap-2 overflow-x-auto no-scrollbar">
                     {[['doubles', 'Saturday Doubles', DRAWS_PUBLIC.Doubles], ['singles', 'Sunday Singles', DRAWS_PUBLIC.Singles]].map(([id, label, pub]) => pub ? (
@@ -2050,7 +2124,19 @@ export default function App() {
 
           const liveBoards = (
             <>
+            {/* WRAP: the court board's job is done — one closing card instead
+                of a stale "reconnecting" live widget. */}
+            {wrapMode && (
+              <div className="bg-[#151515] border border-[#fbbf24]/25 rounded-3xl p-6">
+                <h2 className="text-xl font-black text-white uppercase tracking-wider mb-2">That&rsquo;s a wrap 🎾</h2>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
+                  Every court is quiet — the 2026 draws above are the permanent record, champions in gold. Full results below, memories in the <button onClick={() => { setActiveTab('photos'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">photo gallery</button>, and past champions in <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">Legacy</button>. See you at the 6th Annual.
+                </p>
+              </div>
+            )}
+
             {/* Live court board — answers "when is my next match?" */}
+            {!wrapMode && (
             <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                 <div className="flex items-center gap-2">
@@ -2139,6 +2225,7 @@ export default function App() {
                 </p>
               )}
             </div>
+            )}
 
             {/* Live scores — only revealed events, only once ops has posted a match */}
             {anyDrawsPublic && matchesLive && publicMatches.length > 0 && (
@@ -2146,12 +2233,14 @@ export default function App() {
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${matchesFresh ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                    <h2 className="text-xl font-black text-white uppercase tracking-wider">Live Scores</h2>
+                    <h2 className="text-xl font-black text-white uppercase tracking-wider">{wrapMode ? 'Final Results' : 'Live Scores'}</h2>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-500">{matchesFresh ? `Updated ${matchesUpdated}` : 'Reconnecting…'}</span>
+                  <span className="text-[10px] font-mono text-zinc-500">{wrapMode ? 'Tournament complete' : matchesFresh ? `Updated ${matchesUpdated}` : 'Reconnecting…'}</span>
                 </div>
                 <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">
-                  Results as the desk posts them — <span className="text-[#fbbf24] font-semibold">winners</span> highlight when a match goes final, and scores appear when the desk has a moment to enter them. For "how long has that court been going," see the timers on the court board above.
+                  {wrapMode
+                    ? <>Every result from the weekend, championship rounds first — <span className="text-[#fbbf24] font-semibold">gold</span> marks the winners. The full paths are on the draw sheets above.</>
+                    : <>Results as the desk posts them — <span className="text-[#fbbf24] font-semibold">winners</span> highlight when a match goes final, and scores appear when the desk has a moment to enter them. For "how long has that court been going," see the timers on the court board above.</>}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Play order, not sheet order: live courts first, then the
@@ -2159,8 +2248,13 @@ export default function App() {
                       is its projected start time (anchored at first serve —
                       9:00 Sat doubles / 9:00 Sun singles), not "Scheduled". */}
                   {[...publicMatches].sort((a, b) => {
-                    const rank = (s) => (s === 'live' ? 0 : s === 'final' ? 2 : 1);
-                    return rank(a.status) - rank(b.status) || playPos(a) - playPos(b);
+                    // Wrap: finals lead, championship rounds first (play order
+                    // reversed puts the Grand Final on top). Live day: live
+                    // courts first, then the queue, finals last.
+                    const rank = wrapMode
+                      ? (s) => (s === 'final' ? 0 : 1)
+                      : (s) => (s === 'live' ? 0 : s === 'final' ? 2 : 1);
+                    return rank(a.status) - rank(b.status) || (wrapMode ? playPos(b) - playPos(a) : playPos(a) - playPos(b));
                   }).map((m, i) => {
                     const meta = [m.event, m.round && `Rd ${m.round}`, m.num && `M${m.num}`, m.court && `Court ${m.court}`].filter(Boolean).join(' · ');
                     const badge = {
@@ -2206,7 +2300,11 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex-1 w-full">
-                    <p className="text-sm text-zinc-400 leading-relaxed">Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</p>
+                    <p className="text-sm text-zinc-400 leading-relaxed">
+                      {wrapMode
+                        ? <>Final count — {aces} ace{aces === 1 ? '' : 's'} served across the weekend, <strong className="text-zinc-200">${Math.min(aces * 5, 500)}</strong> pledged toward Arian's scholarship at $5/ace.</>
+                        : <>Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</>}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -2233,7 +2331,7 @@ export default function App() {
               {tracker}
               {drawsTop}
               {liveBoards}
-              <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />
+              {!wrapMode && <RoundTimesBanner matches={matches} sched={scheduleCfg} now={now} />}
               {suggestBox}
               {aceTracker}
               {legacyLink}
@@ -2559,7 +2657,7 @@ export default function App() {
               <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
               <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Champions from every year — the Eagle Classic era to today.</p>
               <div className="space-y-5">
-                <HallOfFame />
+                <HallOfFame champs2026={wrapMode ? champions : null} />
               </div>
             </section>
 

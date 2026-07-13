@@ -240,6 +240,12 @@ export function mapConfig(rows) {
     } else if (/goal|target/.test(key)) {
       const n = parseInt(val.replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n)) out.goal = n;
+    } else if (/phase|wrap/.test(key)) {
+      // "phase: done" / "wrap: yes" flips the site to post-tournament WRAP
+      // MODE (record + celebration); "live"/"no" forces it back off. Absent =
+      // date-based default (see wrapMode in App.jsx).
+      if (/^(done|over|wrap(ped)?|post|y|yes|true|1|on)$/i.test(val)) out.wrap = true;
+      else if (/^(live|n|no|false|0|off)$/i.test(val)) out.wrap = false;
     } else if (/final|lock/.test(key) && !/min/.test(key)) {
       // !min guard: without it this branch swallows "Finals min" (a schedule
       // number handled further down) and that knob silently never applies.
