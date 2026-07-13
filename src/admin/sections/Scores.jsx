@@ -565,18 +565,17 @@ function ScoreRow({ m, ops, allMatches, sched, isNew, onSeen, canGoLive, onGoLiv
 }
 
 // Courtside "+1 Ace" — pushes the running total to the sheet so the public
-// Brackets tab's Live Ace Tracker ($5/ace, capped at $500) follows live.
+// Brackets tab's Live Ace Tracker ($1/ace) follows live.
 // -1 covers a misclick; it's disabled at 0 so the count can't go negative.
 function AceTracker({ ops }) {
   const count = ops.store.aces || 0;
-  const dollars = Math.min(count * 5, 500);
-  const capped = count * 5 >= 500;
+  const dollars = count; // $1/ace
 
   return (
     <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Zap className="w-4 h-4 text-[#fbbf24]" /> Live Ace Tracker</h3>
-        <span className="text-[10px] text-zinc-500">$5/ace · capped at $500</span>
+        <span className="text-[10px] text-zinc-500">$1/ace</span>
       </div>
       <div className="flex items-center gap-3">
         <button onClick={ops.decrementAces} disabled={count === 0} aria-label="Remove an ace"
@@ -586,7 +585,7 @@ function AceTracker({ ops }) {
         <div className="flex-1 text-center">
           <div className="text-4xl font-black text-white tabular-nums">{count}</div>
           <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
-            Aces hit · ${dollars} raised{capped ? ' · cap' : ''}
+            Aces hit · ${dollars} raised
           </div>
         </div>
         <button onClick={ops.incrementAces} aria-label="Add an ace"
