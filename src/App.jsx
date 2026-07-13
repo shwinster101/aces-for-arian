@@ -1942,7 +1942,10 @@ export default function App() {
             <p className="text-center text-[10px] text-zinc-600 italic">Photos by Noah L. &amp; Aashu V.</p>
 
             {/* Player checklist — the "what do I do now?" card for a player
-                scanning on a phone the week of the tournament. */}
+                scanning on a phone the week of the tournament. Pure pre-event
+                content ("arrive 15 min early", "pay $40"), so it retires in
+                wrap mode along with the next-steps block below. */}
+            {!wrapMode && (<>
             <div className="mx-auto w-full max-w-xl bg-[#151515] border border-zinc-800 rounded-3xl p-5 sm:p-6">
               <h2 className="text-sm font-black text-white uppercase tracking-wider mb-3 flex items-center gap-2">
                 <ListChecks className="w-4 h-4 text-[#fbbf24]" /> Player checklist
@@ -1982,6 +1985,7 @@ export default function App() {
 
               <p className="text-[10px] text-zinc-600">$40 entry — pay <a href={VENMO_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">{VENMO_HANDLE} on Venmo</a> or cash at sign-in.</p>
             </div>
+            </>)}
 
             {/* Roster & Info Grid. On phones the logistics column (coordinators,
                 rules, directions) stacks FIRST — day-of visitors need a phone
@@ -1993,7 +1997,7 @@ export default function App() {
                 <div className="pb-4 border-b border-zinc-800 mb-4">
                   <div className="flex justify-between items-center gap-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-black text-white uppercase tracking-wider">Roster</h3>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">{wrapMode ? 'The 2026 Field' : 'Roster'}</h3>
                       {rosterLive && (
                         <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
