@@ -1725,7 +1725,21 @@ export default function App() {
                     className="w-full h-auto object-cover" loading="lazy" />
                 </div>
 
-                {/* 1 — Ace Pledge leads (owner call): the one ask of the week. */}
+                {/* 1 — Google Photos album, right under the picture (owner
+                    call): the photo leads into more photos. */}
+                <a href="https://photos.app.goo.gl/7U7kVRSL59QXpnC99" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-4 mb-3 transition-colors group">
+                  <span className="flex items-center gap-3 min-w-0">
+                    <ImageIcon className="w-5 h-5 text-[#fbbf24] shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-white">Google photo album</span>
+                      <span className="block text-xs text-zinc-500">Shout out Aashu V for the great pics! 📸</span>
+                    </span>
+                  </span>
+                  <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-[#fbbf24] shrink-0 transition-colors" />
+                </a>
+
+                {/* 2 — Ace Pledge: the one ask of the week. */}
                 {acesLive && aces > 0 && (
                   <div className="bg-[#111] border border-[#fbbf24]/25 rounded-2xl p-4 mb-3">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -1743,19 +1757,6 @@ export default function App() {
                     </div>
                   </div>
                 )}
-
-                {/* 2 — This year's full album on Google Photos */}
-                <a href="https://photos.app.goo.gl/7U7kVRSL59QXpnC99" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-between gap-3 bg-[#111] border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-4 mb-3 transition-colors group">
-                  <span className="flex items-center gap-3 min-w-0">
-                    <ImageIcon className="w-5 h-5 text-[#fbbf24] shrink-0" />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-bold text-white">2026 photo album</span>
-                      <span className="block text-xs text-zinc-500">Every shot from the weekend — full album on Google Photos</span>
-                    </span>
-                  </span>
-                  <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-[#fbbf24] shrink-0 transition-colors" />
-                </a>
 
                 {/* 3 — The money, with the people it goes to */}
                 <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4 mb-3">
