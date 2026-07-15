@@ -2925,13 +2925,18 @@ export default function App() {
             {/* 2026 presentation — Noelle receiving the award courtside at
                 the 5th Annual. The human moment the whole fund exists for. */}
             <div className="bg-[#151515] border border-[#fbbf24]/25 rounded-3xl overflow-hidden">
-              <img src="/noelle-2026.jpg"
-                alt="Noelle Daccache, 2026 Arian Rahbar Memorial Scholarship recipient, receiving her award courtside at the tournament"
-                className="w-full h-auto object-cover" loading="lazy" />
+              <div className="grid grid-cols-2 gap-1">
+                <img src="/noelle-2026.jpg"
+                  alt="Noelle Daccache, 2026 Arian Rahbar Memorial Scholarship recipient, receiving her award courtside at the tournament"
+                  className="w-full aspect-[3/4] object-cover" loading="lazy" />
+                <img src="/anton-2026.jpg"
+                  alt="Anton Dahlin, 2026 Arian Rahbar Memorial Scholarship recipient, receiving his award courtside at the tournament"
+                  className="w-full aspect-[3/4] object-cover" loading="lazy" />
+              </div>
               <div className="p-5 md:p-6">
-                <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">2026 Recipient · presented courtside</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1.5">2026 Recipients · presented courtside</div>
                 <p className="text-sm text-zinc-300 leading-relaxed">
-                  Congratulations to <strong className="text-white">Noelle Daccache</strong>, a 2026 Arian Rahbar Memorial Scholarship recipient — presented at the 5th Annual, right where Arian loved to play. Together with co-recipient <strong className="text-white">Anton Dahlin</strong>, this year's class carries the legacy forward.
+                  Congratulations to <strong className="text-white">Noelle Daccache</strong> and <strong className="text-white">Anton Dahlin</strong>, the 2026 Arian Rahbar Memorial Scholarship recipients — presented at the 5th Annual, right where Arian loved to play. This year's class carries the legacy forward.
                 </p>
               </div>
             </div>
