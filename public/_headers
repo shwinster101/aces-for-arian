@@ -1,0 +1,33 @@
+# Cloudflare Pages response headers — security hardening + long-term asset
+# caching. Cloudflare applies these at the edge; verify a live deploy with:
+#   curl -sI https://acesforarian.com | grep -iE 'content-security|strict-transport|x-frame|permissions|x-content'
+#
+# CSP notes (tailored to THIS build, not a generic template):
+#   • script-src 'self' — the production Vite build ships ZERO inline scripts
+#     (the entry is an external hashed module: /assets/main-<hash>.js). So no
+#     'unsafe-inline'/'unsafe-eval' is needed, which keeps the CSP meaningful
+#     against injected inline <script>. There is no eval()/new Function() and
+#     no wasm anywhere in src, so 'unsafe-eval' stays out.
+#   • style-src 'unsafe-inline' — React inline style={{...}} attributes need it.
+#   • connect-src — same-origin reads go through /api/sheet ('self'); the Idea
+#     box and the ops admin write to the Apps Script exec endpoint on
+#     script.google.com, which 302-redirects to script.googleusercontent.com,
+#     so both hosts are allowed.
+#   • img-src https: — self-hosted photos plus the absolute OG image URL.
+#   • frame-ancestors 'none' — no one may frame us (clickjacking on Donate);
+#     X-Frame-Options: DENY repeats this for older browsers.
+#   The site embeds no iframes, so default-src 'self' is safe for frames.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# Content-hashed build output (Vite renames the file whenever its bytes change),
+# so a given /assets/ URL is safe to cache forever. index.html is intentionally
+# NOT covered here — it keeps Cloudflare's default revalidate-every-load policy
+# so a new deploy's asset hashes are always picked up.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

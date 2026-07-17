@@ -1,0 +1,10 @@
+# SPA fallback for Cloudflare Pages. The app is a single index.html whose
+# navigation is HASH-based (#rules, #brackets, #scholarship, …), so real deep
+# links already resolve — there are no server-side /rules-style paths. This
+# rule is a graceful catch so a stray or legacy path (a mistyped or old
+# non-hash link) serves the app instead of a 404, rather than a routing fix.
+#
+# Precedence on Cloudflare Pages: Functions (/api/*) and real static files
+# (admin.html, /assets/*, the images) are matched BEFORE this splat, so this
+# only ever catches paths that match nothing else.
+/*    /index.html    200
