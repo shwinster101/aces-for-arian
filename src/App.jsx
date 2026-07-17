@@ -789,6 +789,22 @@ function AnnouncementsFeed({ items, now }) {
   );
 }
 
+// Native, accessible disclosure — collapses reference-dense content (the FAQ,
+// the draw-reading guides) behind a tap so pages read lighter without dropping
+// a single word. Built on <details>/<summary>: zero extra JS, and keyboard- +
+// screen-reader-friendly by default. `summary` accepts a string or a node.
+function Disclosure({ summary, children, defaultOpen = false, className = '' }) {
+  return (
+    <details open={defaultOpen} className={`group ${className}`}>
+      <summary className="flex items-center justify-between gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden select-none">
+        <span className="text-sm font-bold text-zinc-200">{summary}</span>
+        <ChevronRight className="w-4 h-4 text-zinc-500 shrink-0 transition-transform group-open:rotate-90" />
+      </summary>
+      <div className="mt-3">{children}</div>
+    </details>
+  );
+}
+
 // Public "got an idea?" box — fire-and-forget POST to the Apps Script (type
 // 'idea'), which emails the organizers. no-cors means we can't read a response,
 // so we confirm optimistically.
@@ -2120,10 +2136,6 @@ export default function App() {
               </div>
             </div>
 
-            <NotifyMeBox source="home-hero" />
-
-            <IdeaBox />
-
           </div>
         )}
 
@@ -2168,9 +2180,10 @@ export default function App() {
                   play-ins 29+). Legend rides BELOW the sheet. */}
               {DRAWS_PUBLIC.Doubles && bracketEvent === 'doubles' && (
                 <>
-                  {!wrapMode && <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
-                    <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
-                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it and jump there. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover. Each tag reads <span className="font-mono text-zinc-300">M# · ~time</span> — times are <strong className="text-zinc-200">estimates</strong> counted from the 9:00 AM first serve and they shift as rounds finish. A <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span> tag marks the scoring — no-ad through the Round of 16, ad from the Quarterfinals on. “W of M12” = the winner of match 12, not decided yet.</span>
+                  {!wrapMode && <div className="bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4">
+                    <Disclosure summary={<span className="flex items-center gap-2"><Info className="w-4 h-4 text-[#fbbf24] shrink-0" /> How to read this draw</span>}>
+                      <span className="block text-[11px] text-zinc-400 leading-relaxed"><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it and jump there. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover. Each tag reads <span className="font-mono text-zinc-300">M# · ~time</span> — times are <strong className="text-zinc-200">estimates</strong> counted from the 9:00 AM first serve and they shift as rounds finish. A <span className="font-mono text-zinc-300">AD</span> / <span className="font-mono text-zinc-300">NO-AD</span> tag marks the scoring — no-ad through the Round of 16, ad from the Quarterfinals on. “W of M12” = the winner of match 12, not decided yet.</span>
+                    </Disclosure>
                   </div>}
                   <CompassDraw
                     eastNames={dEastNames}
@@ -2207,9 +2220,10 @@ export default function App() {
                   [17,33,45,49,55,57,60,61], GF 62, reset 63). */}
               {DRAWS_PUBLIC.Singles && bracketEvent === 'singles' && (
                 <>
-                  {!wrapMode && <div className="flex items-start gap-2.5 bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4 text-[11px] text-zinc-400 leading-relaxed">
-                    <Info className="w-4 h-4 text-[#fbbf24] shrink-0 mt-0.5" />
-                    <span><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish. A <span className="font-mono text-zinc-300">1 SET</span> / <span className="font-mono text-zinc-300">BO3 F4</span> chip marks the scoring: one ad set to 6 in the early rounds, best-of-3 Fast-4 from the QFs on.</span>
+                  {!wrapMode && <div className="bg-[#111] border border-zinc-800/70 rounded-2xl px-4 py-3 mb-4">
+                    <Disclosure summary={<span className="flex items-center gap-2"><Info className="w-4 h-4 text-[#fbbf24] shrink-0" /> How to read this draw</span>}>
+                      <span className="block text-[11px] text-zinc-400 leading-relaxed"><strong className="text-zinc-200">Reading the draw:</strong> find your name — or type it into <strong className="text-zinc-200">Follow my team</strong> above to highlight it. <strong className="text-[#fbbf24]">Gold</strong> = winner / advancing; a dimmed <em>(bye)</em> is a walkover — <strong className="text-zinc-200">the top seeds have a first-round bye, so their first match is the Round of 16</strong> (Follow my team shows your exact first match). Lose in the Winners bracket and you drop to the Comeback bracket. Tags read <span className="font-mono text-zinc-300">M# · ~time</span> — estimates counted from the 9:00 AM first serve that shift as rounds finish. A <span className="font-mono text-zinc-300">1 SET</span> / <span className="font-mono text-zinc-300">BO3 F4</span> chip marks the scoring: one ad set to 6 in the early rounds, best-of-3 Fast-4 from the QFs on.</span>
+                    </Disclosure>
                   </div>}
                   <SinglesDraw
                     names={seedNamesFrom(seeds, 'Singles').map(publicLabel)}
@@ -2637,7 +2651,7 @@ export default function App() {
                 <BookOpen className="w-5 h-5 text-[#fbbf24]" />
                 <h3 className="text-lg font-black text-white uppercase tracking-wider">FAQ</h3>
               </div>
-              <div className="space-y-5">
+              <div className="space-y-1">
                 {[
                   ["What if it rains?", "Matches are weather-permitting. If rain moves in, coordinators text registered players to pause or reschedule — keep an eye on your phone, and check the Brackets tab here for the live court board."],
                   ["What should I bring?", "Your racquet, water, and court shoes. Balls, court snacks, and your tournament tee are provided."],
@@ -2645,13 +2659,16 @@ export default function App() {
                   ["How are seeds decided?", "Prior Aces for Arian results first, then public UTR/WTN where players have them, then committee review — with the community's suggest-the-seeds picks (Brackets tab) as advisory input. Only the top 8 carry seed numbers."],
                   ["Can I get a refund?", "Entry fees go straight to the scholarship, so they're non-refundable — but you can transfer your spot to another player; just tell a coordinator."],
                 ].map(([q, a]) => (
-                  <div key={q}>
-                    <div className="text-sm font-bold text-zinc-200">{q}</div>
-                    <div className="text-sm text-zinc-400 mt-1 leading-relaxed">{a}</div>
-                  </div>
+                  <Disclosure key={q} summary={q} className="border-b border-zinc-800/60 py-3 first:pt-0 last:border-0">
+                    <div className="text-sm text-zinc-400 leading-relaxed">{a}</div>
+                  </Disclosure>
                 ))}
               </div>
             </div>
+
+            {/* Public idea box — relocated off Home so the landing page keeps a
+                single focus; ideas & questions live with the rules and FAQ. */}
+            <IdeaBox />
           </div>
         )}
 
