@@ -1073,6 +1073,7 @@ export default function App() {
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
   const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
+  const [rosterExpanded, setRosterExpanded] = useState(false); // Home roster: show the first rows for momentum, collapse the long tail behind a toggle
   const [matchQuery, setMatchQuery] = useState(''); // day-of "find my match" search
   const navRef = useRef(null);
   // first-seen-live clocks per event#num (elapsed-time proxy on the board)
@@ -1959,10 +1960,16 @@ export default function App() {
                 scanning on a phone the week of the tournament. Pure pre-event
                 content ("arrive 15 min early", "pay $40"), so it retires in
                 wrap mode along with the next-steps block below. */}
-            {!wrapMode && (<>
-            <div className="mx-auto w-full max-w-xl bg-[#151515] border border-zinc-800 rounded-3xl p-5 sm:p-6">
-              <h2 className="text-sm font-black text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                <ListChecks className="w-4 h-4 text-[#fbbf24]" /> Player checklist
+            {/* "Before you play" — one card folding the old Player Checklist and
+                Next-steps together (they shared an audience and repeated the
+                arrive-15 / pay-$40 lines). Left-aligned for scanning; the
+                duplicate standalone payment note is dropped (the checklist
+                already carries it). Pure pre-event content, so it retires in
+                wrap mode. */}
+            {!wrapMode && (
+            <div className="mx-auto w-full max-w-xl bg-[#151515] border border-zinc-800 rounded-3xl p-5 sm:p-6 space-y-4">
+              <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-[#fbbf24]" /> Before you play
               </h2>
               <ul className="space-y-2 text-[13px] text-zinc-300 leading-relaxed">
                 {[
@@ -1979,10 +1986,8 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-            </div>
 
-            {/* Next steps: reassurance, quick actions, discreet payment note */}
-            <div className="mx-auto w-full max-w-xl text-center space-y-3">
+              {/* How signup works — the one thing a hesitant new player needs */}
               <p className="text-xs text-zinc-400 leading-relaxed">Pick singles, doubles, or both, and your shirt size. <span className="text-zinc-300 font-semibold">No doubles partner yet? Register solo</span> — add or change your partner anytime before the draw. Women's &amp; mixed doubles welcome; if you need a partner, <a href="mailto:acesforarian@gmail.com?subject=Doubles%20partner%20matching%20—%20Aces%20for%20Arian" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">we'll match you</a>.</p>
 
               {/* Format reassurance — defuses the "what if I lose round 1?" hesitation for new players */}
@@ -1992,14 +1997,12 @@ export default function App() {
               </p>
 
               {/* Quick actions — secondary to Register, styled as ghost buttons */}
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <AddToCalendarButton className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] rounded-lg px-3 py-2 transition-colors" />
                 <ShareInvite className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-300 border border-zinc-700 hover:border-[#fbbf24]/50 hover:text-[#fbbf24] rounded-lg px-3 py-2 transition-colors" />
               </div>
-
-              <p className="text-[10px] text-zinc-600">$40 entry — pay <a href={VENMO_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">{VENMO_HANDLE} on Venmo</a> or cash at sign-in.</p>
             </div>
-            </>)}
+            )}
 
             {/* Roster & Info Grid. On phones the logistics column (coordinators,
                 rules, directions) stacks FIRST — day-of visitors need a phone
@@ -2047,7 +2050,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/50 text-sm">
-                      {filteredRoster.map((player, i) => {
+                      {(rosterExpanded ? filteredRoster : filteredRoster.slice(0, 8)).map((player, i) => {
                         return (
                         <tr key={i} className="hover:bg-zinc-900/50 transition-colors">
                           <td className="py-4 pl-2">
@@ -2081,6 +2084,13 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+                {filteredRoster.length > 8 && (
+                  <button onClick={() => setRosterExpanded(v => !v)}
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 min-h-11 text-[11px] font-bold uppercase tracking-wider text-zinc-400 hover:text-[#fbbf24] bg-[#111] hover:bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 transition-colors">
+                    {rosterExpanded ? 'Show fewer' : `View all ${filteredRoster.length} ${ledgerFilter === 'all' ? 'entries' : ledgerFilter}`}
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${rosterExpanded ? '-rotate-90' : 'rotate-90'}`} />
+                  </button>
+                )}
                 <p className="text-[11px] text-zinc-600 mt-3 px-1 leading-relaxed">
                   Registered as a pair? You'll show as <span className="text-[#fbbf24]/70 font-medium">"w/ [partner]"</span> here once both you and your partner are confirmed — until then, doubles entries read <span className="text-sky-400/70">"looking for a partner."</span>
                 </p>
