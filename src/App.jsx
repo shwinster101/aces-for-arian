@@ -283,12 +283,18 @@ function HallOfFame({ champs2026 = null, runners2026 = null, onSeeDraws = null }
         </div>
       </div>
 
-      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+      {/* Earlier years collapse — keeps Legacy from being one long scroll; the
+          recent champions and state honors stay open above, the deep archive
+          is one tap away. */}
+      <Disclosure className="bg-[#151515] border border-zinc-800 rounded-3xl px-5 py-4 md:px-6"
+        summary={<span className="flex items-center gap-2"><Trophy className="w-4 h-4 text-[#fbbf24] shrink-0" /> Earlier years &amp; the Eagle Classic era</span>}>
+        <div className="space-y-5 mt-4">
+      <div className="bg-[#111] border border-zinc-800 rounded-3xl p-5 md:p-6">
         <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Past Tournament Results</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {past.map(p => (
             <a key={p.label} href={p.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-between bg-[#111] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-xl px-4 py-3 transition-colors group">
+              className="flex items-center justify-between bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-xl px-4 py-3 transition-colors group">
               <span className="text-sm font-bold text-white">{p.label}</span>
               <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors">PDF <ExternalLink className="h-3 w-3" /></span>
             </a>
@@ -296,7 +302,7 @@ function HallOfFame({ champs2026 = null, runners2026 = null, onSeeDraws = null }
         </div>
       </div>
 
-      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+      <div className="bg-[#111] border border-zinc-800 rounded-3xl p-5 md:p-6">
         <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2021 · Eagle Classic — Final Standings</h4>
         <p className="text-[11px] text-zinc-500 mb-4">From the Eagle Classic era — when Arian was still out on the court with the team.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -317,7 +323,7 @@ function HallOfFame({ champs2026 = null, runners2026 = null, onSeeDraws = null }
         </a>
       </div>
 
-      <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-5 md:p-6">
+      <div className="bg-[#111] border border-zinc-800 rounded-3xl p-5 md:p-6">
         <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">2020 · Eagle Classic <span className="text-[#fbbf24]">— The Inaugural</span></h4>
         <p className="text-[11px] text-zinc-500 mb-4">The very first Eagle Classic — and Arian &amp; Venil took the doubles title.</p>
         <div className="flex items-center gap-3 mb-4 bg-[#1c1408] border border-[#fbbf24]/20 rounded-xl p-4">
@@ -352,6 +358,8 @@ function HallOfFame({ champs2026 = null, runners2026 = null, onSeeDraws = null }
           <span>Original draws &amp; schedule (PDF)</span><ExternalLink className="h-3 w-3" />
         </a>
       </div>
+        </div>
+      </Disclosure>
     </>
   );
 }
@@ -2120,13 +2128,11 @@ export default function App() {
                     <ShieldCheck className="h-5 w-5 text-emerald-400" />
                     <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Rules</h3>
                   </div>
-                  <ul className="text-xs text-zinc-400 space-y-2.5">
-                    <li>• Arrive <strong className="text-zinc-200">15 minutes</strong> early for all matches.</li>
-                    <li>• Players 15 minutes late will be defaulted.</li>
-                    <li>• Pre-payment required before taking the court.</li>
-                  </ul>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    <strong className="text-zinc-200">Arrive 15 min early</strong> · 15 late is a default · pre-pay before you take the court.
+                  </p>
                   <button onClick={() => { setActiveTab('rules'); window.scrollTo({ top: 0 }); }}
-                    className="mt-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors text-left">
+                    className="mt-3 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors text-left">
                     Full rules &amp; schedule →
                   </button>
                 </div>
@@ -2891,39 +2897,49 @@ export default function App() {
               <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
                 <strong className="text-zinc-200">100% of every $40 entry and every donation</strong> goes to the Arian Rahbar Memorial Scholarship — no overhead. Donations run through Venmo <span className="text-zinc-300 font-semibold">@acesforarian</span>.
               </p>
+              <p className="text-[11px] text-zinc-500 mt-2 leading-relaxed">
+                Not sure how much? <span className="text-zinc-300 font-semibold">$25 · $50 · $100</span> all go a long way — and adding <span className="text-zinc-300 font-semibold">&ldquo;In memory of Arian&rdquo;</span> to your Venmo note lets us thank you.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">The Essay <span className="text-zinc-500 font-bold normal-case">· 500 words or less</span></h3>
-                <blockquote className="border-l-2 border-[#fbbf24] pl-4 text-sm md:text-base text-zinc-300 italic leading-relaxed">
-                  “While at DHS, Arian embodied sportsmanship qualities such as positivity, discipline, competitiveness, and a continuous desire to learn on the court and in the classroom. Reflect on the importance of sportsmanship in both athletics and academics, drawing from personal experiences on the DHS tennis team. How do you plan to apply these values in your college life?”
-                </blockquote>
-              </div>
-              <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">How It's Judged</h3>
-                <ul className="space-y-3 text-sm text-zinc-400">
-                  <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Scholar-athlete synthesis</strong> — excellence in the classroom and on court.</span></li>
-                  <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Varsity tenure</strong> — commitment to the program.</span></li>
-                  <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Exceptional sportsmanship</strong> — how you carry yourself, win or lose.</span></li>
-                </ul>
-                <p className="text-xs text-zinc-500 mt-4 leading-relaxed">Scored on the essay together with your scholar-athlete record.</p>
-              </div>
-            </div>
+            {/* Applicant-facing detail — collapsed by default so donors and the
+                community lead with the cause; applicants are one tap away. */}
+            <Disclosure className="bg-[#151515] border border-zinc-800 rounded-3xl px-6 py-5 md:px-8"
+              summary={<span className="flex items-center gap-2"><GraduationCap className="w-4 h-4 text-[#fbbf24] shrink-0" /> Applying for the scholarship — essay, criteria &amp; eligibility</span>}>
+              <div className="space-y-6 mt-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 bg-[#111] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">The Essay <span className="text-zinc-500 font-bold normal-case">· 500 words or less</span></h3>
+                    <blockquote className="border-l-2 border-[#fbbf24] pl-4 text-sm md:text-base text-zinc-300 italic leading-relaxed">
+                      “While at DHS, Arian embodied sportsmanship qualities such as positivity, discipline, competitiveness, and a continuous desire to learn on the court and in the classroom. Reflect on the importance of sportsmanship in both athletics and academics, drawing from personal experiences on the DHS tennis team. How do you plan to apply these values in your college life?”
+                    </blockquote>
+                  </div>
+                  <div className="bg-[#111] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">How It's Judged</h3>
+                    <ul className="space-y-3 text-sm text-zinc-400">
+                      <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Scholar-athlete synthesis</strong> — excellence in the classroom and on court.</span></li>
+                      <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Varsity tenure</strong> — commitment to the program.</span></li>
+                      <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Exceptional sportsmanship</strong> — how you carry yourself, win or lose.</span></li>
+                    </ul>
+                    <p className="text-xs text-zinc-500 mt-4 leading-relaxed">Scored on the essay together with your scholar-athlete record.</p>
+                  </div>
+                </div>
 
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <CheckCircle2 className="w-5 h-5 text-[#fbbf24]" />
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">Eligibility &amp; Requirements</h3>
+                <div className="bg-[#111] border border-zinc-800 rounded-3xl p-6 md:p-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <CheckCircle2 className="w-5 h-5 text-[#fbbf24]" />
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Eligibility &amp; Requirements</h3>
+                  </div>
+                  <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3.5 text-sm text-zinc-400 leading-relaxed">
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>Be a <strong className="text-zinc-200">DHS senior</strong>.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>Cumulative <strong className="text-zinc-200">GPA of 3.25 or higher</strong>.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Tennis tenure:</strong> two years on Varsity, or three years on the team (including senior year).</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>A <strong className="text-zinc-200">500-word-or-less essay</strong> answering the prompt above.</span></li>
+                    <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>An official <strong className="text-zinc-200">DHS transcript</strong> (order through Parchment).</span></li>
+                  </ul>
+                </div>
               </div>
-              <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3.5 text-sm text-zinc-400 leading-relaxed">
-                <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>Be a <strong className="text-zinc-200">DHS senior</strong>.</span></li>
-                <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>Cumulative <strong className="text-zinc-200">GPA of 3.25 or higher</strong>.</span></li>
-                <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-zinc-200">Tennis tenure:</strong> two years on Varsity, or three years on the team (including senior year).</span></li>
-                <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>A <strong className="text-zinc-200">500-word-or-less essay</strong> answering the prompt above.</span></li>
-                <li className="flex gap-2.5"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /><span>An official <strong className="text-zinc-200">DHS transcript</strong> (order through Parchment).</span></li>
-              </ul>
-            </div>
+            </Disclosure>
 
             {/* Ace Pledge — the donate-adjacent ask, on the tab where
                 cause-minded visitors already are. Wrap-gated; hidden until
