@@ -30,6 +30,7 @@ const TYPES = {
   idea: (p) => str(p && p.text) && p.text.length <= 4000,
   subscribe: (p) => str(p && p.email) && /\S@\S/.test(p.email) && p.email.length <= 500,
   "ace-pledge": () => true,
+  "merch-order": (p) => str(p && p.id) && str(p.item),
   // ops (token-gated in doPost; token injected below)
   seeds: (p) => p && str(p.event) && Array.isArray(p.list),
   "court-board": (p) => p && typeof p === "object",

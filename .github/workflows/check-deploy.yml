@@ -137,6 +137,13 @@ jobs:
           echo "===== AcePledges readable through the site proxy (empty until the Apps Script redeploy adds it to READABLE)"
           curl -sS -m 20 -A "Mozilla/5.0" -o ap.csv -w "HTTP %{http_code}\n" "https://acesforarian.com/api/sheet?tab=AcePledges"
           echo "bytes: $(wc -c < ap.csv)"
+          echo "===== merch-order through the adapter -> expect 200 {\"ok\":true} (row+email land only after redeploy; pre-redeploy the old doPost no-ops it)"
+          curl -sS -m 30 -o resp.json -w "HTTP %{http_code}\n" -H 'Content-Type: application/json' \
+            -d '{"v":1,"type":"merch-order","payload":{"id":"P-merch-ci","item":"Probe (ignore)","qty":1,"name":"ci probe","price":0}}' "$API"; cat resp.json; echo
+          echo "===== MerchOrders must NOT be publicly readable (buyer PII) — expect HTTP 400 Unknown tab (not in ALLOWED), and empty from doGet"
+          curl -sS -m 20 -A "Mozilla/5.0" -o mo.txt -w "site proxy HTTP %{http_code} (want 400)\n" "https://acesforarian.com/api/sheet?tab=MerchOrders"
+          curl -sSL -m 20 -o mo2.txt -w "doGet HTTP %{http_code}\n" "$EXEC?tab=MerchOrders&token=$READ"
+          echo "doGet bytes: $(wc -c < mo2.txt) (must be 0 — not in READABLE)"
       - name: Freshness marker in the main bundle
         run: |
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"

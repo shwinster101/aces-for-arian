@@ -22,13 +22,14 @@ export const WRITE_TOKEN = 'a4a-ea5316b9f5d5b04e49115a20';
 
 const WRITE_API = '/api/write';
 
-// The ONLY non-idempotent write types: 'idea' sends an email, 'ace-pledge'
-// increments a counter. A retry after an ambiguous timeout (where the first
-// attempt actually landed — aborting the adapter's upstream fetch does NOT
-// stop Google from processing it) would double-send / double-count. Every
-// other type is a keyed upsert, absolute snapshot, or prefix-scoped replace
-// ('subscribe' is deduped server-side), so retries are safe.
-const NO_RETRY_TYPES = new Set(['idea', 'ace-pledge']);
+// The ONLY non-idempotent write types: 'idea' and 'merch-order' send an
+// email, 'ace-pledge' increments a counter. A retry after an ambiguous
+// timeout (where the first attempt actually landed — aborting the adapter's
+// upstream fetch does NOT stop Google from processing it) would double-send /
+// double-count. Every other type is a keyed upsert, absolute snapshot, or
+// prefix-scoped replace ('subscribe' is deduped server-side), so retries are
+// safe.
+const NO_RETRY_TYPES = new Set(['idea', 'ace-pledge', 'merch-order']);
 
 const RETRY_DELAYS_MS = [800, 2500]; // between attempts 1→2 and 2→3, ±30% jitter
 

@@ -572,6 +572,146 @@ function HeroCanvas({ images, className = "" }) {
   );
 }
 
+// Small rotating product loop for the Merch header — fills the right side of
+// the intro card (which was one-child justify-between, pinning the title left
+// with an empty half). Same crossfade pattern as HeroCanvas; white tile +
+// object-contain because these are product shots on white.
+const MERCH_MARQUEE_IMGS = ['/merch-tee.jpg', '/merch-hat.jpg', '/merch-sweatbands.jpg', '/merch-towel.jpg'];
+function MerchMarquee({ className = '' }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setIdx(i => (i + 1) % MERCH_MARQUEE_IMGS.length), 3000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className={`relative bg-white rounded-2xl overflow-hidden border border-zinc-900 shadow-inner shrink-0 ${className}`}>
+      {MERCH_MARQUEE_IMGS.map((src, i) => (
+        <img key={src} src={src} alt="" loading="lazy" draggable={false}
+          className={`absolute inset-0 w-full h-full object-contain p-1.5 transition-opacity duration-700 ${i === idx ? 'opacity-100' : 'opacity-0'}`} />
+      ))}
+    </div>
+  );
+}
+
+// Per-item order options. Keys map onto the MerchOrders sheet columns:
+// `variant` and `size` are just two generic detail slots — for the bundle,
+// variant carries the towel AR color and size carries the sweatband color.
+const ORDER_FIELDS = {
+  tee: [{ k: 'size', label: 'Size', options: ['S', 'M', 'L', 'XL'] }],
+  hat: [],
+  wristbands: [{ k: 'variant', label: 'Color', options: ['Maroon / Gold', 'Black / White', 'White / Gold'] }],
+  towel: [{ k: 'variant', label: 'AR color', options: ['Maroon', 'Gold'] }],
+  bundle: [
+    { k: 'variant', label: 'Towel AR color', options: ['Maroon', 'Gold'] },
+    { k: 'size', label: 'Sweatband color', options: ['Maroon / Gold', 'Black / White', 'White / Gold'] },
+  ],
+};
+
+// Two-step merch order: capture the details (name/variant/qty) and send them
+// to the organizers through the write path (merch-order -> MerchOrders tab +
+// email once the Apps Script handler is deployed), THEN hand off to Venmo.
+// Payment NEVER depends on the write landing: step 2 always renders the real
+// Venmo anchor plus the put-it-in-the-note fallback line, so the flow is
+// exactly as robust as the old direct link even offline or pre-redeploy.
+function MerchOrderModal({ item, onClose }) {
+  const [sel, setSel] = useState({});
+  const [qty, setQty] = useState(1);
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [step, setStep] = useState(1);
+  const [sending, setSending] = useState(false);
+  const fields = ORDER_FIELDS[item.key] || [];
+  const ready = name.trim().length >= 2 && fields.every(f => sel[f.k]);
+  const total = item.price * qty;
+  const noteHint = [item.label, sel.variant, sel.size].filter(Boolean).join(' · ');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const submit = async () => {
+    if (!ready || sending) return;
+    setSending(true);
+    // merch-order is in NO_RETRY_TYPES (it emails) — single attempt, and we
+    // advance to the pay step regardless of the result (see contract above).
+    await postWrite('merch-order', {
+      id: `MO-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4).toString(36)}`,
+      item: item.label,
+      variant: sel.variant || '',
+      size: sel.size || '',
+      qty,
+      name: name.trim().slice(0, 150),
+      contact: contact.trim().slice(0, 200),
+      price: total,
+    });
+    setSending(false);
+    setStep(2);
+  };
+
+  const chip = (on) => `px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition min-h-10 ${on ? 'bg-[#fbbf24] text-black' : 'bg-[#111] text-zinc-400 border border-zinc-800 hover:bg-zinc-900'}`;
+
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md max-h-[92dvh] overflow-y-auto bg-[#151515] border border-zinc-800 sm:rounded-3xl rounded-t-3xl shadow-2xl shadow-black p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-sm font-black text-white uppercase tracking-wider">{step === 1 ? `Order: ${item.label}` : 'Almost there — pay on Venmo'}</h3>
+          <button onClick={onClose} aria-label="Close" className="p-1 text-zinc-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+
+        {step === 1 ? (
+          <div className="space-y-4">
+            {fields.map(f => (
+              <div key={f.k}>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">{f.label}</div>
+                <div className="flex flex-wrap gap-2">
+                  {f.options.map(o => (
+                    <button key={o} onClick={() => setSel(s => ({ ...s, [f.k]: o }))} className={chip(sel[f.k] === o)}>{o}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">Quantity</div>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button key={n} onClick={() => setQty(n)} className={chip(qty === n)}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={150}
+              placeholder="Your name (so we know whose gear this is)"
+              className="w-full bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+            <input value={contact} onChange={(e) => setContact(e.target.value)} maxLength={200}
+              placeholder="Phone or email (optional, for pickup questions)"
+              className="w-full bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+            <button onClick={submit} disabled={!ready || sending}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl transition-colors">
+              {sending ? 'Sending…' : `Continue — $${total}`}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-300 leading-relaxed">
+              Your order details are on their way to the organizers. Last step: send <strong className="text-[#fbbf24]">${total}</strong> on Venmo and we&rsquo;ll have your gear ready at the locker.
+            </p>
+            <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-xl transition-colors">
+              <Heart className="w-4 h-4" /> Pay ${total} on Venmo
+            </a>
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              Put <span className="text-zinc-300 font-semibold">&ldquo;{noteHint}&rdquo;</span> in the Venmo note too — it makes matching your payment easy.
+            </p>
+            <button onClick={onClose} className="w-full text-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-white py-2 transition-colors">Done</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Shared "scholars we've funded" block — a running total, the recipients grid,
 // and the memorial-bench card. Rendered in BOTH the Scholarship tab (credibility
 // next to apply/donate) and the Legacy tab (tribute), so the two never drift.
@@ -1099,6 +1239,7 @@ export default function App() {
   });
   const [now, setNow] = useState(() => Date.now()); // 30s heartbeat clock so "Live" badges can go stale on their own
   const [menuOpen, setMenuOpen] = useState(false);  // mobile "Explore" tab menu
+  const [orderItem, setOrderItem] = useState(null); // merch order modal: {key,label,price} | null
   const [ledgerFilter, setLedgerFilter] = useState('all'); // ledger: all | singles | doubles
   const [rosterExpanded, setRosterExpanded] = useState(false); // Home roster: show the first rows for momentum, collapse the long tail behind a toggle
   const [matchQuery, setMatchQuery] = useState(''); // day-of "find my match" search
@@ -1364,6 +1505,10 @@ export default function App() {
   const calculatedFunding = config.raised ?? 580;
   const percentageGoal = Math.min(Math.round((calculatedFunding / scholarshipGoal) * 100), 100);
   const showScholarshipBar = config.showBar ?? true;
+  // Header declutter: the $ meter is page furniture on tabs that aren't about
+  // the fund — show it only where it belongs (Home + Scholarship). Donate
+  // itself stays on every tab.
+  const showHeaderMeter = showScholarshipBar && (activeTab === 'home' || activeTab === 'scholarship');
 
   // A feed counts as "Live" only if its last good fetch was under 3 min ago;
   // otherwise the badge honestly shows "reconnecting…".
@@ -1599,24 +1744,22 @@ export default function App() {
               </div>
             </div>
 
-            {/* Both badges share one row so the header reads as a single tidy strip.
-                Live ace count is hidden until the admin's first +1 (acesLive). */}
-            <div className="flex flex-wrap items-center justify-start gap-2 self-start md:self-center">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
-                <Trophy className="w-3.5 h-3.5 shrink-0" />
-                5 Years of Aces for Arian
-              </span>
-              {acesLive && aces > 0 && (
+            {/* Live ace count — event-window color only (live day / wrap), and
+                hidden until the admin's first +1 (acesLive). The old "5 Years"
+                badge moved out of the permanent header chrome; the milestone
+                already lives in the Legacy story. */}
+            {acesLive && aces > 0 && (liveDay || wrapMode) && (
+              <div className="flex flex-wrap items-center justify-start gap-2 self-start md:self-center">
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-3 py-1.5 whitespace-nowrap">
                   <TennisBallIcon className="w-3.5 h-3.5 shrink-0" />
                   {aces} {aces === 1 ? 'Ace' : 'Aces'} hit live
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="bg-[#3a0a0a] px-4 py-2 rounded-xl border border-[#fbbf24]/30 shadow-lg">
               <div className="flex items-center gap-4 md:gap-5">
-                {showScholarshipBar && (
+                {showHeaderMeter && (
                   <div className="min-w-0">
                     <span className="text-[9px] text-[#fbbf24] font-bold uppercase tracking-widest block mb-0.5 whitespace-nowrap">Scholarship Fund</span>
                     <div className="flex items-baseline gap-1.5">
@@ -1627,7 +1770,7 @@ export default function App() {
                 )}
                 {/* Inline bar on desktop; mobile gets a full-width bar below so it
                     isn't squished into ~60px next to the label + donate button. */}
-                {showScholarshipBar && (
+                {showHeaderMeter && (
                   <div className="hidden md:block w-24 h-2 bg-black/50 rounded-full overflow-hidden">
                     <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
                   </div>
@@ -1642,7 +1785,7 @@ export default function App() {
                   <span>Donate</span>
                 </a>
               </div>
-              {showScholarshipBar && (
+              {showHeaderMeter && (
                 <div className="md:hidden mt-2 h-1.5 bg-black/50 rounded-full overflow-hidden">
                   <div className="h-full bg-[#fbbf24] rounded-full" style={{ width: `${percentageGoal}%` }}></div>
                 </div>
@@ -2230,16 +2373,17 @@ export default function App() {
                   <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mt-3">
                     Compass draw · {dCount} teams — every team plays at least twice{dPIns > 0 ? ` (the ${dPIns} play-ins open the day at 9:00; winners take the open East lines)` : ''}, and everyone in the Round of 16 is guaranteed 3+ matches. If a round does not go your way, you rotate into a new direction with another path to compete.
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
+                  {/* Compass legend — quiet tier: reference text, not four more boxes */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 mt-4 pt-3 border-t border-zinc-800/40 text-xs px-1">
                     {[
                       ['East', 'Championship path — every team starts here', 'text-[#fbbf24]'],
-                      ['West', 'Second path after East Round of 16 (8)', 'text-zinc-200'],
-                      ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-200'],
-                      ['South', 'Final placement path after opening West round (4)', 'text-zinc-200'],
+                      ['West', 'Second path after East Round of 16 (8)', 'text-zinc-300'],
+                      ['North', 'Placement path after East Quarterfinals (4)', 'text-zinc-300'],
+                      ['South', 'Final placement path after opening West round (4)', 'text-zinc-300'],
                     ].map(([dir, desc, color]) => (
-                      <div key={dir} className="bg-[#111] border border-zinc-800 rounded-xl p-3">
-                        <div className={`font-black uppercase tracking-wider ${color}`}>{dir}</div>
-                        <div className="text-zinc-500 mt-1 leading-snug">{desc}</div>
+                      <div key={dir}>
+                        <span className={`font-bold tracking-wide ${color}`}>{dir}</span>
+                        <span className="text-zinc-500 leading-snug"> — {desc}</span>
                       </div>
                     ))}
                   </div>
@@ -2501,17 +2645,14 @@ export default function App() {
               </div>
           );
 
+          {/* Quiet tier: a one-line pointer, not another full-width card */}
           const legacyLink = (
-            <button onClick={() => setActiveTab('legacy')} className="w-full bg-[#151515] hover:bg-zinc-900 border border-zinc-800 hover:border-[#fbbf24]/40 rounded-2xl p-5 flex items-center justify-between gap-3 transition-colors group text-left">
-              <div className="flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-[#fbbf24] shrink-0" />
-                <div>
-                  <div className="text-sm font-bold text-white">Past champions &amp; full results archive</div>
-                  <div className="text-xs text-zinc-500">Every winner since 2020 — now in the Legacy tab.</div>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-[#fbbf24] transition-colors shrink-0">Legacy →</span>
-            </button>
+            <p className="text-center px-1">
+              <button onClick={() => setActiveTab('legacy')}
+                className="text-xs font-bold text-zinc-500 hover:text-[#fbbf24] transition-colors">
+                Past champions &amp; full results — every winner since 2020 → Legacy
+              </button>
+            </p>
           );
 
           // ONE fixed flow, both phases: personalized data FIRST (owner +
@@ -2539,12 +2680,10 @@ export default function App() {
             ========================================== */}
         {activeTab === 'photos' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Gallery</h2>
-                <p className="text-sm text-zinc-400 mt-2">Relive the highlights from the tournament archive — full albums for every year below.</p>
-              </div>
-              <ImageIcon className='w-12 h-12 text-zinc-800 hidden sm:block' />
+            {/* Quiet intro — the slideshow IS this page; no boxed header needed */}
+            <div className="px-1">
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Tournament Gallery</h2>
+              <p className="text-sm text-zinc-400 mt-1">Relive the highlights from the tournament archive — full albums for every year below.</p>
             </div>
 
             {/* Self-hosted auto-slideshow across all years — no third-party scripts */}
@@ -2621,11 +2760,10 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-lg font-black text-white uppercase tracking-wider">Check-In &amp; Conduct</h3>
-              </div>
+            {/* Quiet tier — reference content reads as plain text on the page
+                background, not another boxed card (density pass). */}
+            <section className="border-t border-zinc-800/40 pt-6 px-1">
+              <h3 className="text-xs font-bold text-zinc-400 tracking-wide mb-4">Check-in &amp; conduct</h3>
               <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm text-zinc-400 leading-relaxed list-disc list-outside pl-4">
                 <li>Pay the <strong className="text-zinc-200">$40</strong> at sign-in before your first match — <strong className="text-zinc-200">Venmo @acesforarian</strong> or <strong className="text-zinc-200">cash at the desk</strong> — and grab your t-shirt.</li>
                 <li>Held at the <strong className="text-zinc-200">Dunlap High School tennis courts</strong> — <a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">map &amp; directions</a>. Free parking in the school lot by the courts.</li>
@@ -2645,15 +2783,13 @@ export default function App() {
                   ))}
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Day-of schedule (tentative) — doubles on the uniform one-hour
-                cadence (see projectSchedule); singles double-elim runs to evening. */}
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <div className="flex items-center gap-3 mb-1">
-                <Clock className="w-5 h-5 text-[#fbbf24]" />
-                <h3 className="text-lg font-black text-white uppercase tracking-wider">Day-of Schedule</h3>
-              </div>
+                cadence (see projectSchedule); singles double-elim runs to evening.
+                Quiet tier: reference timetable, not a boxed card. */}
+            <section className="border-t border-zinc-800/40 pt-6 px-1">
+              <h3 className="text-xs font-bold text-zinc-400 tracking-wide mb-1">Day-of schedule</h3>
               <p className="text-xs text-zinc-500 mb-6">Tentative — doubles rounds run about an hour and start on the hour; singles (double-elimination) runs longer. Exact times post live with the draw on the <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24]/90 hover:text-[#fbbf24] font-semibold underline">Brackets tab</button>.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
@@ -2675,14 +2811,11 @@ export default function App() {
                   ))}
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* FAQ */}
-            <div className="bg-[#151515] border border-zinc-800 p-6 md:p-8 rounded-3xl">
-              <div className="flex items-center gap-3 mb-5">
-                <BookOpen className="w-5 h-5 text-[#fbbf24]" />
-                <h3 className="text-lg font-black text-white uppercase tracking-wider">FAQ</h3>
-              </div>
+            {/* FAQ — quiet tier: pure reference, already tap-to-expand */}
+            <section className="border-t border-zinc-800/40 pt-6 px-1">
+              <h3 className="text-xs font-bold text-zinc-400 tracking-wide mb-4">FAQ</h3>
               <div className="space-y-1">
                 {[
                   ["What if it rains?", "Matches are weather-permitting. If rain moves in, coordinators text registered players to pause or reschedule — keep an eye on your phone, and check the Brackets tab here for the live court board."],
@@ -2696,7 +2829,7 @@ export default function App() {
                   </Disclosure>
                 ))}
               </div>
-            </div>
+            </section>
 
             {/* Public idea box — relocated off Home so the landing page keeps a
                 single focus; ideas & questions live with the rules and FAQ. */}
@@ -2714,6 +2847,10 @@ export default function App() {
                 <h2 className="text-xl font-black text-white uppercase tracking-wider">2026 Gear Locker</h2>
                 <p className="text-xs text-zinc-400 mt-1">Your tournament tee is included with entry. Order extra gear below to back the scholarship — you keep the gear as a thank-you, and every dollar over cost goes straight to the fund. Paid via Venmo.</p>
               </div>
+              {/* Rotating product loop — the second flex child that balances
+                  justify-between (the header used to pin left with an empty
+                  right half on desktop). */}
+              <MerchMarquee className="w-24 h-24 sm:w-28 sm:h-28" />
             </div>
 
             {/* Player tee — included with entry, spares for sale */}
@@ -2729,11 +2866,11 @@ export default function App() {
                 <p className="text-xs text-zinc-500">Vegas Gold, in the size you picked at registration — pick it up day-of at the gear locker.</p>
                 <p className="text-[11px] text-zinc-500 mt-2">Want a spare, or not playing? Extra tees are <span className="text-[#fbbf24] font-bold">${TEE_PRICE}</span> while they last — put your size (S/M/L/XL) in the Venmo note.</p>
               </div>
-              <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+              <button onClick={() => setOrderItem({ key: 'tee', label: 'Player Tee', price: TEE_PRICE })}
                 className="shrink-0 inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
                 <Heart className="w-3.5 h-3.5" />
                 <span>Order a Tee — ${TEE_PRICE}</span>
-              </a>
+              </button>
             </div>
 
             {/* Extra gear — per-item price, Buy via Venmo */}
@@ -2752,12 +2889,11 @@ export default function App() {
                       </div>
                       <p className="text-xs text-zinc-500 mb-4">{item.desc}</p>
                     </div>
-                    <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+                    <button onClick={() => setOrderItem({ key: item.key, label: item.label, price: item.price })}
                       className="w-full inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-colors">
                       <Heart className="w-3.5 h-3.5" />
                       <span>Order — ${item.price}</span>
-                    </a>
-                    <p className="text-[10px] text-zinc-600 mt-2 text-center">Add "{item.label}" (and color) to your Venmo note so we know what to bring.</p>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2771,17 +2907,19 @@ export default function App() {
                   <span className="text-[9px] font-black uppercase tracking-wider text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-full px-2 py-0.5">Save ${MERCH_BUNDLE.keys.reduce((s, k) => s + (MERCH_ITEMS.find((i) => i.key === k)?.price || 0), 0) - MERCH_BUNDLE.price}</span>
                 </div>
                 <p className="text-xs text-zinc-400">{MERCH_BUNDLE.desc}</p>
-                <p className="text-[10px] text-zinc-600 mt-1">Add "Bundle" + your hat & sweatband colors to the Venmo note.</p>
               </div>
               <div className="text-center shrink-0">
                 <div className="text-2xl font-black text-[#fbbf24] font-mono leading-none">${MERCH_BUNDLE.price}</div>
-                <a href={VENMO_URL} target="_blank" rel="noopener noreferrer"
+                <button onClick={() => setOrderItem({ key: 'bundle', label: MERCH_BUNDLE.label, price: MERCH_BUNDLE.price })}
                   className="mt-2 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
                   <Heart className="w-3.5 h-3.5" />
                   <span>Order the Bundle</span>
-                </a>
+                </button>
               </div>
             </div>
+
+            {/* Order modal — capture details + notify the organizers, then Venmo */}
+            {orderItem && <MerchOrderModal item={orderItem} onClose={() => setOrderItem(null)} />}
 
             <p className="text-[10px] text-zinc-600 text-center">Every order is a donation to the scholarship — pay via Venmo {VENMO_HANDLE}, and pick up your gear at the locker once it clears.</p>
           </div>
@@ -2860,15 +2998,22 @@ export default function App() {
               </div>
             </section>
 
-            {/* 3 — Scholars we've funded (moved here from the Scholarship tab) — the emotional close */}
-            <section className="border-t border-zinc-800 pt-8">
-              <div className="flex items-center gap-3 mb-1">
-                <GraduationCap className="w-5 h-5 text-[#fbbf24]" />
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Scholars We've Funded</h2>
-              </div>
-              <div className="w-12 h-1 bg-[#fbbf24] rounded-full mb-3"></div>
-              <p className="text-sm text-zinc-400 mb-5 max-w-2xl leading-relaxed">Every entry fee and donation goes to the Arian Rahbar Memorial Scholarship for Dunlap seniors. Here's where it's landed.</p>
-              <ScholarsList showDonate />
+            {/* 3 — Scholars, quiet close. The full list lives ONCE, on the
+                Scholarship tab (next to Donate/Apply) — this is the last
+                cross-tab duplication retired by the density pass. Count and
+                total derive from SCHOLARSHIP_WINNERS so this line can't drift. */}
+            <section className="border-t border-zinc-800/40 pt-6 px-1 text-center">
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                {(() => {
+                  const n = SCHOLARSHIP_WINNERS.reduce((s, w) => s + w.names.length, 0);
+                  const total = SCHOLARSHIP_WINNERS.reduce((s, w) => s + (w.amount || 0), 0);
+                  return <>His legacy funds real scholars — <strong className="text-white">{n} students</strong>{total > 0 && <> and <strong className="text-white">${total.toLocaleString()}</strong></>} so far.</>;
+                })()}
+              </p>
+              <button onClick={() => { setActiveTab('scholarship'); window.scrollTo({ top: 0 }); }}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#fbbf24]/90 hover:text-[#fbbf24] transition-colors">
+                <GraduationCap className="w-4 h-4" /> Meet the scholars → Scholarship
+              </button>
             </section>
 
           </div>
@@ -2879,11 +3024,10 @@ export default function App() {
             ========================================== */}
         {activeTab === 'scholarship' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/30 rounded-3xl p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-2">
-                <GraduationCap className="w-6 h-6 text-[#fbbf24] shrink-0" />
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wider">Arian Rahbar Memorial Tennis Scholarship</h2>
-              </div>
+            {/* Quiet intro — plain lead text so the fund meter below is the
+                page's single hero instead of two identical gradient cards. */}
+            <div className="px-1">
+              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wider mb-2">Arian Rahbar Memorial Tennis Scholarship</h2>
               <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl">
                 An award honoring Arian's legacy of academic excellence and radiating positivity on the court — granted to graduating Dunlap tennis seniors through a short essay and their record as scholar-athletes.
               </p>
@@ -3008,14 +3152,16 @@ export default function App() {
               <ScholarsList />
             </div>
 
-            {/* Register CTA — entry fees fund this scholarship; give cause-aligned visitors a way to act */}
-            <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <div className="text-sm font-black text-white uppercase tracking-wider">Fund it by playing</div>
-                <div className="text-xs text-zinc-400 mt-1 leading-relaxed">Every entry fee goes straight to this scholarship. Grab a spot in the July 11–12 tournament — singles, doubles, or both.</div>
+            {/* Fund-by-playing — quiet tier: Donate is this page's one primary
+                action; playing is a sentence with a link, not a rival gold CTA. */}
+            <div className="border-t border-zinc-800/40 pt-5 px-1 text-center sm:text-left">
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                <span className="text-zinc-300 font-semibold">Prefer to fund it by playing?</span> Every $40 entry goes straight to this scholarship — singles, doubles, or both, July 11–12.
+              </p>
+              <div className="mt-2 inline-block">
+                <RegisterCTA closed={regClosed} label="Register to play"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-4 transition-colors" />
               </div>
-              <RegisterCTA closed={regClosed} label="Register to Play — $40"
-                className="shrink-0 inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
             </div>
 
             {/* Application link — kept low-key off-season; promote in spring */}

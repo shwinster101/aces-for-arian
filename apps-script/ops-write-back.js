@@ -118,6 +118,11 @@ function doPost(e) {
     // joiner pledges $1/ace via Venmo; this only bumps a public joiner COUNT,
     // no PII, so abuse is bounded to inflating a display number).
     if (body.type === 'ace-pledge') { withLock_(function () { bumpAcePledges_(); }); return ContentService.createTextOutput('ok'); }
+    // Public merch order — no token (anyone can buy). Appends to a PRIVATE
+    // MerchOrders tab (buyer name/contact = PII, so like Subscribers it is
+    // intentionally absent from every read allowlist) AND emails the owner —
+    // the notification that replaces reconciling orders out of Venmo notes.
+    if (body.type === 'merch-order') { withLock_(function () { writeMerchOrder_(body.payload); }); return ContentService.createTextOutput('ok'); }
     // Shared-secret gate — must match WRITE_TOKEN in src/admin/store.js.
     // Obfuscation only (the token ships in the public bundle), but it stops
     // drive-by writes from anyone who merely opens /admin.html.
@@ -201,6 +206,55 @@ function writeSubscribe_(payload) {
   }
   rows.push([email, source, new Date().toISOString()]);
   writeRows_(sheet, rows);
+}
+
+// Public merch order -> PRIVATE MerchOrders tab + an email to the owner.
+// Deduped by client-generated id (a retried/duplicated POST upserts the same
+// row and skips the second email). The email is the real-time notification;
+// the row is the durable record the gear locker works from. Buyer name and
+// contact are PII: MerchOrders must NEVER be added to READABLE below or to
+// the Cloudflare ALLOWED read set (same posture as Subscribers). All strings
+// pass through writeRows_'s formula sanitizer.
+var MERCHORDER_HEADERS = ['Id', 'Timestamp', 'Item', 'Variant', 'Size', 'Qty', 'Name', 'Contact', 'Price', 'Status'];
+function writeMerchOrder_(payload) {
+  var id = String((payload && payload.id) || '').slice(0, 60).trim();
+  var item = String((payload && payload.item) || '').slice(0, 100).trim();
+  if (!id || !item) return;
+  var row = [
+    id,
+    new Date().toISOString(),
+    item,
+    String((payload && payload.variant) || '').slice(0, 60),
+    String((payload && payload.size) || '').slice(0, 60),
+    Math.max(1, Math.min(parseInt(payload && payload.qty, 10) || 1, 20)),
+    String((payload && payload.name) || '').slice(0, 150).trim(),
+    String((payload && payload.contact) || '').slice(0, 200).trim(),
+    Math.max(0, Number(payload && payload.price) || 0),
+    'new',
+  ];
+  var sheet = sheetByName_('MerchOrders', MERCHORDER_HEADERS);
+  var rows = readRows_(sheet);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '') === id) { rows[i] = row; writeRows_(sheet, rows); return; } // dup POST: update row, no second email
+  }
+  rows.push(row);
+  writeRows_(sheet, rows);
+  MailApp.sendEmail(
+    IDEA_EMAIL,
+    'Aces for Arian — merch order: ' + item + (row[6] ? ' (' + row[6] + ')' : ''),
+    [
+      'Item: ' + item,
+      row[3] ? 'Variant: ' + row[3] : null,
+      row[4] ? 'Size: ' + row[4] : null,
+      'Qty: ' + row[5],
+      'Total: $' + row[8],
+      'Name: ' + (row[6] || '(none given)'),
+      'Contact: ' + (row[7] || '(none given)'),
+      '',
+      'They were sent to Venmo to pay — match it in @acesforarian activity.',
+      'Order id ' + id + ' · logged on the MerchOrders tab.',
+    ].filter(function (l) { return l !== null; }).join('\n')
+  );
 }
 
 // --------------------------------------------------------------------------
