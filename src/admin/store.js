@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHEET_WRITE_URL, MATCHES_CSV_URL, ACES_CSV_URL, parseCSV, mapMatches, mapAces } from '../lib/sheet';
+import { postWrite } from '../lib/sheetWrite';
 import { buildDraw, setResult, clearResult, swapUnseeded, renameSlot, bracketMatchRows, toggleWithdrawn } from '../lib/draw';
 import { SCHEDULE_DEFAULTS } from '../lib/schedule';
-
-// Shared-secret gate for the write-back endpoint. Must match the token checked
-// in apps-script/ops-write-back.js. It ships in the public admin bundle, so it
-// only deters drive-by writes — not a determined actor. Rotate by changing it
-// here AND in the Apps Script, then redeploying the script (New version).
-const WRITE_TOKEN = 'a4a-ea5316b9f5d5b04e49115a20';
 
 // Multi-device ops sync (check-in/payment/shirt/walk-ups) — must match
 // OPSDESK_TOKEN in apps-script/ops-write-back.js. Same deterrent-only trust
@@ -213,29 +208,25 @@ function load() {
 
 // Lets the ops header show "last push sent H:MM" — pushToSheet notifies this
 // on every dispatched POST. Module-level because pushToSheet is a module
-// function; useOpsStore registers/clears the listener. "Sent" is the honest
-// word: no-cors means the response is unreadable, so delivery can't be
-// confirmed — only that the request left the device.
+// function; useOpsStore registers/clears the listener. Receives {at, status}:
+// 'sent' when the request leaves, then 'confirmed' (the /api/write adapter
+// read the Apps Script's receipt), 'sent' again (dev/legacy no-cors path —
+// the old honesty caveat), or 'failed' (delivery failed after retries).
 let notifyPush = null;
 
-// Fire-and-forget POST to the optional write-back endpoint. Apps Script web
-// apps don't return readable CORS responses from a browser, so this is purely
-// "best effort, don't block on it" — local storage stays the real state.
-export function pushToSheet(type, payload) {
-  if (!SHEET_WRITE_URL) return;
-  try {
-    fetch(SHEET_WRITE_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      // keepalive lets a push issued right before the tab closes (e.g. the
-      // debounced seeds flush on pagehide) still be delivered. Payloads here
-      // are far below the keepalive 64KB cap.
-      keepalive: true,
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type, payload, ts: Date.now(), token: WRITE_TOKEN }),
-    }).catch(() => {});
-    if (notifyPush) notifyPush(Date.now());
-  } catch { /* ignore — local store is still authoritative */ }
+// Push a write through the shared client seam (src/lib/sheetWrite.js): in
+// prod it goes via /api/write with a READABLE response — so the header strip
+// can honestly say confirmed/failed instead of only "attempted" — with the
+// legacy fire-and-forget no-cors POST as the dev/stale-deploy fallback.
+// Returns the {ok, confirmed} promise (never rejects); call sites that don't
+// care can keep ignoring it, and local storage stays the real state.
+export function pushToSheet(type, payload, opts) {
+  if (!SHEET_WRITE_URL) return Promise.resolve({ ok: false, confirmed: false });
+  if (notifyPush) notifyPush({ at: Date.now(), status: 'sent' });
+  return postWrite(type, payload, opts).then(r => {
+    if (notifyPush) notifyPush({ at: Date.now(), status: r.confirmed ? 'confirmed' : r.ok ? 'sent' : 'failed' });
+    return r;
+  });
 }
 
 let uid = 0;
@@ -243,12 +234,13 @@ export const nextId = () => `${Date.now().toString(36)}-${(uid++).toString(36)}`
 
 export function useOpsStore() {
   const [store, setStore] = useState(load);
-  const [lastPushAt, setLastPushAt] = useState(0);
-  // Per-match "saved" receipts: id -> ts of the last match POST that actually
-  // left this device (debounced flush, explicit Save flush, or the bracket
-  // re-sync). Fire-and-forget no-cors, so this is "sent", same honesty caveat
-  // as lastPushAt — but per-row, so the Scores tab can show "Saved ✓ H:MM" on
-  // the exact match a volunteer just edited instead of only the global header.
+  const [lastPush, setLastPush] = useState({ at: 0, status: 'sent' }); // {at, status: 'sent'|'confirmed'|'failed'}
+  // Per-match "saved" receipts: id -> ts of the last match POST for that row
+  // (debounced flush, explicit Save flush, or the bracket re-sync). Stamped on
+  // the push RESULT: in prod (via /api/write) this is a real delivery receipt;
+  // on the dev/legacy no-cors path it means "sent" with the old honesty
+  // caveat. Per-row so the Scores tab shows "Saved ✓ H:MM" on the exact match
+  // a volunteer just edited instead of only the global header.
   const [matchSavedAt, setMatchSavedAt] = useState({});
   const stampSaved = (ids) => {
     const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
@@ -261,10 +253,10 @@ export function useOpsStore() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch { /* storage full/unavailable */ }
   }, [store]);
 
-  // Surface "last push sent" to the ops header (see notifyPush above).
+  // Surface the last push's delivery state to the ops header (see notifyPush above).
   useEffect(() => {
-    notifyPush = setLastPushAt;
-    return () => { if (notifyPush === setLastPushAt) notifyPush = null; };
+    notifyPush = setLastPush;
+    return () => { if (notifyPush === setLastPush) notifyPush = null; };
   }, []);
 
   const getOverlay = (name) => ({ ...emptyOverlay(), ...store.participants[name] });
@@ -369,7 +361,9 @@ export function useOpsStore() {
       if (sent) return;
       sent = true;
       changed.forEach(ev => {
-        pushToSheet('seeds', { event: ev, list: store.seeds[ev].map(({ name }) => ({ name })) });
+        // keepalive: this same send() is the pagehide flush — the final retry
+        // attempt must survive the tab closing.
+        pushToSheet('seeds', { event: ev, list: store.seeds[ev].map(({ name }) => ({ name })) }, { keepalive: true });
         // Mirror the seed order to the private ops-draw sync too, so a second
         // device's Seed Order card fills in (the public 'seeds' push above is
         // Name/Event/Rank only and feeds the PUBLIC board, not the ops console).
@@ -410,8 +404,11 @@ export function useOpsStore() {
     if (!p) return;
     clearTimeout(p.timer);
     delete pendingMatchPush.current[id];
-    pushToSheet('match', p.payload);
-    stampSaved(id);
+    // Stamp on the RESULT: in prod the stamp is now a real delivery receipt
+    // ("Saved ✓" = the adapter read the sheet's ok); dev/legacy resolves
+    // ok:true unconfirmed, so behavior there is identical to before. keepalive
+    // because the pagehide safety net below flushes through this same path.
+    pushToSheet('match', p.payload, { keepalive: true }).then(r => { if (r.ok) stampSaved(id); });
   };
   // Immediate flush for the Scores-tab "Save result" button — sends whatever's
   // pending for this row right now (no 400ms wait) and stamps the saved time.
@@ -572,10 +569,11 @@ export function useOpsStore() {
     // (replaceEngineMatches_ drops old prefix rows and appends these — the
     // old per-row match + match-delete burst could interleave server-side and
     // clobber itself; hand-added rows are untouched by replace semantics).
-    pushToSheet('matches-replace', { event, prefix, list: rows.map(publicMatchPayload) });
-    // Stamp each engine row saved so a winner marked here (or on the unified
-    // Scores tab) shows "Saved ✓" on the row, same as a debounced score push.
-    stampSaved(rows.map(r => r.id));
+    // Stamp each engine row saved on the push RESULT so a winner marked here
+    // (or on the unified Scores tab) shows "Saved ✓" only once the bulk write
+    // is confirmed delivered (prod) / dispatched (dev-legacy).
+    pushToSheet('matches-replace', { event, prefix, list: rows.map(publicMatchPayload) })
+      .then(r => { if (r.ok) stampSaved(rows.map(x => x.id)); });
     // Share the full draw (seed order + bracket state, incl. winner marks) so
     // every ops device converges on it. A null bracket (clear) syncs too.
     pushDraw(event, store.seeds[event], nextBracket);
@@ -910,7 +908,7 @@ export function useOpsStore() {
 
   return {
     store,
-    lastPushAt,
+    lastPush,
     matchSavedAt, flushMatch,
     deskSync, pullDesk,
     getOverlay, setOverlay,

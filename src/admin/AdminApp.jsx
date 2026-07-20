@@ -170,14 +170,24 @@ function OpsConsole({ onLock }) {
             <span className="text-zinc-500">
               {SHEET_WRITE_URL ? 'Edits sync to the sheet + this device' : 'Edits saved on this device (set SHEET_WRITE_URL in lib/sheet.js to push to Sheets)'}
             </span>
-            {ops.lastPushAt > 0 && (
+            {ops.lastPush.at > 0 && (
               <>
                 <span className="text-zinc-700">·</span>
-                {/* "attempted", not "sent/delivered": pushes are fire-and-forget
-                    no-cors, so this only proves the request left the device.
-                    The one real receipt is the public page updating. */}
-                <span title="Pushes can't be delivery-confirmed — spot-check the public page (View live) after important edits."
-                  className="text-emerald-400/80">last push attempted {new Date(ops.lastPushAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                {/* Delivery receipt from the /api/write adapter (store.js →
+                    sheetWrite.js): 'confirmed' means the sheet's own ok was
+                    read back — a real receipt. 'sent' is the dev/legacy no-cors
+                    path where delivery can't be confirmed (the old honesty
+                    caveat). 'failed' means retries exhausted — the edit is safe
+                    locally; re-save when the connection recovers. */}
+                {ops.lastPush.status === 'confirmed' ? (
+                  <span className="text-emerald-400/80">synced to sheet {new Date(ops.lastPush.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                ) : ops.lastPush.status === 'failed' ? (
+                  <span title="Delivery failed after retries — your edit is saved on this device; check the connection, then re-save."
+                    className="text-rose-400">push FAILED {new Date(ops.lastPush.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} — re-save when back online</span>
+                ) : (
+                  <span title="Push sent but not delivery-confirmed on this path — spot-check the public page (View live) after important edits."
+                    className="text-amber-400/80">push sent {new Date(ops.lastPush.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                )}
               </>
             )}
           </div>

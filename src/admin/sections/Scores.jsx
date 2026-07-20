@@ -543,13 +543,14 @@ function ScoreRow({ m, ops, allMatches, sched, isNew, onSeen, canGoLive, onGoLiv
       </div>
 
       {/* Explicit save so a volunteer gets a per-row receipt, not just the
-          global header. Flushes any pending push right now; "Saved ✓ H:MM"
-          reads honest — no-cors means "sent", not "confirmed delivered" — so
-          the tooltip nudges a spot-check on the public board for big results. */}
+          global header. Flushes any pending push right now; in prod "Saved ✓"
+          is a REAL delivery receipt (the /api/write adapter read the sheet's
+          ok — see store.js flushMatchPush); on dev/legacy paths it still means
+          "sent", so the tooltip keeps a soft spot-check nudge. */}
       <div className="flex items-center justify-end">
         <button
           onClick={() => { touch(); ops.flushMatch(m.id); }}
-          title="Sends this row to the sheet now. Delivery can't be auto-confirmed — spot-check the public board (View live) for important results."
+          title="Sends this row to the sheet now. ✓ appears once delivery is confirmed; for big results a glance at the public board (View live) never hurts."
           className={`flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl text-[11px] font-black uppercase tracking-wider border transition active:scale-95 ${
             saved
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'

@@ -25,6 +25,7 @@ import {
   mapOpsStatus,
   mapAnnouncements,
 } from './lib/sheet';
+import { postWrite } from './lib/sheetWrite';
 import { deriveEntrants, shortLabel, normName, boardTeam, dupFirstNames } from './lib/entrants';
 import { estimateLabel, startClockLabel, isReadyRow, playPos, roundMilestones, dayStartMs, SCHEDULE_DEFAULTS } from './lib/schedule';
 import CompassDraw from './CompassDraw';
@@ -813,26 +814,37 @@ function Disclosure({ summary, children, defaultOpen = false, className = '' }) 
   );
 }
 
-// Public "got an idea?" box — fire-and-forget POST to the Apps Script (type
-// 'idea'), which emails the organizers. no-cors means we can't read a response,
-// so we confirm optimistically.
+// Small shared "couldn't send" note for the public write boxes — shown when
+// postWrite reports a real failure (prod /api/write path); the typed content
+// is preserved so nothing is lost to a dead spot in coverage.
+function SendFailedNote() {
+  return (
+    <p className="text-[11px] text-rose-300/90 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
+      Couldn&rsquo;t send — check your connection and try again. Your text is still here.
+    </p>
+  );
+}
+
+// Public "got an idea?" box — posts through the shared write seam (type
+// 'idea' → emails the organizers). In prod the /api/write adapter reads a real
+// receipt, so failures show honestly instead of a fake success; dev/legacy
+// paths stay optimistic (fire-and-forget as before).
 function IdeaBox() {
   const [text, setText] = useState('');
   const [from, setFrom] = useState('');
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
   if (!SHEET_WRITE_URL) return null;
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const body = text.trim();
-    if (!body) return;
-    try {
-      fetch(SHEET_WRITE_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ type: 'idea', payload: { text: body.slice(0, 3000), from: from.trim().slice(0, 150) } }),
-      }).catch(() => {});
-    } catch { /* fire and forget */ }
-    setText(''); setFrom(''); setSent(true);
+    if (!body || sending) return;
+    setSending(true); setFailed(false);
+    const r = await postWrite('idea', { text: body.slice(0, 3000), from: from.trim().slice(0, 150) });
+    setSending(false);
+    if (r.ok) { setText(''); setFrom(''); setSent(true); }
+    else setFailed(true); // keep the typed text
   };
   return (
     <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-7">
@@ -844,6 +856,7 @@ function IdeaBox() {
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-2.5">
+          {failed && <SendFailedNote />}
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={3000}
             placeholder="Your idea…"
             className="w-full bg-[#111] border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors resize-y" />
@@ -851,9 +864,9 @@ function IdeaBox() {
             <input value={from} onChange={(e) => setFrom(e.target.value)} maxLength={150}
               placeholder="Name or email (optional, so we can reply)"
               className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
-            <button type="submit" disabled={!text.trim()}
+            <button type="submit" disabled={!text.trim() || sending}
               className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
-              Send idea
+              {sending ? 'Sending…' : 'Send idea'}
             </button>
           </div>
         </form>
@@ -880,6 +893,8 @@ function SeedSuggestionBox({ participants, seedsFinal }) {
   const [picks, setPicks] = useState({ Singles: [], Doubles: [] }); // ranked display names
   const [from, setFrom] = useState('');
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const banks = useMemo(() => ({
     Singles: deriveEntrants(participants, 'Singles'),
@@ -903,20 +918,19 @@ function SeedSuggestionBox({ participants, seedsFinal }) {
     setList(next);
   };
 
-  const submit = () => {
+  const submit = async () => {
     const sections = SUGGEST_EVENTS
       .filter(ev => picks[ev].length)
       .map(ev => `${ev}:\n` + picks[ev].map((n, i) => `${i + 1}. ${n}`).join('\n'));
-    if (!sections.length) return;
+    if (!sections.length || sending) return;
     const text = `SEED SUGGESTION — top ${SUGGEST_MAX}\n\n${sections.join('\n\n')}`;
-    try {
-      fetch(SHEET_WRITE_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ type: 'idea', payload: { text: text.slice(0, 3000), from: from.trim().slice(0, 150) } }),
-      }).catch(() => {});
-    } catch { /* fire and forget */ }
-    setSent(true);
+    setSending(true); setFailed(false);
+    // Same email pipeline as the idea box; a real failure keeps the picks so
+    // nothing is retyped ('idea' never auto-retries — it sends an email).
+    const r = await postWrite('idea', { text: text.slice(0, 3000), from: from.trim().slice(0, 150) });
+    setSending(false);
+    if (r.ok) setSent(true);
+    else setFailed(true);
   };
 
   const rowBtn = 'min-w-8 min-h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors shrink-0';
@@ -972,13 +986,14 @@ function SeedSuggestionBox({ participants, seedsFinal }) {
             </div>
           )}
 
+          {failed && <div className="mb-2.5"><SendFailedNote /></div>}
           <div className="flex flex-col sm:flex-row gap-2.5">
             <input value={from} onChange={(e) => setFrom(e.target.value)} maxLength={150}
               placeholder="Name or email (optional, so the committee can follow up)"
               className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
-            <button onClick={submit} disabled={!picks.Singles.length && !picks.Doubles.length}
+            <button onClick={submit} disabled={(!picks.Singles.length && !picks.Doubles.length) || sending}
               className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
-              Send my picks
+              {sending ? 'Sending…' : 'Send my picks'}
             </button>
           </div>
         </>
@@ -994,20 +1009,21 @@ function SeedSuggestionBox({ participants, seedsFinal }) {
 function NotifyMeBox({ source = 'site' }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
   if (!SHEET_WRITE_URL) return null;
   const valid = (s) => /\S@\S/.test(s.trim());
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const em = email.trim();
-    if (!valid(em)) return;
-    try {
-      fetch(SHEET_WRITE_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ type: 'subscribe', payload: { email: em.slice(0, 500), source } }),
-      }).catch(() => {});
-    } catch { /* fire and forget */ }
-    setEmail(''); setSent(true);
+    if (!valid(em) || sending) return;
+    setSending(true); setFailed(false);
+    // 'subscribe' is deduped server-side, so the retry policy is safe here; a
+    // real failure keeps the typed email instead of faking success.
+    const r = await postWrite('subscribe', { email: em.slice(0, 500), source });
+    setSending(false);
+    if (r.ok) { setEmail(''); setSent(true); }
+    else setFailed(true);
   };
   return (
     <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 md:p-7">
@@ -1021,14 +1037,17 @@ function NotifyMeBox({ source = 'site' }) {
           Thanks — we'll send you next year's date and updates. <button onClick={() => setSent(false)} className="text-emerald-400/80 hover:text-emerald-200 underline underline-offset-2 ml-1">Add another</button>
         </div>
       ) : (
-        <form onSubmit={submit} className="flex flex-col sm:flex-row gap-2.5">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={500}
-            placeholder="you@email.com"
-            className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
-          <button type="submit" disabled={!valid(email)}
-            className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
-            Notify me
-          </button>
+        <form onSubmit={submit} className="space-y-2.5">
+          {failed && <SendFailedNote />}
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={500}
+              placeholder="you@email.com"
+              className="sm:flex-1 bg-[#111] border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-[#fbbf24]/40 transition-colors" />
+            <button type="submit" disabled={!valid(email) || sending}
+              className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-colors">
+              {sending ? 'Sending…' : 'Notify me'}
+            </button>
+          </div>
         </form>
       )}
     </div>
@@ -1405,15 +1424,12 @@ export default function App() {
       try { localStorage.setItem('a4a-acepledge', '1'); } catch { /* private mode */ }
       setPledged(true);
       setPledgers(n => (n < 0 ? 1 : n + 1));
-      if (SHEET_WRITE_URL) {
-        try {
-          fetch(SHEET_WRITE_URL, {
-            method: 'POST', mode: 'no-cors', keepalive: true,
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ type: 'ace-pledge' }),
-          }).catch(() => {});
-        } catch { /* display-only count — Venmo is the real transaction */ }
-      }
+      // Stays fire-and-forget: window.open below must run synchronously in the
+      // tap (popup blockers), the count is display-only celebration, and
+      // 'ace-pledge' never auto-retries (it's an increment — a retry after an
+      // ambiguous timeout could double-count). keepalive survives the app
+      // backgrounding as Venmo opens.
+      if (SHEET_WRITE_URL) postWrite('ace-pledge', {}, { keepalive: true });
     }
     window.open(VENMO_URL, '_blank', 'noopener');
   };

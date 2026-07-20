@@ -1,6 +1,13 @@
 // ==========================================================================
 // Aces for Arian — ops console write-back (Google Apps Script Web App)
 // ==========================================================================
+// ⚠ DEPLOYING CHANGES: a repo commit deploys NOTHING here. After editing this
+// file, paste it into the Apps Script editor and publish via Deploy → Manage
+// deployments → edit the EXISTING deployment → New version. Never create a
+// new deployment — that changes the /exec URL and breaks every caller.
+// Pending in this revision: doPost error bodies + logging, the writeRows_
+// formula sanitizer, and AcePledges in READABLE.
+//
 // This is the missing half of the data pipeline documented in
 // src/lib/sheet.js (SHEET_WRITE_URL) and src/admin/store.js (pushToSheet).
 // Right now the admin panel's edits land only in each device's localStorage —
@@ -141,9 +148,15 @@ function doPost(e) {
       }
     });
   } catch (err) {
-    // Apps Script web apps can't hand a readable response back to a
-    // mode:'no-cors' fetch anyway, so there's no one to tell — just don't
-    // let a bad payload 500 the endpoint for the next request.
+    // Browsers still can't read this (no-cors), but the Cloudflare /api/write
+    // adapter forwards server-to-server and CAN — so a failed write finally
+    // has a receipt. Log it too (Apps Script editor -> Executions), which used
+    // to be silently discarded. Message only (no stack) in the body: it flows
+    // to CF logs and the admin UI. Nothing secret lives in these errors.
+    console.error('doPost failed: ' + ((err && err.stack) || err));
+    return ContentService.createTextOutput(
+      'error:' + String((err && err.message) || 'unknown').slice(0, 200)
+    );
   }
   return ContentService.createTextOutput('ok');
 }
@@ -212,7 +225,10 @@ function writeSubscribe_(payload) {
 // token in hand, the raw roster (email/phone/payment) NEVER leaves this script.
 // The Cloudflare Function filters again on its side (defense in depth).
 var READ_TOKEN = 'a4a-read-8db082a282da9e0b622178164cd9b202'; // matches SHEET_READ_TOKEN in Cloudflare (obfuscation only)
-var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces', 'OpsStatus', 'Announcements']; // '' = roster (first tab)
+// Keep this in lockstep with ALLOWED in functions/api/sheet.js — a tab present
+// there but missing here silently reads as empty once the sheet goes private
+// (that's exactly how AcePledges was nearly lost).
+var READABLE = ['', 'Config', 'SeedBoardPublic', 'Photos', 'Courts', 'Matches', 'Aces', 'AcePledges', 'OpsStatus', 'Announcements']; // '' = roster (first tab)
 
 // Email-blast token — gates ONLY the mode=emails read below (the roster's
 // email column for the ops Announce tab's Gmail-BCC list). Deliberately a
@@ -764,11 +780,26 @@ function readRows_(sheet) {
   return sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
 }
 
+// Formula-injection guard: setValues() interprets a leading = (and + - @) as a
+// live formula, so a crafted "name" like ='Form Responses 1'!C2 would EXECUTE
+// in the sheet and its computed value (raw roster PII) would flow out through
+// getValues()-based reads — bypassing both roster column filters. Prefixing '
+// makes Sheets store the literal text (the apostrophe is the text-input
+// MARKER, not part of the value: getValues() on re-read returns the bare
+// string, so nothing accumulates across read-modify-write cycles, and CSV
+// reads serve the value verbatim).
+function sanitizeCell_(v) {
+  return (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) ? "'" + v : v;
+}
+
 function writeRows_(sheet, rows) {
   var cols = Math.max(sheet.getLastColumn(), 1);
   var last = sheet.getLastRow();
   if (last > 1) sheet.getRange(2, 1, last - 1, cols).clearContent();
-  if (rows.length) sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  if (rows.length) {
+    var safe = rows.map(function (r) { return r.map(sanitizeCell_); });
+    sheet.getRange(2, 1, safe.length, safe[0].length).setValues(safe);
+  }
 }
 
 // --------------------------------------------------------------------------

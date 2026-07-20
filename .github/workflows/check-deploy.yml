@@ -105,6 +105,38 @@ jobs:
               if name:
                   print(f'{name!r} -> {cy!r}' + ('  [HIDDEN from public render]' if hid else ''))
           EOF
+      - name: Probe the /api/write adapter (event-day safe)
+        run: |
+          # Same fake-event 'Probe'/'P-' round-trip as the direct Apps Script
+          # probe above, but through the Cloudflare adapter — and with NO token
+          # in the request, proving the server-side token injection works.
+          # Also checks the validation layer (bad type -> 400) and the
+          # writeRows_ formula sanitizer (a leading-= cell must come back as
+          # LITERAL text, never evaluate, and never grow extra apostrophes).
+          READ="a4a-read-8db082a282da9e0b622178164cd9b202"
+          API="https://acesforarian.com/api/write"
+          EXEC="https://script.google.com/macros/s/AKfycby1CP-FQNwOoKYkDiiFEzoUbrEkg2427Iyt4x_GXwjeVsB9rlOPMYJOZQiygkI5fDbM7Q/exec"
+          echo "===== bad type -> expect 400 bad-type"
+          curl -sS -m 20 -o resp.json -w "HTTP %{http_code}\n" -H 'Content-Type: application/json' \
+            -d '{"v":1,"type":"nope","payload":{}}' "$API"; cat resp.json; echo
+          echo "===== missing v -> expect 400 bad-version"
+          curl -sS -m 20 -o resp.json -w "HTTP %{http_code}\n" -H 'Content-Type: application/json' \
+            -d '{"type":"aces","payload":{"count":0}}' "$API"; cat resp.json; echo
+          echo "===== tokenless probe write through the adapter -> expect 200 {\"ok\":true}"
+          curl -sS -m 30 -o resp.json -w "HTTP %{http_code}\n" -H 'Content-Type: application/json' \
+            -d '{"v":1,"type":"matches-replace","payload":{"event":"Probe","prefix":"P-","list":[{"id":"P-adapter","event":"Probe","round":"X","num":"998","a":"=1+1","b":"probe-b","status":"scheduled"}]}}' \
+            "$API"; cat resp.json; echo
+          sleep 3
+          echo "===== formula sanitizer: the '=1+1' cell must read back LITERALLY (not '2', not ''=1+1')"
+          curl -sSL -m 20 -o matches.csv "$EXEC?tab=Matches&token=$READ"
+          grep -c '=1+1' matches.csv && echo "literal =1+1 present (sanitizer OK)" || echo "NOT FOUND — either write failed above, or the cell EVALUATED (sanitizer broken / script not redeployed)"
+          grep -c "'=1+1" matches.csv | grep -qv '^0$' && echo "WARNING: apostrophe leaked into the value" || true
+          echo "===== cleanup probe rows"
+          curl -sS -m 30 -o resp.json -w "cleanup HTTP %{http_code}\n" -H 'Content-Type: application/json' \
+            -d '{"v":1,"type":"matches-replace","payload":{"event":"Probe","prefix":"P-","list":[]}}' "$API"; cat resp.json; echo
+          echo "===== AcePledges readable through the site proxy (empty until the Apps Script redeploy adds it to READABLE)"
+          curl -sS -m 20 -A "Mozilla/5.0" -o ap.csv -w "HTTP %{http_code}\n" "https://acesforarian.com/api/sheet?tab=AcePledges"
+          echo "bytes: $(wc -c < ap.csv)"
       - name: Freshness marker in the main bundle
         run: |
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
