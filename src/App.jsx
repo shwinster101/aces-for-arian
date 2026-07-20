@@ -773,14 +773,17 @@ function ScholarsList({ showDonate = false }) {
 // Every tab in one place — the source of truth for both the sticky strip and
 // the mobile "Explore" menu. `blurb` is the 1-line "what's here" hook that turns
 // the menu into a discovery tool, not just navigation.
+// Wrap-season order: the cause, the story, the memories, and the gear lead;
+// Rules and the results archive close the row — the Home wrap card already
+// deep-links to both ("Final draws & results", "Full rules & schedule").
 const TABS = [
   { id: 'home', label: 'Home', icon: Home, blurb: 'Register, roster & day-of basics' },
-  { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
-  { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
   { id: 'scholarship', label: 'Scholarship', icon: GraduationCap, blurb: 'Apply, recipients & the cause' },
   { id: 'legacy', label: 'Legacy', icon: Heart, blurb: "Arian's story, Hall of Fame & past results" },
   { id: 'photos', label: 'Photos', icon: ImageIcon, blurb: 'Tournament memories, 2020 to today' },
   { id: 'merch', label: 'Merch', icon: ShoppingBag, blurb: 'Tournament tees & gear' },
+  { id: 'rules', label: 'Rules', icon: BookOpen, blurb: 'Format, schedule & FAQ' },
+  { id: 'draws', label: 'Brackets', icon: Award, blurb: 'Your match, live court board & scores' },
 ];
 
 // Deep-linkable tabs: friendly URL hash slugs (#brackets, #seeding, …) so the
