@@ -41,7 +41,6 @@ import {
   BookOpen,
   Calendar,
   Clock,
-  ShieldCheck,
   CheckCircle2,
   Image as ImageIcon,
   Home,
@@ -1901,7 +1900,7 @@ export default function App() {
                   <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">That&rsquo;s a wrap on Aces for Arian 2026 🎾</h2>
                 </div>
                 <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl mb-5">
-                  Two days, two draws, and a community that showed up for Arian. Thank you to every player, volunteer, and supporter — see the final brackets, relive the weekend in photos, and keep the scholarship growing below.
+                  Two days, two draws — thank you to every player, volunteer, and supporter for such a fun community that showed up for Arian! Keep the scholarship growing below.
                 </p>
                 <div className="rounded-2xl overflow-hidden border border-zinc-800 mb-5">
                   <img src="/wrap-2026.jpg"
@@ -1930,8 +1929,8 @@ export default function App() {
                       <div className="flex-1">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24] mb-1">Join the Ace Pledge</div>
                         <p className="text-sm text-zinc-300 leading-relaxed">
-                          <strong className="text-white">{aces} aces</strong> were hit this weekend. Pledge <strong className="text-white">$1 per ace</strong> — that&rsquo;s a <strong className="text-[#fbbf24]">${aces}</strong> Venmo to <strong className="text-zinc-200">@acesforarian</strong> (note: &ldquo;Ace Pledge&rdquo;), straight to Arian&rsquo;s scholarship.
-                          {pledgers > 0 && <> <span className="text-zinc-500">· {pledgers} {pledgers === 1 ? 'person has' : 'people have'} joined — ${(pledgers * aces).toLocaleString()} from aces so far.</span></>}
+                          <strong className="text-white">{aces} aces</strong> this weekend — pledge <strong className="text-white">$1 per ace</strong> straight to Arian&rsquo;s scholarship.
+                          {pledgers > 0 && <> <span className="text-zinc-500">· {pledgers} in, ${(pledgers * aces).toLocaleString()} so far</span></>}
                         </p>
                       </div>
                       <button onClick={joinAcePledge}
@@ -1942,18 +1941,11 @@ export default function App() {
                   </div>
                 )}
 
-                {/* 3 — The money, with the people it goes to */}
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4 mb-3">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">For the scholarship</div>
-                  <div className="text-lg font-black text-white leading-tight">
-                    ${calculatedFunding.toLocaleString()} raised
-                    {aces > 0 && pledgers > 0 && <span className="text-sm font-bold text-[#fbbf24]"> + ${(pledgers * aces).toLocaleString()} pledged</span>}
-                  </div>
-                  <div className="text-xs text-zinc-400 mt-1">
-                    2026 recipients: <strong className="text-zinc-200">Noelle Daccache</strong> &amp; <strong className="text-zinc-200">Anton Dahlin</strong>
-                    {acesLive && aces > 0 && <span className="text-zinc-600"> · {aces} aces hit across the weekend</span>}
-                    {aces > 0 && pledgers > 0 && <span className="text-zinc-600"> · {pledgers} Ace Pledger{pledgers === 1 ? '' : 's'} in</span>}
-                  </div>
+                {/* 3 — The money, quiet strip (concise; no box-in-box) */}
+                <div className="px-1 py-2 mb-3">
+                  <span className="text-lg font-black text-white leading-tight">${calculatedFunding.toLocaleString()} raised</span>
+                  {aces > 0 && pledgers > 0 && <span className="text-sm font-bold text-[#fbbf24]"> + ${(pledgers * aces).toLocaleString()} pledged</span>}
+                  <span className="block text-xs text-zinc-400 mt-0.5">2026 scholars: <strong className="text-zinc-200">Noelle Daccache</strong> &amp; <strong className="text-zinc-200">Anton Dahlin</strong></span>
                 </div>
 
                 {/* 4 — Champions, slimmed to two rows */}
@@ -1982,7 +1974,14 @@ export default function App() {
                   </a>
                 </div>
                 <div className="mt-5 pt-5 border-t border-zinc-800/60">
-                  <p className="text-xs text-zinc-500 mb-2">First to know about the 6th Annual — 2027 dates, registration, everything:</p>
+                  {/* Second weekend of July 2027 (Saturdays fall 3/10/17/24) */}
+                  <p className="text-sm text-zinc-300 mb-2">
+                    <Calendar className="w-3.5 h-3.5 text-[#fbbf24] inline -mt-0.5 mr-1.5" />
+                    <span className="font-black text-white uppercase tracking-wide">Save the date</span>
+                    <span className="text-zinc-400"> — the 6th Annual is </span>
+                    <strong className="text-[#fbbf24]">July 10–11, 2027</strong>
+                  </p>
+                  <p className="text-xs text-zinc-500 mb-2">Get the registration link the moment it opens:</p>
                   <NotifyMeBox source="wrap-hero" />
                 </div>
               </div>
@@ -2263,10 +2262,13 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="order-1 lg:order-2 space-y-6">
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6 flex flex-col justify-center">
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider mb-5">Coordinators</h3>
-                  <div className="space-y-3">
+              {/* Quiet tier — day-of reference (numbers, rules line, directions)
+                  reads as one calm stack instead of three identical boxes. The
+                  tel chips stay tappable. */}
+              <div className="order-1 lg:order-2 space-y-6 px-1 lg:pt-2">
+                <section>
+                  <h3 className="text-xs font-bold text-zinc-400 tracking-wide mb-3">Coordinators</h3>
+                  <div className="space-y-2">
                     <div className="flex justify-between items-center bg-[#111] p-3 rounded-xl border border-zinc-800/60">
                       <span className="text-xs text-zinc-300 font-semibold">Ashwin Yedavalli</span>
                       <a href="tel:3093618746" className="text-[#fbbf24] font-mono text-[11px] hover:underline">309-361-8746</a>
@@ -2280,34 +2282,28 @@ export default function App() {
                       <a href="tel:3097136182" className="text-[#fbbf24] font-mono text-[11px] hover:underline">309-713-6182</a>
                     </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <ShieldCheck className="h-5 w-5 text-emerald-400" />
-                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Tournament Rules</h3>
-                  </div>
+                <section className="border-t border-zinc-800/40 pt-5">
+                  <h3 className="text-xs font-bold text-zinc-400 tracking-wide mb-2">Tournament rules</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
                     <strong className="text-zinc-200">Arrive 15 min early</strong> · 15 late is a default · pre-pay before you take the court.
                   </p>
                   <button onClick={() => { setActiveTab('rules'); window.scrollTo({ top: 0 }); }}
-                    className="mt-3 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors text-left">
+                    className="mt-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-[#fbbf24] transition-colors text-left">
                     Full rules &amp; schedule →
                   </button>
-                </div>
+                </section>
 
-                <div className="bg-[#151515] border border-zinc-800 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Calendar className="h-5 w-5 text-[#fbbf24]" />
-                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Getting There</h3>
-                  </div>
-                  <ul className="text-xs text-zinc-400 space-y-2.5">
-                    <li>• <a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">Dunlap High School tennis courts — map &amp; directions</a></li>
-                    <li>• Free parking in the school lot by the courts.</li>
-                    <li>• Spectators welcome all weekend — bring a chair.</li>
-                    <li>• First serve ~9 AM Saturday · ~9 AM Sunday.</li>
+                <section className="border-t border-zinc-800/40 pt-5">
+                  <h3 className="text-xs font-bold text-zinc-400 tracking-wide mb-2">Getting there</h3>
+                  <ul className="text-xs text-zinc-400 space-y-2">
+                    <li><a href="https://www.google.com/maps/search/?api=1&query=Dunlap+High+School+tennis+courts%2C+Dunlap%2C+IL" target="_blank" rel="noopener noreferrer" className="text-[#fbbf24]/80 hover:text-[#fbbf24] underline underline-offset-2 transition-colors">Dunlap High School tennis courts — map &amp; directions</a></li>
+                    <li>Free parking in the school lot by the courts.</li>
+                    <li>Spectators welcome all weekend — bring a chair.</li>
+                    <li>First serve ~9 AM Saturday · ~9 AM Sunday.</li>
                   </ul>
-                </div>
+                </section>
               </div>
             </div>
 
