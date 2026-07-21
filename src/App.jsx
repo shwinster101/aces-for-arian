@@ -2454,7 +2454,7 @@ export default function App() {
               <div className="bg-[#151515] border border-[#fbbf24]/25 rounded-3xl p-6">
                 <h2 className="text-xl font-black text-white uppercase tracking-wider mb-2">That&rsquo;s a wrap 🎾</h2>
                 <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
-                  Every court is quiet — the 2026 draws above are the permanent record, champions in gold. Full results below, memories in the <button onClick={() => { setActiveTab('photos'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">photo gallery</button>, and past champions in <button onClick={() => { setActiveTab('legacy'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">Legacy</button>. See you at the 6th Annual.
+                  The draws above are the permanent record — champions in gold, full results below, memories in the <button onClick={() => { setActiveTab('photos'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">photo gallery</button>.
                 </p>
               </div>
             )}
@@ -2632,7 +2632,7 @@ export default function App() {
                   <div className="flex-1 w-full">
                     <p className="text-sm text-zinc-400 leading-relaxed">
                       {wrapMode
-                        ? <>Final count — {aces} ace{aces === 1 ? '' : 's'} served across the weekend. Join the <strong className="text-zinc-200">Ace Pledge</strong>: $1 per ace = a ${aces} Venmo to the scholarship{pledgers > 0 && <> — <strong className="text-zinc-200">{pledgers} joined, ${(pledgers * aces).toLocaleString()} so far</strong></>}.</>
+                        ? <>Final count. Pledge <strong className="text-zinc-200">$1 per ace</strong> to the scholarship{pledgers > 0 && <> <span className="text-zinc-500">· {pledgers} in, ${(pledgers * aces).toLocaleString()} so far</span></>}.</>
                         : <>Every ace served this weekend goes toward Arian's scholarship. Counted live courtside — keep 'em coming.</>}
                     </p>
                     {wrapMode && (
@@ -2975,8 +2975,13 @@ export default function App() {
                 <div className="text-xs text-zinc-400 mt-1 leading-relaxed">100% of entry fees and donations fund the Arian Rahbar Memorial Scholarship for Dunlap seniors pursuing higher education.</div>
               </div>
               <div className="shrink-0 flex flex-col sm:flex-row gap-2.5">
+                {/* Register retires in wrap season (the event is over — a
+                    "sign-ups closed" note here is just noise); Donate is the
+                    year-round action. Both return for 2027 registration. */}
+                {!wrapMode && (
                 <RegisterCTA closed={regClosed} label="Register to Play — $40"
                   className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/10" />
+                )}
                 <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 border border-[#fbbf24]/40 hover:border-[#fbbf24] text-[#fbbf24] font-black text-sm uppercase tracking-wider px-6 py-3.5 rounded-xl transition-colors">
                   <Heart className="w-4 h-4" />
                   <span>Donate</span>
@@ -3114,7 +3119,7 @@ export default function App() {
                       <h3 className="text-sm font-black text-white uppercase tracking-wider">Join the Ace Pledge</h3>
                     </div>
                     <p className="text-sm text-zinc-300 leading-relaxed">
-                      <strong className="text-white">{aces} aces</strong> were served across the weekend. Pledge <strong className="text-white">$1 per ace</strong> — a <strong className="text-[#fbbf24]">${aces}</strong> Venmo to <strong className="text-zinc-200">@acesforarian</strong> (note: &ldquo;Ace Pledge&rdquo;) that goes straight into this fund.
+                      <strong className="text-white">{aces} aces</strong> this weekend — pledge <strong className="text-white">$1 per ace</strong> straight into this fund <span className="text-zinc-500">(Venmo note: &ldquo;Ace Pledge&rdquo;)</span>.
                       {pledgers > 0 && <> <span className="text-zinc-400">{pledgers} {pledgers === 1 ? 'person has' : 'people have'} joined — <strong className="text-zinc-200">${(pledgers * aces).toLocaleString()}</strong> pledged from aces so far.</span></>}
                     </p>
                   </div>
@@ -3154,7 +3159,9 @@ export default function App() {
             </div>
 
             {/* Fund-by-playing — quiet tier: Donate is this page's one primary
-                action; playing is a sentence with a link, not a rival gold CTA. */}
+                action; playing is a sentence with a link, not a rival gold CTA.
+                Retired in wrap season (the event is over); returns for 2027. */}
+            {!wrapMode && (
             <div className="border-t border-zinc-800/40 pt-5 px-1 text-center sm:text-left">
               <p className="text-xs text-zinc-400 leading-relaxed">
                 <span className="text-zinc-300 font-semibold">Prefer to fund it by playing?</span> Every $40 entry goes straight to this scholarship — singles, doubles, or both, July 11–12.
@@ -3164,6 +3171,7 @@ export default function App() {
                   className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#fbbf24]/90 hover:text-[#fbbf24] underline underline-offset-4 transition-colors" />
               </div>
             </div>
+            )}
 
             {/* Application link — kept low-key off-season; promote in spring */}
             <div className="text-center pt-1">
