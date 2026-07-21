@@ -2070,20 +2070,18 @@ export default function App() {
                   <span>In memory of Arian Rahbar — every dollar funds his scholarship</span>
                   <span className="opacity-60 group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
                 </button>
+                {/* Wrap mode: no paragraph and no results CTA here — the wrap
+                    card at the top of Home already says thanks and links the
+                    results, and the nav carries "2026 Results". Headline +
+                    flyer stand on their own (owner call). */}
+                {!wrapMode && (
                 <p className="text-[13px] text-zinc-400 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  {wrapMode
-                    ? <>Two days of tennis, a full doubles field, a 32-draw singles bracket, and every dollar toward Arian's scholarship — our 7th straight summer of tournament tennis. The draws stay up as the permanent record: find your run, your scores, and the champions.</>
-                    : <>Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of tournament tennis, counting the Eagle Classic years (2020–21)!</>}
+                  Singles, doubles, or both — $40 covers the full weekend, plus a tournament tee, court snacks, and great photos. Come play with the Dunlap tennis community. It's the 5th Annual Aces for Arian — and our 7th straight summer of tournament tennis, counting the Eagle Classic years (2020–21)!
                 </p>
+                )}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 pt-1">
                   {wrapMode ? (
-                    <>
-                      <button onClick={() => { setActiveTab('draws'); window.scrollTo({ top: 0 }); }}
-                        className="inline-flex items-center gap-2 bg-[#fbbf24] hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider px-6 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/10">
-                        See the 2026 results
-                      </button>
-                      <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Thanks for an unforgettable weekend — see you in 2027</span>
-                    </>
+                    <span className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-full px-2.5 py-1">Thanks for an unforgettable weekend — see you in 2027</span>
                   ) : (
                     <>
                       <RegisterCTA closed={regClosed} label="Register Here!"
@@ -2176,7 +2174,10 @@ export default function App() {
             {/* Roster & Info Grid. On phones the logistics column (coordinators,
                 rules, directions) stacks FIRST — day-of visitors need a phone
                 number and the parking lot before 30 rows of roster. Desktop
-                keeps roster left, info right. */}
+                keeps roster left, info right. Retired in WRAP mode: the field
+                is memorialized in the 2026 Results draws, and day-of logistics
+                are stale once play ends — both return for 2027 registration. */}
+            {!wrapMode && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
               <div className="order-2 lg:order-1 lg:col-span-2 bg-[#151515] border border-zinc-800 rounded-3xl p-6">
@@ -2309,6 +2310,7 @@ export default function App() {
                 </section>
               </div>
             </div>
+            )}
 
           </div>
         )}
