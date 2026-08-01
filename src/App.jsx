@@ -1173,7 +1173,8 @@ function NotifyMeBox({ source = 'site' }) {
         <Mail className="h-4 w-4 text-[#fbbf24] shrink-0" />
         <h3 className="text-sm font-black text-white uppercase tracking-wider">Get next year's date + updates</h3>
       </div>
-      <p className="text-xs text-zinc-400 mt-1 mb-4 max-w-2xl leading-relaxed">Drop your email and we'll send you the date, the registration link, and tournament news for next year — nothing else.</p>
+      <p className="text-xs text-zinc-400 mt-1 mb-1 max-w-2xl leading-relaxed">Drop your email and we'll send you the date, the registration link, and tournament news for next year — nothing else.</p>
+      <p className="text-[10px] text-zinc-600 mb-4 max-w-2xl leading-relaxed">Never sold or shared — email <a href="mailto:acesforarian@gmail.com?subject=Unsubscribe" className="underline underline-offset-2 hover:text-zinc-400 transition-colors">acesforarian@gmail.com</a> anytime to opt out.</p>
       {sent ? (
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-sm text-emerald-300">
           Thanks — we'll send you next year's date and updates. <button onClick={() => setSent(false)} className="text-emerald-400/80 hover:text-emerald-200 underline underline-offset-2 ml-1">Add another</button>
@@ -1900,7 +1901,7 @@ export default function App() {
               <div className="bg-gradient-to-br from-[#1c1408] to-[#151515] border border-[#fbbf24]/40 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black">
                 <div className="flex items-center gap-2.5 mb-1">
                   <Trophy className="w-5 h-5 text-[#fbbf24]" />
-                  <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">That&rsquo;s a wrap on Aces for Arian 2026 🎾</h2>
+                  <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">That&rsquo;s a wrap on Aces for Arian 2026 <span aria-hidden="true">🎾</span></h2>
                 </div>
                 <p className="text-sm text-zinc-400 leading-relaxed max-w-3xl mb-5">
                   Two days, two draws — thank you to every player, volunteer, and supporter for such a fun community that showed up for Arian! Keep the scholarship growing below.
@@ -1919,7 +1920,7 @@ export default function App() {
                     <ImageIcon className="w-5 h-5 text-[#fbbf24] shrink-0" />
                     <span className="min-w-0">
                       <span className="block text-sm font-bold text-white">Google photo album</span>
-                      <span className="block text-xs text-zinc-500">Shout out Aashu V for the great pics! 📸</span>
+                      <span className="block text-xs text-zinc-500">Shout out Aashu V for the great pics! <span aria-hidden="true">📸</span></span>
                     </span>
                   </span>
                   <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-[#fbbf24] shrink-0 transition-colors" />
@@ -1938,7 +1939,7 @@ export default function App() {
                       </div>
                       <button onClick={joinAcePledge}
                         className={`shrink-0 min-h-11 px-5 font-black text-xs uppercase tracking-wider rounded-xl transition-colors ${pledged ? 'bg-[#111] border border-[#fbbf24]/40 text-[#fbbf24]' : 'bg-[#fbbf24] hover:bg-amber-400 text-black'}`}>
-                        {pledged ? `You're in 🎾 · Venmo $${aces}` : `Pledge $${aces} on Venmo`}
+                        {pledged ? <>You&rsquo;re in <span aria-hidden="true">🎾</span> · Venmo ${aces}</> : `Pledge $${aces} on Venmo`}
                       </button>
                     </div>
                   </div>
@@ -2452,7 +2453,7 @@ export default function App() {
                 of a stale "reconnecting" live widget. */}
             {wrapMode && (
               <div className="bg-[#151515] border border-[#fbbf24]/25 rounded-3xl p-6">
-                <h2 className="text-xl font-black text-white uppercase tracking-wider mb-2">That&rsquo;s a wrap 🎾</h2>
+                <h2 className="text-xl font-black text-white uppercase tracking-wider mb-2">That&rsquo;s a wrap <span aria-hidden="true">🎾</span></h2>
                 <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
                   The draws above are the permanent record — champions in gold, full results below, memories in the <button onClick={() => { setActiveTab('photos'); window.scrollTo({ top: 0 }); }} className="text-[#fbbf24] font-bold hover:underline">photo gallery</button>.
                 </p>
@@ -2644,7 +2645,7 @@ export default function App() {
                     {wrapMode && (
                       <button onClick={joinAcePledge}
                         className={`mt-3 min-h-11 px-5 font-black text-xs uppercase tracking-wider rounded-xl transition-colors ${pledged ? 'bg-[#111] border border-[#fbbf24]/40 text-[#fbbf24]' : 'bg-[#fbbf24] hover:bg-amber-400 text-black'}`}>
-                        {pledged ? `You're in 🎾 · Venmo $${aces}` : `Pledge $${aces} on Venmo`}
+                        {pledged ? <>You&rsquo;re in <span aria-hidden="true">🎾</span> · Venmo ${aces}</> : `Pledge $${aces} on Venmo`}
                       </button>
                     )}
                   </div>
@@ -3131,7 +3132,7 @@ export default function App() {
                   </div>
                   <button onClick={joinAcePledge}
                     className={`shrink-0 min-h-12 px-6 font-black text-xs uppercase tracking-wider rounded-xl transition-colors ${pledged ? 'bg-[#111] border border-[#fbbf24]/40 text-[#fbbf24]' : 'bg-[#fbbf24] hover:bg-amber-400 text-black shadow-lg shadow-amber-500/10'}`}>
-                    {pledged ? `You're in 🎾 · Venmo $${aces}` : `Pledge $${aces} on Venmo`}
+                    {pledged ? <>You&rsquo;re in <span aria-hidden="true">🎾</span> · Venmo ${aces}</> : `Pledge $${aces} on Venmo`}
                   </button>
                 </div>
               </div>
