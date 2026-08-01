@@ -144,20 +144,22 @@ jobs:
           curl -sS -m 20 -A "Mozilla/5.0" -o mo.txt -w "site proxy HTTP %{http_code} (want 400)\n" "https://acesforarian.com/api/sheet?tab=MerchOrders"
           curl -sSL -m 20 -o mo2.txt -w "doGet HTTP %{http_code}\n" "$EXEC?tab=MerchOrders&token=$READ"
           echo "doGet bytes: $(wc -c < mo2.txt) (must be 0 — not in READABLE)"
-      - name: Freshness marker in the main bundle
+      - name: Deploy freshness — live build-sha vs this workflow's commit
         run: |
+          # Authoritative check: both HTML entries carry <meta name="build-sha">
+          # stamped from CF_PAGES_COMMIT_SHA at build time (vite.config.js).
+          # A dispatch run on main means GITHUB_SHA == the commit that SHOULD
+          # be live; mismatch = deploy stale or still propagating.
           UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-          asset=$(curl -sS -m 20 -A "$UA" "https://acesforarian.com/" | grep -o '/assets/main-[^"]*\.js' | head -1 || true)
-          echo "main asset: ${asset:-NONE FOUND}"
-          if [ -n "$asset" ]; then
-            curl -sS -m 20 -A "$UA" -o main.js "https://acesforarian.com$asset"
-            # Secondary signal only — comparing the live asset hash against a
-            # clean local build of main is the authoritative freshness check
-            # (Vite content-hashes filenames). Update the string when the
-            # fallback weather copy changes.
-            if grep -q "update Sat 7/11 AM" main.js; then
-              echo "WEATHER MARKER: current (Sat 7/11 AM copy) — deploy carries the latest main"
-            else
-              echo "WEATHER MARKER: NOT FOUND — deploy may be stale, or the fallback copy changed (trust the asset-hash check)"
-            fi
+          page=$(curl -sS -m 20 -A "$UA" "https://acesforarian.com/")
+          echo "main asset: $(echo "$page" | grep -o '/assets/main-[^"]*\.js' | head -1 || echo NONE)"
+          live=$(echo "$page" | grep -o 'name="build-sha" content="[^"]*"' | sed 's/.*content="//;s/"//' || true)
+          echo "live build-sha: ${live:-NONE (pre-meta deploy — redeploy to activate)}"
+          echo "expected sha:   $GITHUB_SHA"
+          if [ "$live" = "$GITHUB_SHA" ]; then
+            echo "DEPLOY FRESHNESS: MATCH — the live site is exactly this commit"
+          elif [ -z "$live" ]; then
+            echo "DEPLOY FRESHNESS: UNKNOWN — live build predates the build-sha meta"
+          else
+            echo "DEPLOY FRESHNESS: MISMATCH — live serves a different commit (stale or mid-propagation)"
           fi

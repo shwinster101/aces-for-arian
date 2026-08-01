@@ -2602,6 +2602,12 @@ export default function App() {
                           <div className={`text-sm font-bold ${m.winner === 'b' ? 'text-[#fbbf24]' : 'text-zinc-100'}`}>{bTeam(m.b) || '—'}</div>
                         </div>
                         {m.score && <div className="text-xs text-zinc-400 font-mono mt-2.5 pt-2.5 border-t border-zinc-800/60">{m.score}</div>}
+                        {/* Post-event integrity: a final without a desk-entered
+                            score says so, instead of silently omitting the line
+                            (the winner is still authoritative — gold name). */}
+                        {wrapMode && !m.score && m.status === 'final' && (
+                          <div className="text-[10px] text-zinc-600 italic mt-2.5 pt-2.5 border-t border-zinc-800/60">score not recorded — winner as posted by the desk</div>
+                        )}
                       </div>
                     );
                   })}
