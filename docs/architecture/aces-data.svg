@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2655 544" width="2655" height="544">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1e1e1e" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="2655" height="544" fill="#ffffff" />
+  <rect x="1022.5" y="88" width="260" height="84" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="45" y="300" width="300" height="204" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="420" y="336" width="230" height="132" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="710" y="348" width="230" height="108" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="1000" y="312" width="320" height="180" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="1380" y="348" width="220" height="108" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="1660" y="348" width="210" height="108" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="1930" y="312" width="320" height="180" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="2310" y="300" width="290" height="204" rx="8" ry="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2" opacity="1" />
+  <rect x="40" y="64" width="290" height="132" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="2305" y="40" width="310" height="180" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <polyline points="1152.5,172 195,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 535,336" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 825,348" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 1160,312" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 1490,348" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 1765,348" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 2090,312" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1152.5,172 2455,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="185,196 195,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="185,196 1160,312" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="2460,220 1160,312" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="2460,220 2455,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="1152.5" y="136" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#7048e8" text-anchor="middle">
+    <tspan x="1152.5" dy="0">Google Sheet (private)</tspan>
+  </text>
+  <text x="195" y="358" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="195" dy="0">Roster (first tab = Form</tspan>
+    <tspan x="195" dy="20">responses)</tspan>
+    <tspan x="195" dy="20">name · class year · events</tspan>
+    <tspan x="195" dy="20">partner · bio · status</tspan>
+    <tspan x="195" dy="20">(email · phone · payment:</tspan>
+    <tspan x="195" dy="20">PII, never public)</tspan>
+  </text>
+  <text x="535" y="388" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="535" dy="0">Config</tspan>
+    <tspan x="535" dy="20">key/value · raised</tspan>
+    <tspan x="535" dy="20">(scholarship total)</tspan>
+  </text>
+  <text x="825" y="398" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="825" dy="0">SeedBoardPublic</tspan>
+    <tspan x="825" dy="20">Name · Event · Rank</tspan>
+  </text>
+  <text x="1160" y="368" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="1160" dy="0">Matches</tspan>
+    <tspan x="1160" dy="20">Event · Round · Num · Player</tspan>
+    <tspan x="1160" dy="20">A · Player B</tspan>
+    <tspan x="1160" dy="20">Court · Status · Score</tspan>
+    <tspan x="1160" dy="20">Winner · ID</tspan>
+  </text>
+  <text x="1490" y="398" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="1490" dy="0">Courts</tspan>
+    <tspan x="1490" dy="20">Court · Now · Next</tspan>
+  </text>
+  <text x="1765" y="398" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="1765" dy="0">Aces · AcePledges</tspan>
+    <tspan x="1765" dy="20">Count</tspan>
+  </text>
+  <text x="2090" y="368" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="2090" dy="0">OpsStatus (Name · Status)</tspan>
+    <tspan x="2090" dy="20">Announcements (Id</tspan>
+    <tspan x="2090" dy="20">Timestamp · Event · Category</tspan>
+    <tspan x="2090" dy="20">· Message)</tspan>
+    <tspan x="2090" dy="20">Photos</tspan>
+  </text>
+  <text x="2455" y="358" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e03131" text-anchor="middle">
+    <tspan x="2455" dy="0">Private tabs (never</tspan>
+    <tspan x="2455" dy="20">readable)</tspan>
+    <tspan x="2455" dy="20">OpsDesk: CheckedIn · Paid</tspan>
+    <tspan x="2455" dy="20">PayMethod · Shirt</tspan>
+    <tspan x="2455" dy="20">OpsWalkups · OpsDraw</tspan>
+    <tspan x="2455" dy="20">MerchOrders · Subscribers</tspan>
+  </text>
+  <text x="185" y="116" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#2f9e44" text-anchor="middle">
+    <tspan x="185" dy="0">Public read allowlist</tspan>
+    <tspan x="185" dy="20">/api/sheet ALLOWED = Apps</tspan>
+    <tspan x="185" dy="20">Script READABLE</tspan>
+  </text>
+  <text x="2460" y="96" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#2f9e44" text-anchor="middle">
+    <tspan x="2460" dy="0">Write ops (doPost)</tspan>
+    <tspan x="2460" dy="20">config · seeds · match</tspan>
+    <tspan x="2460" dy="20">status · aces</tspan>
+    <tspan x="2460" dy="20">announce · opsdesk · walkup</tspan>
+    <tspan x="2460" dy="20">· opsdraw</tspan>
+  </text>
+  <text x="190" y="253.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="190" dy="0">PII columns stripped</tspan>
+  </text>
+</svg>

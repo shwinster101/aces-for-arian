@@ -1,0 +1,104 @@
+{
+ "title": "Aces for Arian — Code map",
+ "direction": "TB",
+ "nodes": [
+  {
+   "id": "main",
+   "label": "src/main.jsx · App.jsx\nErrorBoundary.jsx",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "views",
+   "label": "Public views\nSinglesDraw · CompassDraw\nTeamTracker",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "lib",
+   "label": "src/lib/\nsheet.js (read + mapRoster)\n· sheetWrite.js\ndraw.js · compass.js\nschedule.js · entrants.js",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "admin",
+   "label": "src/admin/\nAdminApp · AuthGate (PIN)\nstore.js\nCashDrawer · ui.jsx",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "sections",
+   "label": "src/admin/sections/\nCommandCenter\nRegistrations · CheckIns\nPayments\nSeeding · Scores · Announce\n· Logistics · Merch\nFeedback",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "sheetfn",
+   "label": "functions/api/sheet.js\ntab allowlist · PII filter\n30s edge cache",
+   "type": "component",
+   "color": "green"
+  },
+  {
+   "id": "writefn",
+   "label": "functions/api/write.js\nenvelope check · token\ninjection · receipt",
+   "type": "component",
+   "color": "green"
+  },
+  {
+   "id": "gas",
+   "label": "apps-script/ops-write-back.js\ndoGet (READABLE) · doPost\nops\n(pasted into Apps Script by\nhand)",
+   "type": "component",
+   "color": "purple"
+  },
+  {
+   "id": "build",
+   "label": "vite.config.js\neslint.config.js\nindex.html · admin.html (two\nentries)",
+   "type": "component",
+   "color": "yellow"
+  }
+ ],
+ "edges": [
+  {
+   "from": "main",
+   "to": "views"
+  },
+  {
+   "from": "views",
+   "to": "lib"
+  },
+  {
+   "from": "admin",
+   "to": "sections"
+  },
+  {
+   "from": "sections",
+   "to": "lib"
+  },
+  {
+   "from": "lib",
+   "to": "sheetfn",
+   "label": "read"
+  },
+  {
+   "from": "lib",
+   "to": "writefn",
+   "label": "write"
+  },
+  {
+   "from": "sheetfn",
+   "to": "gas"
+  },
+  {
+   "from": "writefn",
+   "to": "gas"
+  },
+  {
+   "from": "build",
+   "to": "main"
+  },
+  {
+   "from": "build",
+   "to": "admin"
+  }
+ ]
+}

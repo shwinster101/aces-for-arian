@@ -1,0 +1,123 @@
+{
+ "title": "Aces for Arian — Data model (Google Sheet tabs)",
+ "direction": "TB",
+ "nodes": [
+  {
+   "id": "sheet",
+   "label": "Google Sheet (private)",
+   "type": "database",
+   "color": "purple"
+  },
+  {
+   "id": "roster",
+   "label": "Roster (first tab = Form\nresponses)\nname · class year · events\npartner · bio · status\n(email · phone · payment:\nPII, never public)",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "config",
+   "label": "Config\nkey/value · raised\n(scholarship total)",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "seeds",
+   "label": "SeedBoardPublic\nName · Event · Rank",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "matches",
+   "label": "Matches\nEvent · Round · Num · Player\nA · Player B\nCourt · Status · Score\nWinner · ID",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "courts",
+   "label": "Courts\nCourt · Now · Next",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "aces",
+   "label": "Aces · AcePledges\nCount",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "misc",
+   "label": "OpsStatus (Name · Status)\nAnnouncements (Id\nTimestamp · Event · Category\n· Message)\nPhotos",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "priv",
+   "label": "Private tabs (never\nreadable)\nOpsDesk: CheckedIn · Paid\nPayMethod · Shirt\nOpsWalkups · OpsDraw\nMerchOrders · Subscribers",
+   "type": "database",
+   "color": "red"
+  },
+  {
+   "id": "read",
+   "label": "Public read allowlist\n/api/sheet ALLOWED = Apps\nScript READABLE",
+   "type": "component",
+   "color": "green"
+  },
+  {
+   "id": "write",
+   "label": "Write ops (doPost)\nconfig · seeds · match\nstatus · aces\nannounce · opsdesk · walkup\n· opsdraw",
+   "type": "component",
+   "color": "green"
+  }
+ ],
+ "edges": [
+  {
+   "from": "sheet",
+   "to": "roster"
+  },
+  {
+   "from": "sheet",
+   "to": "config"
+  },
+  {
+   "from": "sheet",
+   "to": "seeds"
+  },
+  {
+   "from": "sheet",
+   "to": "matches"
+  },
+  {
+   "from": "sheet",
+   "to": "courts"
+  },
+  {
+   "from": "sheet",
+   "to": "aces"
+  },
+  {
+   "from": "sheet",
+   "to": "misc"
+  },
+  {
+   "from": "sheet",
+   "to": "priv"
+  },
+  {
+   "from": "read",
+   "to": "roster",
+   "label": "PII columns stripped"
+  },
+  {
+   "from": "read",
+   "to": "matches"
+  },
+  {
+   "from": "write",
+   "to": "matches"
+  },
+  {
+   "from": "write",
+   "to": "priv"
+  }
+ ]
+}
