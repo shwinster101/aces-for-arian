@@ -1,0 +1,102 @@
+{
+ "title": "Aces for Arian — Architecture",
+ "direction": "TB",
+ "nodes": [
+  {
+   "id": "crowd",
+   "label": "Public / players",
+   "type": "user",
+   "color": "gray"
+  },
+  {
+   "id": "staff",
+   "label": "Tournament staff",
+   "type": "user",
+   "color": "gray"
+  },
+  {
+   "id": "site",
+   "label": "[Cloudflare Pages]\nPublic site (React 19 + Vite)\ndraws · team tracker · aces · meter",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "admin",
+   "label": "[Cloudflare Pages]\nOps console /admin.html\n(PIN deterrent) · localStorage store",
+   "type": "component",
+   "color": "blue"
+  },
+  {
+   "id": "sheet",
+   "label": "[Cloudflare Pages]\n/api/sheet?tab=\nedge cache 30s · tab allowlist\nPII column filter",
+   "type": "component",
+   "color": "green"
+  },
+  {
+   "id": "write",
+   "label": "[Cloudflare Pages]\n/api/write\nvalidates envelope · injects token\nreal receipt",
+   "type": "component",
+   "color": "green"
+  },
+  {
+   "id": "gas",
+   "label": "[Google]\nApps Script Web App\ndoGet (token) · doPost write-back",
+   "type": "component",
+   "color": "purple"
+  },
+  {
+   "id": "gs",
+   "label": "[Google]\nGoogle Sheet (private)\nConfig · Matches · Aces · Payments\nForm responses",
+   "type": "database",
+   "color": "orange"
+  },
+  {
+   "id": "form",
+   "label": "[Google]\nGoogle Form\n(registration)",
+   "type": "cloud",
+   "color": "gray"
+  }
+ ],
+ "edges": [
+  {
+   "from": "crowd",
+   "to": "site"
+  },
+  {
+   "from": "staff",
+   "to": "admin"
+  },
+  {
+   "from": "site",
+   "to": "sheet",
+   "label": "poll"
+  },
+  {
+   "from": "admin",
+   "to": "sheet"
+  },
+  {
+   "from": "admin",
+   "to": "write",
+   "label": "POST"
+  },
+  {
+   "from": "sheet",
+   "to": "gas",
+   "label": "doGet"
+  },
+  {
+   "from": "write",
+   "to": "gas",
+   "label": "doPost"
+  },
+  {
+   "from": "gas",
+   "to": "gs"
+  },
+  {
+   "from": "form",
+   "to": "gs"
+  }
+ ]
+}

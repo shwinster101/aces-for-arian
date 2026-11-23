@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1060" width="840" height="1060">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1e1e1e" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="840" height="1060" fill="#ffffff" />
+  <rect x="100" y="40" width="200" height="84" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="490" y="40" width="200" height="84" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="40" y="204" width="320" height="132" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="430" y="204" width="320" height="132" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="50" y="416" width="320" height="156" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="440" y="416" width="320" height="156" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="240" y="652" width="320" height="132" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="395" y="864" width="320" height="156" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="620" y="652" width="180" height="132" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <polyline points="200,124 200,204" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="590,124 590,204" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="200,336 210,416" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="590,336 210,416" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="590,336 600,416" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="210,572 400,652" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="600,572 400,652" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="400,784 555,864" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="710,784 555,864" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="200" y="88" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#495057" text-anchor="middle">
+    <tspan x="200" dy="0">Public / players</tspan>
+  </text>
+  <text x="590" y="88" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#495057" text-anchor="middle">
+    <tspan x="590" dy="0">Tournament staff</tspan>
+  </text>
+  <text x="200" y="256" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="200" dy="0">[Cloudflare Pages]</tspan>
+    <tspan x="200" dy="20">Public site (React 19 + Vite)</tspan>
+    <tspan x="200" dy="20">draws · team tracker · aces · meter</tspan>
+  </text>
+  <text x="590" y="256" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="590" dy="0">[Cloudflare Pages]</tspan>
+    <tspan x="590" dy="20">Ops console /admin.html</tspan>
+    <tspan x="590" dy="20">(PIN deterrent) · localStorage store</tspan>
+  </text>
+  <text x="210" y="470" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#2f9e44" text-anchor="middle">
+    <tspan x="210" dy="0">[Cloudflare Pages]</tspan>
+    <tspan x="210" dy="20">/api/sheet?tab=</tspan>
+    <tspan x="210" dy="20">edge cache 30s · tab allowlist</tspan>
+    <tspan x="210" dy="20">PII column filter</tspan>
+  </text>
+  <text x="600" y="470" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#2f9e44" text-anchor="middle">
+    <tspan x="600" dy="0">[Cloudflare Pages]</tspan>
+    <tspan x="600" dy="20">/api/write</tspan>
+    <tspan x="600" dy="20">validates envelope · injects token</tspan>
+    <tspan x="600" dy="20">real receipt</tspan>
+  </text>
+  <text x="400" y="704" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#7048e8" text-anchor="middle">
+    <tspan x="400" dy="0">[Google]</tspan>
+    <tspan x="400" dy="20">Apps Script Web App</tspan>
+    <tspan x="400" dy="20">doGet (token) · doPost write-back</tspan>
+  </text>
+  <text x="555" y="918" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#e8590c" text-anchor="middle">
+    <tspan x="555" dy="0">[Google]</tspan>
+    <tspan x="555" dy="20">Google Sheet (private)</tspan>
+    <tspan x="555" dy="20">Config · Matches · Aces · Payments</tspan>
+    <tspan x="555" dy="20">Form responses</tspan>
+  </text>
+  <text x="710" y="704" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#495057" text-anchor="middle">
+    <tspan x="710" dy="0">[Google]</tspan>
+    <tspan x="710" dy="20">Google Form</tspan>
+    <tspan x="710" dy="20">(registration)</tspan>
+  </text>
+  <text x="205" y="381.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="205" dy="0">poll</tspan>
+  </text>
+  <text x="595" y="381.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="595" dy="0">POST</tspan>
+  </text>
+  <text x="305" y="617.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="305" dy="0">doGet</tspan>
+  </text>
+  <text x="500" y="617.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="500" dy="0">doPost</tspan>
+  </text>
+</svg>
