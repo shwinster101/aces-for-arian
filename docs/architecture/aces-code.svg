@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 1512" width="740" height="1512">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1e1e1e" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="740" height="1512" fill="#ffffff" />
+  <rect x="55" y="300" width="260" height="108" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="40" y="560" width="290" height="132" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="210" y="820" width="310" height="180" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="400" y="276" width="290" height="156" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="390" y="512" width="310" height="228" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="45" y="1080" width="300" height="132" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="405" y="1080" width="260" height="132" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="205" y="1292" width="320" height="180" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="205" y="40" width="320" height="156" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <polyline points="185,408 185,560" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="185,692 365,820" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="545,432 545,512" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="545,740 365,820" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="365,1000 195,1080" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="365,1000 535,1080" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="195,1212 365,1292" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="535,1212 365,1292" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="365,196 185,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="365,196 545,276" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="185" y="350" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="185" dy="0">src/main.jsx · App.jsx</tspan>
+    <tspan x="185" dy="20">ErrorBoundary.jsx</tspan>
+  </text>
+  <text x="185" y="612" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="185" dy="0">Public views</tspan>
+    <tspan x="185" dy="20">SinglesDraw · CompassDraw</tspan>
+    <tspan x="185" dy="20">TeamTracker</tspan>
+  </text>
+  <text x="365" y="876" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="365" dy="0">src/lib/</tspan>
+    <tspan x="365" dy="20">sheet.js (read + mapRoster)</tspan>
+    <tspan x="365" dy="20">· sheetWrite.js</tspan>
+    <tspan x="365" dy="20">draw.js · compass.js</tspan>
+    <tspan x="365" dy="20">schedule.js · entrants.js</tspan>
+  </text>
+  <text x="545" y="330" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="545" dy="0">src/admin/</tspan>
+    <tspan x="545" dy="20">AdminApp · AuthGate (PIN)</tspan>
+    <tspan x="545" dy="20">store.js</tspan>
+    <tspan x="545" dy="20">CashDrawer · ui.jsx</tspan>
+  </text>
+  <text x="545" y="572" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#1971c2" text-anchor="middle">
+    <tspan x="545" dy="0">src/admin/sections/</tspan>
+    <tspan x="545" dy="20">CommandCenter</tspan>
+    <tspan x="545" dy="20">Registrations · CheckIns</tspan>
+    <tspan x="545" dy="20">Payments</tspan>
+    <tspan x="545" dy="20">Seeding · Scores · Announce</tspan>
+    <tspan x="545" dy="20">· Logistics · Merch</tspan>
+    <tspan x="545" dy="20">Feedback</tspan>
+  </text>
+  <text x="195" y="1132" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#2f9e44" text-anchor="middle">
+    <tspan x="195" dy="0">functions/api/sheet.js</tspan>
+    <tspan x="195" dy="20">tab allowlist · PII filter</tspan>
+    <tspan x="195" dy="20">30s edge cache</tspan>
+  </text>
+  <text x="535" y="1132" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#2f9e44" text-anchor="middle">
+    <tspan x="535" dy="0">functions/api/write.js</tspan>
+    <tspan x="535" dy="20">envelope check · token</tspan>
+    <tspan x="535" dy="20">injection · receipt</tspan>
+  </text>
+  <text x="365" y="1348" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#7048e8" text-anchor="middle">
+    <tspan x="365" dy="0">apps-script/ops-write-back.js</tspan>
+    <tspan x="365" dy="20">doGet (READABLE) · doPost</tspan>
+    <tspan x="365" dy="20">ops</tspan>
+    <tspan x="365" dy="20">(pasted into Apps Script by</tspan>
+    <tspan x="365" dy="20">hand)</tspan>
+  </text>
+  <text x="365" y="94" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#f08c00" text-anchor="middle">
+    <tspan x="365" dy="0">vite.config.js</tspan>
+    <tspan x="365" dy="20">eslint.config.js</tspan>
+    <tspan x="365" dy="20">index.html · admin.html (two</tspan>
+    <tspan x="365" dy="20">entries)</tspan>
+  </text>
+  <text x="280" y="1045.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="280" dy="0">read</tspan>
+  </text>
+  <text x="450" y="1045.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="450" dy="0">write</tspan>
+  </text>
+</svg>
